@@ -1,18 +1,19 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
-import { 
-  ShoppingBag, 
-  Search, 
-  User, 
-  ChevronDown, 
+import {
+  ShoppingBag,
+  Search,
+  User,
+  ChevronDown,
   ChevronRight,
-  Menu, 
-  X, 
-  ShieldCheck, 
+  Menu,
+  X,
+  ShieldCheck,
   ArrowRight,
   Package,
   Phone,
-  HelpCircle
+  HelpCircle,
+  Truck
 } from "lucide-react";
 
 export const Header: React.FC = () => {
@@ -66,12 +67,12 @@ export const Header: React.FC = () => {
 
   // Quick live search matching
   const searchResults = searchQuery.trim()
-    ? products.filter((p) => 
-        p.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.nameBn.includes(searchQuery) ||
-        p.fabricType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-      ).slice(0, 5)
+    ? products.filter((p) =>
+      p.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.nameBn.includes(searchQuery) ||
+      p.fabricType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()))
+    ).slice(0, 5)
     : [];
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -97,32 +98,30 @@ export const Header: React.FC = () => {
       <div className="bg-[#1A1A1A] text-[#F5F5F5] text-xs py-1.5 px-3 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto flex items-center justify-end">
           {/* Language Switcher */}
-            <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
-              <button
-                onClick={() => setLanguage("en")}
-                className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${
-                  language === "en"
-                    ? "bg-white text-[#1A1A1A] font-bold"
-                    : "text-[#CCCCCC] hover:text-white"
+          <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
+            <button
+              onClick={() => setLanguage("en")}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${language === "en"
+                ? "bg-white text-[#1A1A1A] font-bold"
+                : "text-[#CCCCCC] hover:text-white"
                 }`}
-                aria-label="Switch to English"
-              >
-                EN
-              </button>
-              <button
-                onClick={() => setLanguage("bn")}
-                className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${
-                  language === "bn"
-                    ? "bg-white text-[#1A1A1A] font-bold"
-                    : "text-[#CCCCCC] hover:text-white"
+              aria-label="Switch to English"
+            >
+              EN
+            </button>
+            <button
+              onClick={() => setLanguage("bn")}
+              className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${language === "bn"
+                ? "bg-white text-[#1A1A1A] font-bold"
+                : "text-[#CCCCCC] hover:text-white"
                 }`}
-                aria-label="Switch to Bengali"
-              >
-                বাং
-              </button>
-            </div>
+              aria-label="Switch to Bengali"
+            >
+              বাং
+            </button>
           </div>
         </div>
+      </div>
 
       {/* 2. Main Header Navigation Bar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-2 lg:gap-3 xl:gap-4 flex-nowrap">
@@ -139,7 +138,7 @@ export const Header: React.FC = () => {
           </button>
 
           {/* Brand Logo - Monochromatic Editorial Typographic Identity */}
-          <div 
+          <div
             onClick={() => navigate("/")}
             className="cursor-pointer flex flex-col group py-1 select-none"
           >
@@ -160,15 +159,14 @@ export const Header: React.FC = () => {
         {/* Center: Desktop Navigation Links & Mega Menu (Strict single-row, no wrapping) */}
         <nav className="hidden lg:flex items-center flex-nowrap shrink-0 gap-2.5 xl:gap-5 2xl:gap-6 text-xs xl:text-sm font-medium text-[#1A1A1A] whitespace-nowrap">
           {/* All Categories Mega Menu Dropdown */}
-          <div 
+          <div
             className="relative shrink-0"
             onMouseEnter={() => setIsMegaMenuOpen(true)}
             onMouseLeave={() => setIsMegaMenuOpen(false)}
           >
             <button
-              className={`flex items-center gap-1.5 py-2 px-2 rounded whitespace-nowrap transition-colors ${
-                isMegaMenuOpen ? "bg-[#F5F5F5] text-[#1A1A1A]" : "hover:text-[#555555]"
-              }`}
+              className={`flex items-center gap-1.5 py-2 px-2 rounded whitespace-nowrap transition-colors ${isMegaMenuOpen ? "bg-[#F5F5F5] text-[#1A1A1A]" : "hover:text-[#555555]"
+                }`}
             >
               <span className="font-semibold whitespace-nowrap">{t("All Categories", "সকল ক্যাটাগরি")}</span>
               <ChevronDown className={`w-3.5 h-3.5 shrink-0 transition-transform duration-200 ${isMegaMenuOpen ? "rotate-180" : ""}`} />
@@ -293,7 +291,7 @@ export const Header: React.FC = () => {
           </div>
 
           {/* More Categories Dropdown */}
-          <div 
+          <div
             className="relative shrink-0"
             onMouseEnter={() => setIsMoreMenuOpen(true)}
             onMouseLeave={() => setIsMoreMenuOpen(false)}
@@ -367,7 +365,7 @@ export const Header: React.FC = () => {
 
             {/* Debounced live search drop-down for Desktop */}
             {isDesktopSearchActive && searchQuery.trim().length > 0 && (
-              <div 
+              <div
                 className="absolute top-full right-0 mt-2 w-72 sm:w-80 bg-white border border-[#E0E0E0] shadow-xl rounded-lg p-3 z-50"
                 onMouseLeave={() => setIsDesktopSearchActive(false)}
               >
@@ -453,11 +451,10 @@ export const Header: React.FC = () => {
           {/* Admin Dashboard Quick Button (hidden on narrow screens, accessible in drawer) */}
           <button
             onClick={() => navigate("/admin")}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border ${
-              navigation.path.startsWith("/admin")
-                ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-                : "bg-[#F5F5F5] text-[#1A1A1A] border-[#E0E0E0] hover:bg-[#1A1A1A] hover:text-white"
-            }`}
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border ${navigation.path.startsWith("/admin")
+              ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
+              : "bg-[#F5F5F5] text-[#1A1A1A] border-[#E0E0E0] hover:bg-[#1A1A1A] hover:text-white"
+              }`}
             title="Access Admin Dashboard Suite"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -544,7 +541,7 @@ export const Header: React.FC = () => {
       {isMobileMenuOpen && (
         <div className="fixed inset-0 z-50 lg:hidden overflow-hidden">
           {/* Semi-transparent Backdrop Overlay */}
-          <div 
+          <div
             onClick={() => setIsMobileMenuOpen(false)}
             className="absolute inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-200"
             aria-hidden="true"
@@ -554,7 +551,7 @@ export const Header: React.FC = () => {
           <div className="absolute inset-y-0 left-0 max-w-[320px] sm:max-w-xs w-full bg-white shadow-2xl flex flex-col justify-between animate-in slide-in-from-left duration-300">
             {/* Drawer Header */}
             <div className="p-4 border-b border-[#E0E0E0] flex items-center justify-between bg-[#FBFBFB]">
-              <div 
+              <div
                 onClick={() => {
                   setIsMobileMenuOpen(false);
                   navigate("/");
@@ -592,9 +589,8 @@ export const Header: React.FC = () => {
                     setIsMobileMenuOpen(false);
                     navigate("/");
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
-                    navigation.path === "/" ? "bg-[#1A1A1A] text-white" : "text-[#1A1A1A] hover:bg-[#F5F5F5]"
-                  }`}
+                  className={`w-full text-left py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${navigation.path === "/" ? "bg-[#1A1A1A] text-white" : "text-[#1A1A1A] hover:bg-[#F5F5F5]"
+                    }`}
                 >
                   <span>{t("Home Page", "হোম পেজ")}</span>
                   <ArrowRight className="w-3.5 h-3.5 opacity-60" />
@@ -605,9 +601,8 @@ export const Header: React.FC = () => {
                     setIsMobileMenuOpen(false);
                     navigate("/shop");
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
-                    navigation.path === "/shop" ? "bg-[#1A1A1A] text-white" : "text-[#1A1A1A] hover:bg-[#F5F5F5]"
-                  }`}
+                  className={`w-full text-left py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${navigation.path === "/shop" ? "bg-[#1A1A1A] text-white" : "text-[#1A1A1A] hover:bg-[#F5F5F5]"
+                    }`}
                 >
                   <span>{t("Browse Full Catalog", "সম্পূর্ণ ক্যাটালগ")}</span>
                   <ArrowRight className="w-3.5 h-3.5 opacity-60" />
@@ -618,9 +613,8 @@ export const Header: React.FC = () => {
                     setIsMobileMenuOpen(false);
                     navigate("/track-order");
                   }}
-                  className={`w-full text-left py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${
-                    navigation.path === "/track-order" ? "bg-[#1A1A1A] text-white" : "text-[#1A1A1A] hover:bg-[#F5F5F5]"
-                  }`}
+                  className={`w-full text-left py-2.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-between transition-colors ${navigation.path === "/track-order" ? "bg-[#1A1A1A] text-white" : "text-[#1A1A1A] hover:bg-[#F5F5F5]"
+                    }`}
                 >
                   <span className="flex items-center gap-2">
                     <Truck className="w-4 h-4 text-emerald-600" />
@@ -659,9 +653,8 @@ export const Header: React.FC = () => {
                               aria-label={`Toggle ${cat.nameEn} subcategories`}
                             >
                               <ChevronDown
-                                className={`w-4 h-4 transition-transform duration-200 ${
-                                  isExpanded ? "rotate-180" : ""
-                                }`}
+                                className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? "rotate-180" : ""
+                                  }`}
                               />
                             </button>
                           )}
@@ -749,17 +742,15 @@ export const Header: React.FC = () => {
                 <div className="flex items-center bg-white rounded border border-[#CCCCCC] p-0.5">
                   <button
                     onClick={() => setLanguage("en")}
-                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                      language === "en" ? "bg-[#1A1A1A] text-white" : "text-[#555555]"
-                    }`}
+                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${language === "en" ? "bg-[#1A1A1A] text-white" : "text-[#555555]"
+                      }`}
                   >
                     English
                   </button>
                   <button
                     onClick={() => setLanguage("bn")}
-                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                      language === "bn" ? "bg-[#1A1A1A] text-white" : "text-[#555555]"
-                    }`}
+                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${language === "bn" ? "bg-[#1A1A1A] text-white" : "text-[#555555]"
+                      }`}
                   >
                     বাংলা
                   </button>
