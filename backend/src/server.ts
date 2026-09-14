@@ -81,11 +81,9 @@ async function startServer() {
   process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 
-if (!process.env.VERCEL) {
-  startServer().catch((err) => {
-    console.error("Failed to start backend server:", err);
-    process.exit(1);
-  });
-}
+startServer().catch((err) => {
+  console.error("Failed to start backend server:", err);
+  process.exit(1);
+});
 
 export default app;
