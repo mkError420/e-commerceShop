@@ -47,6 +47,16 @@ app.get("/api/v1/health", (req, res) => {
   });
 });
 
+// Base API status endpoints
+app.get(["/api", "/api/v1"], (req, res) => {
+  res.json({
+    status: "HEALTHY",
+    service: "Bangladeshi E-Commerce Backend API",
+    version: "1.0.0",
+    docs: "/api/v1/health",
+  });
+});
+
 // Mount Main API Routes
 app.use("/api/v1", apiRoutes);
 
@@ -54,7 +64,7 @@ app.use("/api/v1", apiRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
-// Start Server
+// Start Server (only in non-serverless environments)
 async function startServer() {
   await connectDatabase();
 
@@ -81,9 +91,11 @@ async function startServer() {
   process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start backend server:", err);
-  process.exit(1);
-});
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  startServer().catch((err) => {
+    console.error("Failed to start backend server:", err);
+    process.exit(1);
+  });
+}
 
 export default app;
