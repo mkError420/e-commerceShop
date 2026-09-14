@@ -11,7 +11,19 @@ const app = express();
 // Middlewares
 app.use(
   cors({
-    origin: [ENV.CLIENT_URL, "http://localhost:3000", "http://127.0.0.1:3000"],
+    origin: (origin, callback) => {
+      const allowed = [
+        ENV.CLIENT_URL,
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+      ];
+      // Allow all Vercel deployment URLs (*.vercel.app)
+      if (!origin || allowed.includes(origin) || origin.endsWith(".vercel.app")) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS blocked: ${origin}`));
+      }
+    },
     credentials: true,
   })
 );
@@ -69,9 +81,11 @@ async function startServer() {
   process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start backend server:", err);
-  process.exit(1);
-});
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error("Failed to start backend server:", err);
+    process.exit(1);
+  });
+}
 
 export default app;

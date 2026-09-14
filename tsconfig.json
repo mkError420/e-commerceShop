@@ -11,5 +11,5 @@
     "resolveJsonModule": true,
     "types": ["node"]
   },
-  "include": ["database/**/*"]
+  "include": ["database/**/*", "api/**/*"]
 }
