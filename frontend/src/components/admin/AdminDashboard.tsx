@@ -9,12 +9,18 @@ import {
   TrendingUp, 
   AlertTriangle, 
   Truck, 
-  DollarSign, 
-  Users, 
   ArrowUpRight,
   ExternalLink,
   Code,
-  Globe
+  Globe,
+  Plus,
+  Menu,
+  X,
+  ChevronRight,
+  Sparkles,
+  ShieldCheck,
+  Clock,
+  CircleDot
 } from "lucide-react";
 import { AdminProducts } from "./AdminProducts";
 import { AdminOrders } from "./AdminOrders";
@@ -28,12 +34,12 @@ export const AdminDashboard: React.FC = () => {
     coupons, 
     formatPrice, 
     navigate, 
-    t, 
     setIsArchitectureModalOpen, 
     setIsSeoModalOpen 
   } = useStore();
   
   const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings">("overview");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Analytics Metrics
   const totalRevenueBDT = orders.reduce((sum, o) => sum + (o.paymentStatus === "PAID" ? o.totalBDT : 0), 0);
@@ -41,256 +47,539 @@ export const AdminDashboard: React.FC = () => {
   const lowStockProducts = products.filter((p) => p.stockQuantity <= p.lowStockAlert);
   const insideDhakaOrders = orders.filter((o) => o.deliveryZone === "INSIDE_DHAKA").length;
   const outsideDhakaOrders = orders.filter((o) => o.deliveryZone === "OUTSIDE_DHAKA").length;
+  const totalOrdersCount = orders.length || 1;
+  const insideDhakaPct = Math.round((insideDhakaOrders / totalOrdersCount) * 100);
+
+  const navItems = [
+    {
+      id: "overview" as const,
+      label: "Dashboard Overview",
+      icon: LayoutDashboard,
+      badge: null,
+    },
+    {
+      id: "products" as const,
+      label: "Products & Catalog",
+      icon: Package,
+      badge: lowStockProducts.length > 0 ? { count: lowStockProducts.length, alert: true } : null,
+    },
+    {
+      id: "orders" as const,
+      label: "Orders & Fulfillment",
+      icon: ShoppingCart,
+      badge: pendingOrdersCount > 0 ? { count: pendingOrdersCount, alert: false } : null,
+    },
+    {
+      id: "coupons" as const,
+      label: "Vouchers & Marketing",
+      icon: Tag,
+      badge: { count: coupons.filter(c => c.isActive).length, alert: false },
+    },
+    {
+      id: "settings" as const,
+      label: "Logistics & Gateways",
+      icon: Settings,
+      badge: null,
+    },
+  ];
+
+  const getTabTitle = () => {
+    switch (activeTab) {
+      case "overview": return "Executive Overview";
+      case "products": return "Product Catalog & Stock";
+      case "orders": return "Orders & Courier Logistics";
+      case "coupons": return "Marketing Vouchers";
+      case "settings": return "Logistics & Gateway Settings";
+      default: return "Admin Portal";
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A]">
-      {/* Top Admin Navigation Header */}
-      <div className="bg-[#1A1A1A] text-white px-6 py-4 border-b border-[#333333] flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="font-editorial text-xl font-bold tracking-tight">
-            BENGAL ARCHIVE <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800 ml-2">ADMIN ATELIER</span>
+    <div className="min-h-screen bg-gray-100 text-gray-900 flex font-sans antialiased selection:bg-yellow-300 selection:text-gray-950">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-xs transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Modern Sidebar (Charcoal Gray with Simple Yellow Accents) */}
+      <aside 
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-gray-900 text-gray-200 border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Sidebar Brand Header */}
+        <div className="p-5 border-b border-gray-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-gray-950 font-bold shadow-md shadow-yellow-500/20">
+              <Sparkles className="w-5 h-5 text-gray-950" />
+            </div>
+            <div>
+              <h1 className="font-editorial text-base font-bold text-white tracking-wide flex items-center gap-1.5">
+                BENGAL ARCHIVE
+              </h1>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                <span className="text-[10px] font-mono uppercase tracking-widest text-yellow-400 font-semibold">
+                  Admin Console
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <button 
+            onClick={() => setIsSidebarOpen(false)}
+            className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Quick System Badge */}
+        <div className="px-5 pt-4 pb-2">
+          <div className="bg-gray-800/80 border border-gray-700/60 rounded-lg p-2.5 flex items-center justify-between text-xs">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              <span className="text-gray-300 text-[11px] font-medium">Store Status</span>
+            </div>
+            <span className="text-[10px] font-mono bg-yellow-400/10 text-yellow-300 border border-yellow-400/20 px-2 py-0.5 rounded font-semibold">
+              LIVE • BD ZONE
+            </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs">
+        {/* Sidebar Navigation Links */}
+        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+          <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            Management
+          </div>
+
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  setIsSidebarOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${
+                  isActive
+                    ? "bg-yellow-400 text-gray-950 font-bold shadow-sm"
+                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-3">
+                  <Icon className={`w-4 h-4 transition-colors ${
+                    isActive ? "text-gray-950" : "text-gray-400 group-hover:text-yellow-400"
+                  }`} />
+                  <span>{item.label}</span>
+                </div>
+
+                {item.badge && (
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                    isActive
+                      ? "bg-gray-950 text-yellow-300"
+                      : item.badge.alert
+                      ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/30"
+                      : "bg-gray-800 text-gray-300 border border-gray-700"
+                  }`}>
+                    {item.badge.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Dev & Architecture Section */}
+          <div className="pt-6 px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+            Developer Spec
+          </div>
+
           <button
             onClick={() => setIsArchitectureModalOpen(true)}
-            className="flex items-center gap-1.5 bg-[#2A2A2A] hover:bg-[#333333] border border-[#444444] px-3 py-1.5 rounded transition-colors"
+            className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
           >
-            <Code className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Prisma / Next.js Spec</span>
+            <div className="flex items-center gap-3">
+              <Code className="w-4 h-4 text-yellow-400" />
+              <span>Prisma / Next.js Spec</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
           </button>
 
           <button
             onClick={() => setIsSeoModalOpen(true)}
-            className="flex items-center gap-1.5 bg-[#2A2A2A] hover:bg-[#333333] border border-[#444444] px-3 py-1.5 rounded transition-colors"
+            className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
           >
-            <Globe className="w-3.5 h-3.5 text-blue-400" />
-            <span>SEO & JSON-LD</span>
+            <div className="flex items-center gap-3">
+              <Globe className="w-4 h-4 text-yellow-400" />
+              <span>SEO & Rich Snippets</span>
+            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
           </button>
+        </nav>
 
+        {/* Sidebar Footer: Storefront Link & Admin Profile */}
+        <div className="p-4 border-t border-gray-800 bg-gray-950/40 space-y-3">
           <button
             onClick={() => navigate("/")}
-            className="flex items-center gap-1.5 bg-white text-[#1A1A1A] font-semibold px-3 py-1.5 rounded hover:bg-[#E5E5E5] transition-colors"
+            className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-yellow-400 hover:text-gray-950 text-gray-200 border border-gray-700 hover:border-yellow-400 text-xs font-semibold py-2.5 px-3 rounded-lg transition-all duration-200"
           >
-            <span>Live Storefront</span>
-            <ExternalLink className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
-
-      {/* Admin Layout: Sidebar + Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
-        {/* Navigation Tabs Bar */}
-        <div className="flex flex-wrap items-center gap-2 border-b border-[#E0E0E0] pb-4 mb-8">
-          <button
-            onClick={() => setActiveTab("overview")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === "overview"
-                ? "bg-[#1A1A1A] text-white shadow-xs"
-                : "bg-white text-[#555555] border border-[#E0E0E0] hover:text-[#1A1A1A]"
-            }`}
-          >
-            <LayoutDashboard className="w-4 h-4" />
-            <span>Dashboard Overview</span>
+            <span>Visit Live Storefront</span>
+            <ExternalLink className="w-3.5 h-3.5" />
           </button>
 
-          <button
-            onClick={() => setActiveTab("products")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === "products"
-                ? "bg-[#1A1A1A] text-white shadow-xs"
-                : "bg-white text-[#555555] border border-[#E0E0E0] hover:text-[#1A1A1A]"
-            }`}
-          >
-            <Package className="w-4 h-4" />
-            <span>Product Catalog & Stock</span>
-            {lowStockProducts.length > 0 && (
-              <span className="bg-amber-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">
-                {lowStockProducts.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("orders")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === "orders"
-                ? "bg-[#1A1A1A] text-white shadow-xs"
-                : "bg-white text-[#555555] border border-[#E0E0E0] hover:text-[#1A1A1A]"
-            }`}
-          >
-            <ShoppingCart className="w-4 h-4" />
-            <span>Orders & Courier Dispatch</span>
-            {pendingOrdersCount > 0 && (
-              <span className="bg-[#1A1A1A] text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">
-                {pendingOrdersCount}
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab("coupons")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === "coupons"
-                ? "bg-[#1A1A1A] text-white shadow-xs"
-                : "bg-white text-[#555555] border border-[#E0E0E0] hover:text-[#1A1A1A]"
-            }`}
-          >
-            <Tag className="w-4 h-4" />
-            <span>Vouchers & Marketing</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("settings")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
-              activeTab === "settings"
-                ? "bg-[#1A1A1A] text-white shadow-xs"
-                : "bg-white text-[#555555] border border-[#E0E0E0] hover:text-[#1A1A1A]"
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            <span>Logistics & Gateways</span>
-          </button>
-        </div>
-
-        {/* Tab Views */}
-        {activeTab === "overview" && (
-          <div className="space-y-8">
-            {/* KPI Metric Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-              <div className="bg-white border border-[#E0E0E0] rounded-xl p-5 shadow-xs">
-                <div className="flex items-center justify-between text-xs text-[#555555]">
-                  <span>Paid Revenue</span>
-                  <div className="p-2 bg-emerald-50 rounded-lg text-emerald-700">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold font-sans text-[#1A1A1A] mt-2">
-                  {formatPrice(totalRevenueBDT)}
-                </div>
-                <div className="text-[11px] text-emerald-700 font-medium mt-1 flex items-center gap-1">
-                  <ArrowUpRight className="w-3.5 h-3.5" />
-                  <span>+28.4% this month</span>
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#E0E0E0] rounded-xl p-5 shadow-xs">
-                <div className="flex items-center justify-between text-xs text-[#555555]">
-                  <span>Active Orders</span>
-                  <div className="p-2 bg-blue-50 rounded-lg text-blue-700">
-                    <ShoppingCart className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-[#1A1A1A] mt-2">
-                  {orders.length}
-                </div>
-                <div className="text-[11px] text-[#555555] mt-1">
-                  {pendingOrdersCount} awaiting courier packaging
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#E0E0E0] rounded-xl p-5 shadow-xs">
-                <div className="flex items-center justify-between text-xs text-[#555555]">
-                  <span>Dhaka vs BD Dispatch</span>
-                  <div className="p-2 bg-purple-50 rounded-lg text-purple-700">
-                    <Truck className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-[#1A1A1A] mt-2">
-                  {insideDhakaOrders} : {outsideDhakaOrders}
-                </div>
-                <div className="text-[11px] text-[#555555] mt-1">
-                  Pathao (Dhaka) & Steadfast (Districts)
-                </div>
-              </div>
-
-              <div className="bg-white border border-[#E0E0E0] rounded-xl p-5 shadow-xs">
-                <div className="flex items-center justify-between text-xs text-[#555555]">
-                  <span>Low Stock Alerts</span>
-                  <div className="p-2 bg-amber-50 rounded-lg text-amber-700">
-                    <AlertTriangle className="w-4 h-4" />
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-[#1A1A1A] mt-2">
-                  {lowStockProducts.length}
-                </div>
-                <div className="text-[11px] text-amber-700 font-medium mt-1">
-                  Weaver batch replenishment required
-                </div>
-              </div>
+          <div className="flex items-center gap-3 pt-2">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-yellow-400/40 flex items-center justify-center font-bold text-xs text-yellow-300">
+              BA
             </div>
-
-            {/* Recent Orders Overview */}
-            <div className="bg-white border border-[#E0E0E0] rounded-xl p-6 shadow-xs space-y-4">
-              <div className="flex items-center justify-between border-b border-[#F0F0F0] pb-3">
-                <h3 className="font-editorial text-lg font-bold text-[#1A1A1A]">
-                  Recent Orders & Logistics Queue
-                </h3>
-                <button
-                  onClick={() => setActiveTab("orders")}
-                  className="text-xs text-[#1A1A1A] font-semibold hover:underline"
-                >
-                  View All Orders →
-                </button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F8F9FA] text-[#555555] border-b border-[#E0E0E0]">
-                    <tr>
-                      <th className="py-2.5 px-3">Order ID</th>
-                      <th className="py-2.5 px-3">Customer</th>
-                      <th className="py-2.5 px-3">Zone & District</th>
-                      <th className="py-2.5 px-3">Method</th>
-                      <th className="py-2.5 px-3">Total (BDT)</th>
-                      <th className="py-2.5 px-3">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#F0F0F0]">
-                    {orders.slice(0, 5).map((order) => (
-                      <tr key={order.id} className="hover:bg-[#FAFAFA]">
-                        <td className="py-3 px-3 font-mono font-bold text-[#1A1A1A]">{order.id}</td>
-                        <td className="py-3 px-3">
-                          <p className="font-semibold text-[#1A1A1A]">{order.customerName}</p>
-                          <p className="text-[11px] text-[#777777] font-mono">{order.customerPhone}</p>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="font-medium text-[#1A1A1A]">{order.district}</span>
-                          <span className="block text-[11px] text-[#777777]">{order.deliveryZone}</span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="bg-[#F0F0F0] px-2 py-0.5 rounded text-[11px] font-mono">
-                            {order.paymentGateway}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 font-mono font-bold text-[#1A1A1A]">
-                          {formatPrice(order.totalBDT)}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                            order.status === "DELIVERED"
-                              ? "bg-emerald-100 text-emerald-800"
-                              : order.status === "SHIPPED"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-amber-100 text-amber-800"
-                          }`}>
-                            {order.status}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-white truncate">Administrator</p>
+              <p className="text-[10px] text-gray-400 truncate font-mono">admin@bengalarchive.bd</p>
             </div>
           </div>
-        )}
+        </div>
+      </aside>
 
-        {activeTab === "products" && <AdminProducts />}
-        {activeTab === "orders" && <AdminOrders />}
-        {activeTab === "coupons" && <AdminCoupons />}
-        {activeTab === "settings" && <AdminSettings />}
+      {/* Main Content Area */}
+      <div className="flex-1 lg:pl-72 flex flex-col min-w-0">
+        {/* Sticky Top Header */}
+        <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-gray-200 px-4 sm:px-8 py-3 flex items-center justify-between gap-4 transition-all">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="lg:hidden p-2 rounded-lg text-gray-600 hover:text-gray-950 hover:bg-gray-100 transition-colors"
+              aria-label="Open sidebar menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <span>Portal</span>
+                <ChevronRight className="w-3 h-3 text-gray-400" />
+                <span className="text-gray-900 font-semibold capitalize">{activeTab}</span>
+              </div>
+              <h2 className="text-lg font-bold text-gray-900 tracking-tight flex items-center gap-2">
+                {getTabTitle()}
+                {activeTab === "overview" && (
+                  <span className="text-[10px] font-mono bg-yellow-100 text-yellow-800 border border-yellow-300 px-2 py-0.5 rounded font-bold">
+                    BD-HQ
+                  </span>
+                )}
+              </h2>
+            </div>
+          </div>
+
+          {/* Header Action Items */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Quick Add Product Button */}
+            {activeTab !== "products" && (
+              <button
+                onClick={() => setActiveTab("products")}
+                className="hidden sm:flex items-center gap-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-xs font-bold px-3.5 py-2 rounded-lg shadow-sm transition-colors"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Product</span>
+              </button>
+            )}
+
+            {/* Quick View Orders */}
+            {activeTab !== "orders" && pendingOrdersCount > 0 && (
+              <button
+                onClick={() => setActiveTab("orders")}
+                className="hidden md:flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-200 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+              >
+                <Clock className="w-3.5 h-3.5 text-yellow-600" />
+                <span>{pendingOrdersCount} Pending Orders</span>
+              </button>
+            )}
+
+            {/* Storefront Button */}
+            <button
+              onClick={() => navigate("/")}
+              className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-xs"
+            >
+              <ExternalLink className="w-3.5 h-3.5 text-yellow-400" />
+              <span className="hidden sm:inline">Storefront</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Dashboard Workspace */}
+        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
+          {activeTab === "overview" && (
+            <div className="space-y-8">
+              {/* Refined Welcome Banner with Gray & Simple Yellow Highlight */}
+              <div className="relative overflow-hidden bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 text-white rounded-2xl p-6 sm:p-8 border border-gray-800 shadow-md">
+                <div className="absolute -right-8 -bottom-10 w-64 h-64 bg-yellow-400/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                  <div className="space-y-2 max-w-xl">
+                    <div className="inline-flex items-center gap-2 bg-yellow-400/15 border border-yellow-400/30 text-yellow-300 text-xs px-3 py-1 rounded-full font-medium">
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                      <span>E-Commerce Operations Center</span>
+                    </div>
+                    <h3 className="font-editorial text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                      Welcome to Bengal Archive Studio
+                    </h3>
+                    <p className="text-gray-300 text-xs sm:text-sm leading-relaxed">
+                      Unified store overview for handloom crafts, Dhaka express dispatch via Pathao, and 63 district delivery via Steadfast Courier.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <button
+                      onClick={() => setActiveTab("products")}
+                      className="bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-xs font-bold px-4 py-2.5 rounded-lg transition-all shadow-sm flex items-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>New Product</span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("orders")}
+                      className="bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700 text-xs font-semibold px-4 py-2.5 rounded-lg transition-all flex items-center gap-2"
+                    >
+                      <Truck className="w-4 h-4 text-yellow-400" />
+                      <span>Logistics Queue</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* 4 KPI Metric Cards (Gray Surface with Simple Yellow Highlights) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* 1. Paid Revenue */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-yellow-400 transition-all admin-card-hover group">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">Total Paid Revenue</span>
+                    <div className="w-9 h-9 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 flex items-center justify-center group-hover:bg-yellow-400 group-hover:text-gray-950 transition-colors">
+                      <TrendingUp className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-gray-900 mt-3 font-sans">
+                    {formatPrice(totalRevenueBDT)}
+                  </div>
+                  <div className="text-[11px] text-gray-600 font-medium mt-2 flex items-center gap-1.5">
+                    <span className="inline-flex items-center text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
+                      <ArrowUpRight className="w-3 h-3 mr-0.5" />
+                      +28.4%
+                    </span>
+                    <span>vs last month</span>
+                  </div>
+                </div>
+
+                {/* 2. Active Orders */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-yellow-400 transition-all admin-card-hover group">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">Total Orders</span>
+                    <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-800 border border-gray-200 flex items-center justify-center group-hover:bg-yellow-400 group-hover:text-gray-950 transition-colors">
+                      <ShoppingCart className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-gray-900 mt-3 font-sans">
+                    {orders.length}
+                  </div>
+                  <div className="text-[11px] text-gray-600 font-medium mt-2 flex items-center gap-1.5">
+                    <span className="inline-flex items-center text-yellow-800 font-semibold bg-yellow-100 px-1.5 py-0.5 rounded">
+                      {pendingOrdersCount} Pending
+                    </span>
+                    <span>in packaging queue</span>
+                  </div>
+                </div>
+
+                {/* 3. Dhaka vs District Courier Split */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-yellow-400 transition-all admin-card-hover group">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">Delivery Zone Split</span>
+                    <div className="w-9 h-9 rounded-lg bg-yellow-50 text-yellow-700 border border-yellow-200 flex items-center justify-center group-hover:bg-yellow-400 group-hover:text-gray-950 transition-colors">
+                      <Truck className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-gray-900 mt-3 font-sans">
+                    {insideDhakaOrders} <span className="text-gray-400 text-lg font-normal">:</span> {outsideDhakaOrders}
+                  </div>
+                  {/* Progress bar split */}
+                  <div className="mt-2 space-y-1.5">
+                    <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden flex">
+                      <div 
+                        className="bg-yellow-400 h-full transition-all duration-500" 
+                        style={{ width: `${insideDhakaPct}%` }}
+                        title={`Dhaka: ${insideDhakaPct}%`}
+                      />
+                      <div 
+                        className="bg-gray-800 h-full transition-all duration-500" 
+                        style={{ width: `${100 - insideDhakaPct}%` }}
+                        title={`Districts: ${100 - insideDhakaPct}%`}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[10px] text-gray-500 font-mono">
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-yellow-400" />
+                        Dhaka ({insideDhakaPct}%)
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-gray-800" />
+                        Districts ({100 - insideDhakaPct}%)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Inventory Alerts */}
+                <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-yellow-400 transition-all admin-card-hover group">
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">Low Stock Alert</span>
+                    <div className="w-9 h-9 rounded-lg bg-amber-50 text-amber-700 border border-amber-200 flex items-center justify-center group-hover:bg-yellow-400 group-hover:text-gray-950 transition-colors">
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-gray-900 mt-3 font-sans">
+                    {lowStockProducts.length} <span className="text-xs font-normal text-gray-500">Items</span>
+                  </div>
+                  <div className="text-[11px] text-gray-600 font-medium mt-2 flex items-center gap-1.5">
+                    {lowStockProducts.length > 0 ? (
+                      <span className="inline-flex items-center text-amber-800 font-semibold bg-amber-100 px-1.5 py-0.5 rounded">
+                        Action required
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-emerald-800 font-semibold bg-emerald-100 px-1.5 py-0.5 rounded">
+                        Healthy stock
+                      </span>
+                    )}
+                    <span>Weaver replenishment</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status & Gateway Diagnostics Bar */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700">
+                    <CircleDot className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Pathao Courier API</p>
+                    <p className="text-[11px] text-gray-500">Dhaka Zone Webhook Active</p>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center text-gray-700">
+                    <CircleDot className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">Steadfast Logistics</p>
+                    <p className="text-[11px] text-gray-500">63 Districts Auto-Sync</p>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-yellow-50 border border-yellow-200 flex items-center justify-center text-yellow-800">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">bKash / Nagad / COD</p>
+                    <p className="text-[11px] text-gray-500">SSLCOMMERZ Direct Gateway</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Orders Overview Table */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 gap-2">
+                  <div>
+                    <h3 className="font-editorial text-lg font-bold text-gray-900">
+                      Recent Orders & Logistics Queue
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Live dispatch status across Dhaka and regional districts
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("orders")}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-900 hover:text-yellow-600 transition-colors"
+                  >
+                    <span>View All Orders ({orders.length})</span>
+                    <ChevronRight className="w-4 h-4 text-yellow-500" />
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto rounded-lg border border-gray-100">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 font-semibold">
+                      <tr>
+                        <th className="py-3 px-4">Order ID</th>
+                        <th className="py-3 px-4">Customer</th>
+                        <th className="py-3 px-4">Delivery Zone</th>
+                        <th className="py-3 px-4">Payment Method</th>
+                        <th className="py-3 px-4">Total (BDT)</th>
+                        <th className="py-3 px-4">Fulfillment Status</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {orders.slice(0, 5).map((order) => (
+                        <tr key={order.id} className="hover:bg-yellow-50/40 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
+                            #{order.id}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <p className="font-semibold text-gray-900">{order.customerName}</p>
+                            <p className="text-[11px] text-gray-500 font-mono">{order.customerPhone}</p>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="font-medium text-gray-900">{order.district}</span>
+                            <span className="block text-[11px] text-gray-500">
+                              {order.deliveryZone === "INSIDE_DHAKA" ? "Dhaka (৳60)" : "Districts (৳130)"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="bg-gray-100 border border-gray-200 px-2 py-1 rounded text-[11px] font-mono font-medium text-gray-700">
+                              {order.paymentGateway}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-gray-900">
+                            {formatPrice(order.totalBDT)}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
+                              order.status === "DELIVERED"
+                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                                : order.status === "SHIPPED"
+                                ? "bg-blue-50 text-blue-800 border border-blue-200"
+                                : "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                order.status === "DELIVERED" ? "bg-emerald-500" : order.status === "SHIPPED" ? "bg-blue-500" : "bg-yellow-500"
+                              }`} />
+                              {order.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => setActiveTab("orders")}
+                              className="text-xs font-semibold text-gray-700 hover:text-gray-950 bg-gray-100 hover:bg-yellow-400 px-2.5 py-1 rounded transition-colors"
+                            >
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "products" && <AdminProducts />}
+          {activeTab === "orders" && <AdminOrders />}
+          {activeTab === "coupons" && <AdminCoupons />}
+          {activeTab === "settings" && <AdminSettings />}
+        </main>
       </div>
     </div>
   );

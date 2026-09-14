@@ -241,7 +241,12 @@ interface StoreContextType {
 const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [navigation, setNavigation] = useState<NavigationState>({ path: "/" });
+  const [navigation, setNavigation] = useState<NavigationState>(() => {
+    if (typeof window !== "undefined" && window.location.pathname && window.location.pathname !== "/") {
+      return { path: window.location.pathname };
+    }
+    return { path: "/" };
+  });
   const [currency, setCurrency] = useState<Currency>("BDT");
   const [language, setLanguage] = useState<Language>("en");
   
@@ -264,9 +269,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
 
+  // Browser back/forward navigation support
+  useEffect(() => {
+    const handlePopState = () => {
+      setNavigation({ path: window.location.pathname || "/" });
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
   // Navigation helper
   const navigate = (path: string, params?: Record<string, string>) => {
     setNavigation({ path, params });
+    if (typeof window !== "undefined" && window.history?.pushState) {
+      window.history.pushState(null, "", path);
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 

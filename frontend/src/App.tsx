@@ -23,7 +23,7 @@ const MainRouter: React.FC = () => {
   // Render Admin separately with its dedicated layout
   if (path.startsWith("/admin")) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA]">
+      <div className="min-h-screen bg-gray-100">
         <AdminDashboard />
         <ArchitectureModal />
         <SeoModal />
