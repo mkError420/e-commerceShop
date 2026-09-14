@@ -9,8 +9,6 @@ import {
   Menu, 
   X, 
   ShieldCheck, 
-  Sparkles,
-  Layers,
   ArrowRight,
   Package,
   Phone,
@@ -27,8 +25,6 @@ export const Header: React.FC = () => {
     cartCount,
     setIsCartDrawerOpen,
     categories,
-    setIsSeoModalOpen,
-    setIsArchitectureModalOpen,
     searchQuery,
     setSearchQuery,
     products,
@@ -99,28 +95,7 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white border-b border-[#E0E0E0] select-none">
       {/* 1. Editorial Top Bar */}
       <div className="bg-[#1A1A1A] text-[#F5F5F5] text-xs py-1.5 px-3 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-end gap-2 sm:gap-3">
-          {/* Desktop-only Docs and SEO modals */}
-          <div className="hidden md:flex items-center gap-2">
-            <button
-              onClick={() => setIsArchitectureModalOpen(true)}
-              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#2A2A2A] text-[#E5E5E5] hover:text-white transition-colors border border-[#444444]"
-              title="Inspect Next.js Architecture, Prisma & Mongoose Schemas"
-            >
-              <Layers className="w-3 h-3 text-emerald-400" />
-              <span className="font-mono">Specs</span>
-            </button>
-
-            <button
-              onClick={() => setIsSeoModalOpen(true)}
-              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#2A2A2A] text-[#E5E5E5] hover:text-white transition-colors border border-[#444444]"
-              title="Inspect Dynamic SEO & JSON-LD"
-            >
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>SEO</span>
-            </button>
-          </div>
-
+        <div className="max-w-7xl mx-auto flex items-center justify-end">
           {/* Language Switcher */}
             <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
               <button
@@ -746,30 +721,6 @@ export const Header: React.FC = () => {
                     Staff
                   </span>
                 </button>
-
-                <div className="grid grid-cols-2 gap-2 pt-1">
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsArchitectureModalOpen(true);
-                    }}
-                    className="py-2 px-2 text-[11px] rounded bg-[#F5F5F5] text-[#333333] hover:bg-[#EAEAEA] font-mono flex items-center justify-center gap-1.5 border border-[#E0E0E0]"
-                  >
-                    <Layers className="w-3 h-3 text-emerald-600" />
-                    <span>Architecture</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setIsMobileMenuOpen(false);
-                      setIsSeoModalOpen(true);
-                    }}
-                    className="py-2 px-2 text-[11px] rounded bg-[#F5F5F5] text-[#333333] hover:bg-[#EAEAEA] font-mono flex items-center justify-center gap-1.5 border border-[#E0E0E0]"
-                  >
-                    <Sparkles className="w-3 h-3 text-amber-600" />
-                    <span>SEO JSON-LD</span>
-                  </button>
-                </div>
               </div>
 
               {/* Support & Dhaka Atelier Details */}
