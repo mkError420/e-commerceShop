@@ -1,6 +1,15 @@
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
+dotenv.config({ path: path.resolve(process.cwd(), ".env") });
+dotenv.config({ path: path.resolve(process.cwd(), "backend/.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../.env") });
 
 export const ENV = {
   PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
@@ -10,7 +19,9 @@ export const ENV = {
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
   
   // MongoDB Database Configuration
-  MONGODB_URI: process.env.MONGODB_URI || "mongodb://localhost:27017/bangladesh_ecommerce",
+  MONGODB_URI:
+    process.env.MONGODB_URI ||
+    "mongodb+srv://rushda00410_db_user:GVPx5gtfG4AQuQln@cluster0.wgtk8cr.mongodb.net/bangladesh_ecommerce?retryWrites=true&w=majority&appName=Cluster0",
   
   // Bangladeshi Payment Gateways
   BKASH: {

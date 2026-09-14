@@ -14,8 +14,13 @@
     "seed:db": "npx tsx database/seed.ts"
   },
   "devDependencies": {
+    "@types/node": "^26.5.1",
     "concurrently": "^9.1.2",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "mongoose": "^9.10.0"
   }
 }
