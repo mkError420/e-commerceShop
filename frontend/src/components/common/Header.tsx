@@ -11,7 +11,6 @@ import {
   ShieldCheck, 
   Sparkles,
   Layers,
-  Truck,
   ArrowRight,
   Package,
   Phone,
@@ -22,8 +21,6 @@ export const Header: React.FC = () => {
   const {
     navigation,
     navigate,
-    currency,
-    setCurrency,
     language,
     setLanguage,
     t,
@@ -102,70 +99,29 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white border-b border-[#E0E0E0] select-none">
       {/* 1. Editorial Top Bar */}
       <div className="bg-[#1A1A1A] text-[#F5F5F5] text-xs py-1.5 px-3 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
-          {/* Shipping notice */}
-          <div className="flex items-center gap-2 overflow-hidden truncate">
-            <span className="inline-flex items-center gap-1.5 font-medium tracking-wide truncate text-[11px] sm:text-xs text-[#E5E5E5]">
-              <Truck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="truncate">
-                {t(
-                  "Dhaka 24-48h (৳60) | Nationwide 64 Districts (৳130) • Cash on Delivery",
-                  "ঢাকা ২৪-৪৮ঘ (৳৬০) | সারাদেশে (৳১৩০) • ক্যাশ অন ডেলিভারি"
-                )}
-              </span>
-            </span>
+        <div className="max-w-7xl mx-auto flex items-center justify-end gap-2 sm:gap-3">
+          {/* Desktop-only Docs and SEO modals */}
+          <div className="hidden md:flex items-center gap-2">
+            <button
+              onClick={() => setIsArchitectureModalOpen(true)}
+              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#2A2A2A] text-[#E5E5E5] hover:text-white transition-colors border border-[#444444]"
+              title="Inspect Next.js Architecture, Prisma & Mongoose Schemas"
+            >
+              <Layers className="w-3 h-3 text-emerald-400" />
+              <span className="font-mono">Specs</span>
+            </button>
+
+            <button
+              onClick={() => setIsSeoModalOpen(true)}
+              className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#2A2A2A] text-[#E5E5E5] hover:text-white transition-colors border border-[#444444]"
+              title="Inspect Dynamic SEO & JSON-LD"
+            >
+              <Sparkles className="w-3 h-3 text-amber-400" />
+              <span>SEO</span>
+            </button>
           </div>
 
-          {/* Quick desktop tools & Currency / Language switchers */}
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {/* Desktop-only Docs and SEO modals */}
-            <div className="hidden md:flex items-center gap-2">
-              <button
-                onClick={() => setIsArchitectureModalOpen(true)}
-                className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#2A2A2A] text-[#E5E5E5] hover:text-white transition-colors border border-[#444444]"
-                title="Inspect Next.js Architecture, Prisma & Mongoose Schemas"
-              >
-                <Layers className="w-3 h-3 text-emerald-400" />
-                <span className="font-mono">Specs</span>
-              </button>
-
-              <button
-                onClick={() => setIsSeoModalOpen(true)}
-                className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded bg-[#2A2A2A] text-[#E5E5E5] hover:text-white transition-colors border border-[#444444]"
-                title="Inspect Dynamic SEO & JSON-LD"
-              >
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                <span>SEO</span>
-              </button>
-            </div>
-
-            {/* Currency Switcher */}
-            <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
-              <button
-                onClick={() => setCurrency("BDT")}
-                className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold transition-colors rounded ${
-                  currency === "BDT"
-                    ? "bg-white text-[#1A1A1A]"
-                    : "text-[#CCCCCC] hover:text-white"
-                }`}
-                aria-label="Set currency to Bangladeshi Taka"
-              >
-                ৳ BDT
-              </button>
-              <button
-                onClick={() => setCurrency("USD")}
-                className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-semibold transition-colors rounded ${
-                  currency === "USD"
-                    ? "bg-white text-[#1A1A1A]"
-                    : "text-[#CCCCCC] hover:text-white"
-                }`}
-                aria-label="Set currency to US Dollar"
-              >
-                $ USD
-              </button>
-            </div>
-
-            {/* Language Switcher */}
+          {/* Language Switcher */}
             <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
               <button
                 onClick={() => setLanguage("en")}
@@ -192,7 +148,6 @@ export const Header: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
 
       {/* 2. Main Header Navigation Bar */}
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-2 lg:gap-3 xl:gap-4 flex-nowrap">
@@ -834,32 +789,8 @@ export const Header: React.FC = () => {
               </div>
             </div>
 
-            {/* Drawer Footer with Mobile Currency & Language Toggle */}
-            <div className="p-4 border-t border-[#E0E0E0] bg-[#FAFAFA] space-y-3">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-xs font-semibold text-[#555555]">
-                  {t("Currency", "মুদ্রা")}:
-                </div>
-                <div className="flex items-center bg-white rounded border border-[#CCCCCC] p-0.5">
-                  <button
-                    onClick={() => setCurrency("BDT")}
-                    className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
-                      currency === "BDT" ? "bg-[#1A1A1A] text-white" : "text-[#555555]"
-                    }`}
-                  >
-                    ৳ BDT
-                  </button>
-                  <button
-                    onClick={() => setCurrency("USD")}
-                    className={`px-3 py-1 text-xs font-bold rounded transition-colors ${
-                      currency === "USD" ? "bg-[#1A1A1A] text-white" : "text-[#555555]"
-                    }`}
-                  >
-                    $ USD
-                  </button>
-                </div>
-              </div>
-
+            {/* Drawer Footer with Mobile Language Toggle */}
+            <div className="p-4 border-t border-[#E0E0E0] bg-[#FAFAFA]">
               <div className="flex items-center justify-between gap-2">
                 <div className="text-xs font-semibold text-[#555555]">
                   {t("Language", "ভাষা")}:
