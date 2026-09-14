@@ -1,0 +1,34 @@
+[
+  {
+    "code": "EID2026",
+    "discountType": "PERCENT",
+    "discountValue": 15,
+    "minSpend": 2500,
+    "maxDiscount": 1000,
+    "isActive": true
+  },
+  {
+    "code": "BOISHAKH",
+    "discountType": "PERCENT",
+    "discountValue": 10,
+    "minSpend": 1500,
+    "maxDiscount": 500,
+    "isActive": true
+  },
+  {
+    "code": "DHAKA_FREESHIP",
+    "discountType": "FIXED",
+    "discountValue": 70,
+    "minSpend": 2000,
+    "maxDiscount": 70,
+    "isActive": true
+  },
+  {
+    "code": "SHOROBOR500",
+    "discountType": "FIXED",
+    "discountValue": 500,
+    "minSpend": 5000,
+    "maxDiscount": 500,
+    "isActive": true
+  }
+]

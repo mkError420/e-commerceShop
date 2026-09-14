@@ -1,0 +1,23 @@
+{
+  "divisions": [
+    { "id": "div-dhaka", "name": "Dhaka", "bnName": "ঢাকা" },
+    { "id": "div-chittagong", "name": "Chattogram", "bnName": "চট্টগ্রাম" },
+    { "id": "div-rajshahi", "name": "Rajshahi", "bnName": "রাজশাহী" },
+    { "id": "div-khulna", "name": "Khulna", "bnName": "খুলনা" },
+    { "id": "div-barishal", "name": "Barishal", "bnName": "বরিশাল" },
+    { "id": "div-sylhet", "name": "Sylhet", "bnName": "সিলেট" },
+    { "id": "div-rangpur", "name": "Rangpur", "bnName": "রংপুর" },
+    { "id": "div-mymensingh", "name": "Mymensingh", "bnName": "ময়মনসিংহ" }
+  ],
+  "districts": [
+    { "id": "dis-dhaka-city", "divisionId": "div-dhaka", "name": "Dhaka City (North/South)", "bnName": "ঢাকা মহানগর", "isDhakaCity": true, "defaultDeliveryFee": 70 },
+    { "id": "dis-gazipur", "divisionId": "div-dhaka", "name": "Gazipur", "bnName": "গাজীপুর", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-narayanganj", "divisionId": "div-dhaka", "name": "Narayanganj", "bnName": "নারায়ণগঞ্জ", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-tangail", "divisionId": "div-dhaka", "name": "Tangail", "bnName": "টাঙ্গাইল", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-ctg-city", "divisionId": "div-chittagong", "name": "Chattogram City", "bnName": "চট্টগ্রাম মহানগর", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-coxsbazar", "divisionId": "div-chittagong", "name": "Cox's Bazar", "bnName": "কক্সবাজার", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-sylhet-city", "divisionId": "div-sylhet", "name": "Sylhet Sadar", "bnName": "সিলেট সদর", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-rajshahi-city", "divisionId": "div-rajshahi", "name": "Rajshahi City", "bnName": "রাজশাহী মহানগর", "isDhakaCity": false, "defaultDeliveryFee": 130 },
+    { "id": "dis-khulna-city", "divisionId": "div-khulna", "name": "Khulna City", "bnName": "খুলনা মহানগর", "isDhakaCity": false, "defaultDeliveryFee": 130 }
+  ]
+}

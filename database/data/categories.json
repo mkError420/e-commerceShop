@@ -1,0 +1,82 @@
+[
+  {
+    "id": "cat-womens-fashion",
+    "nameEn": "Women's Fashion",
+    "nameBn": "নারীদের ফ্যাশন",
+    "slug": "womens-fashion",
+    "descriptionEn": "Exquisite Bangladeshi handloom sarees, heritage Jamdani, and contemporary festive wear.",
+    "descriptionBn": "ঐতিহ্যবাহী ঢাকাই জামদানি, রেশমি সিল্ক এবং আধুনিক উৎসবের পোশাক।",
+    "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=900&auto=format&fit=crop",
+    "isFeatured": true,
+    "subcategories": [
+      {
+        "id": "sub-jamdani-silk-sarees",
+        "nameEn": "Jamdani & Silk Sarees",
+        "nameBn": "জামদানি ও সিল্ক শাড়ি",
+        "slug": "jamdani-silk-sarees",
+        "descriptionEn": "Authentic Dhakai Jamdani and Rajshahi Mulberry Silk woven by master artisans.",
+        "descriptionBn": "দক্ষ তাঁতিদের হাতে বোনা খাঁটি জামদানি ও সিল্ক শাড়ি।",
+        "image": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=900&auto=format&fit=crop",
+        "isFeatured": true,
+        "parentSlug": "womens-fashion"
+      },
+      {
+        "id": "sub-cotton-tant-sarees",
+        "nameEn": "Cotton & Tant Sarees",
+        "nameBn": "সুতি ও তাঁতের শাড়ি",
+        "slug": "cotton-tant-sarees",
+        "descriptionEn": "Tangail and Sirajganj lightweight pure cotton handloom sarees for daily comfort.",
+        "descriptionBn": "টাঙ্গাইল ও সিরাজগঞ্জের নরম সুতি তাঁতের শাড়ি।",
+        "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=900&auto=format&fit=crop",
+        "isFeatured": false,
+        "parentSlug": "womens-fashion"
+      }
+    ]
+  },
+  {
+    "id": "cat-mens-fashion",
+    "nameEn": "Men's Fashion",
+    "nameBn": "পুরুষদের ফ্যাশন",
+    "slug": "mens-fashion",
+    "descriptionEn": "Heritage Panjabis, tailored Kabli sets, and everyday premium Supima polo shirts.",
+    "descriptionBn": "উৎসবের প্রিমিয়াম পাঞ্জাবি, কাবলি সেট ও এক্সিকিউটিভ পোলো শার্ট।",
+    "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=900&auto=format&fit=crop",
+    "isFeatured": true,
+    "subcategories": [
+      {
+        "id": "sub-panjabi",
+        "nameEn": "Panjabi & Kabli Sets",
+        "nameBn": "পাঞ্জাবি ও কাবলি সেট",
+        "slug": "panjabi",
+        "descriptionEn": "Jacquard cotton, silk blends with tailored collar embroidery.",
+        "descriptionBn": "আভিজাত্যময় কলার নকশার প্রিমিয়াম সুতি ও সিল্ক পাঞ্জাবি।",
+        "image": "https://images.unsplash.com/photo-1596783074918-c84cb06531ca?q=80&w=900&auto=format&fit=crop",
+        "isFeatured": true,
+        "parentSlug": "mens-fashion"
+      }
+    ]
+  },
+  {
+    "id": "cat-crafts",
+    "nameEn": "Artisan Crafts & Home",
+    "nameBn": "ঐতিহ্যবাহী কারুশিল্প ও ঘর",
+    "slug": "artisan-crafts-home",
+    "descriptionEn": "Nakshi Kantha, Terracotta pottery, and brass decor from rural master crafters.",
+    "descriptionBn": "নকশী কাঁথা, পোড়ামাটির সামগ্রী ও পিতলের ঐতিহ্যবাহী গৃহসজ্জা।",
+    "image": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=900&auto=format&fit=crop",
+    "isFeatured": true,
+    "subcategories": [
+      {
+        "id": "sub-nakshi-kantha",
+        "nameEn": "Nakshi Kantha",
+        "nameBn": "নকশী কাঁথা",
+        "slug": "nakshi-kantha",
+        "descriptionEn": "Hand-embroidered heritage quilts from Jessore and Jamalpur.",
+        "descriptionBn": "যশোর ও জামালপুরের খাঁটি হাতের কাজের নকশী কাঁথা।",
+        "image": "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=900&auto=format&fit=crop",
+        "isFeatured": true,
+        "parentSlug": "artisan-crafts-home"
+      }
+    ]
+  }
+]

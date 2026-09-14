@@ -1,0 +1,87 @@
+[
+  {
+    "id": "prod-1",
+    "nameEn": "Authentic Dhakai Jamdani Handloom Saree (84 Count)",
+    "nameBn": "ঐতিহ্যবাহী ঢাকাই জামদানি শাড়ি (৮৪ কাউন্ট)",
+    "slug": "dhakai-jamdani-saree-royal-navy",
+    "sku": "JMD-DHK-001",
+    "descriptionEn": "Woven meticulously by master weavers in Demra along the Shitalakshya River using traditional 84-count Egyptian cotton with pure zari floral butidar motifs.",
+    "descriptionBn": "শীতলক্ষ্যা নদীর তীরে ডেমরার দক্ষ তাঁতিদের হাতে বোনা ৮৪ কাউন্টের খাঁটি সুতি ও জরি জরানো জামদানি শাড়ি।",
+    "category": "womens-fashion",
+    "subCategory": "jamdani-silk-sarees",
+    "regularPrice": 18500,
+    "salePrice": 16200,
+    "stock": 8,
+    "dhakaHubStock": 5,
+    "chittagongHubStock": 3,
+    "images": [
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=900&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=900&auto=format&fit=crop"
+    ],
+    "sizes": ["Standard 12 Haat"],
+    "colors": [
+      { "name": "Royal Midnight Navy", "hex": "#0b1b3d" },
+      { "name": "Crimson Red", "hex": "#8b0000" }
+    ],
+    "isFeatured": true,
+    "isFlashDeal": true,
+    "rating": 4.9,
+    "reviewCount": 42
+  },
+  {
+    "id": "prod-2",
+    "nameEn": "Heritage Embroidered Jacquard Panjabi - Royal Emerald",
+    "nameBn": "হাতে বোনা জ্যাকার্ড সুতি পাঞ্জাবি - রয়্যাল এমারেল্ড",
+    "slug": "heritage-embroidered-jacquard-panjabi-emerald",
+    "sku": "PNJ-EMR-002",
+    "descriptionEn": "Crafted from 100% long-staple combed cotton with subtle self-textured jacquard weave, finished with artisanal tonal thread embroidery along collar and placket.",
+    "descriptionBn": "১০০% প্রিমিয়াম সুতি কাপড়ে সূক্ষ্ম কলার এমব্রয়ডারি ও নিখুঁত ফিনিশিং যুক্ত উৎসবের সেরা পাঞ্জাবি।",
+    "category": "mens-fashion",
+    "subCategory": "panjabi",
+    "regularPrice": 4850,
+    "salePrice": 4200,
+    "stock": 24,
+    "dhakaHubStock": 16,
+    "chittagongHubStock": 8,
+    "images": [
+      "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=900&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1596783074918-c84cb06531ca?q=80&w=900&auto=format&fit=crop"
+    ],
+    "sizes": ["38 (S)", "40 (M)", "42 (L)", "44 (XL)"],
+    "colors": [
+      { "name": "Emerald Green", "hex": "#0f52ba" },
+      { "name": "Pure Off-White", "hex": "#f8f8f8" }
+    ],
+    "isFeatured": true,
+    "isFlashDeal": false,
+    "rating": 4.8,
+    "reviewCount": 37
+  },
+  {
+    "id": "prod-3",
+    "nameEn": "Jamalpur Heritage Hand-Stitched Nakshi Kantha Quilt",
+    "nameBn": "জামালপুরের ঐতিহ্যবাহী হাতের কাজের নকশী কাঁথা",
+    "slug": "jamalpur-nakshi-kantha-quilt-botanical",
+    "sku": "NKS-JML-003",
+    "descriptionEn": "Authentic village art directly from Jamalpur women's collective. 100% natural washed cotton layers adorned with heritage folk motifs.",
+    "descriptionBn": "জামালপুরের কারিগর নারীদের হাতে বোনা প্রাকৃতিক সুতির নিখুঁত লোকশিল্প নকশী কাঁথা।",
+    "category": "artisan-crafts-home",
+    "subCategory": "nakshi-kantha",
+    "regularPrice": 6500,
+    "salePrice": 5800,
+    "stock": 12,
+    "dhakaHubStock": 8,
+    "chittagongHubStock": 4,
+    "images": [
+      "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=900&auto=format&fit=crop"
+    ],
+    "sizes": ["King (7.5 x 8.5 ft)"],
+    "colors": [
+      { "name": "Multicolor Folk", "hex": "#d97706" }
+    ],
+    "isFeatured": true,
+    "isFlashDeal": false,
+    "rating": 5.0,
+    "reviewCount": 19
+  }
+]

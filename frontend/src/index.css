@@ -1,0 +1,45 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #FFFFFF;
+    --bg-surface-light: #F5F5F5;
+    --bg-surface-muted: #E5E5E5;
+    --border-subtle: #E0E0E0;
+    --text-primary: #1A1A1A;
+    --text-secondary: #555555;
+  }
+
+  body {
+    background-color: #FFFFFF;
+    color: #1A1A1A;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Custom scrollbar for editorial minimalist aesthetic */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #F5F5F5;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #D0D0D0;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #1A1A1A;
+  }
+}
+
+.font-editorial {
+  font-family: 'Playfair Display', Georgia, serif;
+}
+
+.font-bangla {
+  font-family: 'Hind Siliguri', 'Plus Jakarta Sans', sans-serif;
+}

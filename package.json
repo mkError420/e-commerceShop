@@ -1,0 +1,21 @@
+{
+  "name": "bangladeshi-e-commerce-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Full-stack High-Performance Bangladeshi E-Commerce Platform with Storefront, Admin Suite, and Payment Gateways (bKash, Nagad, SSLCommerz, COD) using MongoDB",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "lint": "cd frontend && npm run lint",
+    "seed:db": "npx tsx database/seed.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Bangladeshi E-Commerce Platform",
+  "description": "High-performance Bangladeshi e-commerce platform with editorial monochromatic UI, dynamic catalog, localized BD checkout (Inside/Outside Dhaka, bKash, Nagad), and Admin Dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
