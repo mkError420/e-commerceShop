@@ -456,20 +456,6 @@ export const Header: React.FC = () => {
             {isMobileSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
           </button>
 
-          {/* Customer Account Portal Button */}
-          <button
-            onClick={() => navigate("/customer")}
-            className={`p-2 rounded-full transition-colors flex items-center justify-center min-w-[40px] min-h-[40px] ${
-              navigation.path.startsWith("/customer") || navigation.path.startsWith("/account")
-                ? "bg-[#1A1A1A] text-white"
-                : "text-[#1A1A1A] hover:bg-[#F5F5F5] active:bg-[#EAEAEA]"
-            }`}
-            title={currentUser ? `${currentUser.name} (${currentUser.loyaltyTier} Member)` : t("Customer Portal", "কাস্টমার পোর্টাল")}
-            aria-label="Customer Account"
-          >
-            <User className="w-5 h-5" />
-          </button>
-
           {/* Account / Order Track Link */}
           <button
             onClick={() => navigate("/track-order")}
