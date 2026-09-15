@@ -214,7 +214,6 @@ export const LoginPage: React.FC<Props> = ({
         {/* Brand Identity */}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] text-yellow-400 flex items-center justify-center font-bold shadow-sm">
-            <Sparkles className="w-4 h-4" />
           </div>
           <div className="hidden sm:block">
             <div className="font-bold text-sm leading-tight text-[#1A1A1A] tracking-wider">
@@ -242,11 +241,10 @@ export const LoginPage: React.FC<Props> = ({
                 setErrorMessage("");
                 setSuccessMessage("");
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                activeTab === "customer"
-                  ? "bg-white text-[#1A1A1A] shadow-md"
-                  : "text-[#555555] hover:text-[#1A1A1A]"
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${activeTab === "customer"
+                ? "bg-white text-[#1A1A1A] shadow-md"
+                : "text-[#555555] hover:text-[#1A1A1A]"
+                }`}
             >
               <User className="w-4 h-4 text-[#1A1A1A]" />
               <span>{t("Customer Account", "কাস্টমার অ্যাকাউন্ট")}</span>
@@ -258,11 +256,10 @@ export const LoginPage: React.FC<Props> = ({
                 setErrorMessage("");
                 setSuccessMessage("");
               }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${
-                activeTab === "admin"
-                  ? "bg-[#1A1A1A] text-white shadow-md"
-                  : "text-[#555555] hover:text-[#1A1A1A]"
-              }`}
+              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${activeTab === "admin"
+                ? "bg-[#1A1A1A] text-white shadow-md"
+                : "text-[#555555] hover:text-[#1A1A1A]"
+                }`}
             >
               <ShieldCheck className="w-4 h-4 text-yellow-400" />
               <span>{t("Shop Admin Portal", "শপ অ্যাডমিন পোর্টাল")}</span>
@@ -296,11 +293,10 @@ export const LoginPage: React.FC<Props> = ({
                     setCustomerMode("login");
                     setErrorMessage("");
                   }}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                    customerMode === "login"
-                      ? "bg-[#1A1A1A] text-white"
-                      : "text-[#666666] hover:bg-gray-50"
-                  }`}
+                  className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${customerMode === "login"
+                    ? "bg-[#1A1A1A] text-white"
+                    : "text-[#666666] hover:bg-gray-50"
+                    }`}
                 >
                   <LogIn className="w-4 h-4" />
                   <span>{t("Customer Sign In", "লগ ইন করুন")}</span>
@@ -311,11 +307,10 @@ export const LoginPage: React.FC<Props> = ({
                     setCustomerMode("register");
                     setErrorMessage("");
                   }}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
-                    customerMode === "register"
-                      ? "bg-[#1A1A1A] text-white"
-                      : "text-[#666666] hover:bg-gray-50"
-                  }`}
+                  className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${customerMode === "register"
+                    ? "bg-[#1A1A1A] text-white"
+                    : "text-[#666666] hover:bg-gray-50"
+                    }`}
                 >
                   <UserPlus className="w-4 h-4" />
                   <span>{t("New Registration", "নতুন রেজিস্ট্রেশন")}</span>

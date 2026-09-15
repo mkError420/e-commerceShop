@@ -333,6 +333,7 @@ interface StoreContextType {
   coupons: Coupon[];
   addCoupon: (c: Coupon) => void;
   toggleCouponActive: (code: string) => void;
+  deleteCoupon: (code: string) => void;
 
   // Modals
   activeInvoiceOrder: Order | null;
@@ -646,7 +647,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       localStorage.removeItem("be_admin_authenticated");
     } catch { /* ignore */ }
     showToast(language === 'bn' ? "অ্যাডমিন লগ আউট সম্পন্ন" : "Admin signed out", "info");
-    setNavigation({ path: "/login" });
+    setNavigation({ path: "/" });
+    if (typeof window !== "undefined" && window.history?.pushState) {
+      window.history.pushState(null, "", "/");
+    }
   };
 
   // ─── Customer Auth ───────────────────────────────────────────────────────────
@@ -794,7 +798,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       localStorage.removeItem("be_current_user");
     } catch { /* ignore */ }
     showToast(language === 'bn' ? "লগ আউট সফল" : "Signed out successfully", "info");
-    setNavigation({ path: "/login" });
+    setNavigation({ path: "/" });
+    if (typeof window !== "undefined" && window.history?.pushState) {
+      window.history.pushState(null, "", "/");
+    }
   };
 
   const switchDemoCustomer = (customerId: string) => {
@@ -902,13 +909,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const addCoupon = (c: Coupon) => {
     setCoupons((prev) => [...prev, c]);
-    showToast(`Coupon ${c.code} created`);
   };
 
   const toggleCouponActive = (code: string) => {
-    setCoupons((prev) => 
+    setCoupons((prev) =>
       prev.map((c) => c.code === code ? { ...c, isActive: !c.isActive } : c)
     );
+  };
+
+  const deleteCoupon = (code: string) => {
+    setCoupons((prev) => prev.filter((c) => c.code !== code));
   };
 
   return (
@@ -969,6 +979,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         coupons,
         addCoupon,
         toggleCouponActive,
+        deleteCoupon,
         activeInvoiceOrder,
         setActiveInvoiceOrder,
         isSeoModalOpen,
