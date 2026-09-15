@@ -376,45 +376,6 @@ export const LoginPage: React.FC<Props> = ({
                       <span>{isLoading ? t("Authenticating...", "যাচাই করা হচ্ছে...") : t("Sign In to My Account", "অ্যাকাউন্টে প্রবেশ করুন")}</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
-
-                    {/* Demo Accounts Quick-Select Card */}
-                    <div className="pt-5 mt-5 border-t border-[#F0F0F0]">
-                      <div className="flex items-center justify-between mb-2.5">
-                        <span className="text-[11px] font-bold text-[#888888] uppercase tracking-wider">
-                          {t("1-Click Demo Profiles", "দ্রুত ডেমো লগইন")}
-                        </span>
-                        <span className="text-[10px] text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full font-medium border border-amber-200">
-                          Pre-seeded
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        {demoCustomers.map((c) => (
-                          <button
-                            key={c.id}
-                            type="button"
-                            onClick={() => {
-                              loginCustomer(c.phone);
-                            }}
-                            className="p-2.5 rounded-xl border border-[#E0E0E0] hover:border-[#1A1A1A] hover:bg-gray-50 text-left transition-all group"
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              <div className="w-6 h-6 rounded-full bg-[#1A1A1A] text-yellow-400 flex items-center justify-center text-[10px] font-bold">
-                                {c.name.charAt(0)}
-                              </div>
-                              <span className="text-xs font-bold text-[#1A1A1A] truncate">
-                                {c.name.split(" ")[0]}
-                              </span>
-                            </div>
-                            <div className="text-[10px] text-[#777777] font-mono truncate">
-                              {c.phone}
-                            </div>
-                            <div className="text-[9px] text-amber-800 font-semibold mt-0.5">
-                              {c.loyaltyTier} · {c.loyaltyPoints} pts
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
                   </form>
                 ) : (
                   /* ─── Customer Register Form ─────────────────────────────── */

@@ -10,7 +10,7 @@ import { CustomerVouchers } from "./CustomerVouchers";
 import { CustomerSupport } from "./CustomerSupport";
 import {
   LayoutDashboard, ShoppingBag, MapPin, Heart, Tag, User, Headphones,
-  LogOut, ChevronRight, Star, Menu, X, ArrowLeft, Sparkles,
+  LogOut, Star, Menu, X, ArrowLeft, Sparkles,
   Shield, Trophy
 } from "lucide-react";
 
@@ -24,7 +24,7 @@ const LOYALTY_COLORS: Record<string, { bg: string; text: string; border: string;
 };
 
 export const CustomerDashboard: React.FC = () => {
-  const { currentUser, demoCustomers, switchDemoCustomer, logoutCustomer, navigate, t, orders, wishlist } = useStore();
+  const { currentUser, logoutCustomer, navigate, t, orders, wishlist } = useStore();
   const [activeTab, setActiveTab] = useState<DashTab>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
@@ -95,30 +95,6 @@ export const CustomerDashboard: React.FC = () => {
           <span>{loyalty.icon}</span>
           <span>{currentUser.loyaltyTier} Member</span>
           <span className="opacity-70">· {currentUser.loyaltyPoints.toLocaleString()} pts</span>
-        </div>
-      </div>
-
-      {/* Demo Persona Switcher */}
-      <div className="px-5 py-3 border-b border-white/10">
-        <div className="text-[10px] font-semibold text-white/30 uppercase tracking-widest mb-2">Demo Accounts</div>
-        <div className="flex flex-col gap-1">
-          {demoCustomers.map((demo) => (
-            <button
-              key={demo.id}
-              onClick={() => switchDemoCustomer(demo.id)}
-              className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded text-xs transition-all ${currentUser.id === demo.id
-                ? "bg-white/10 text-white"
-                : "text-white/50 hover:text-white hover:bg-white/5"
-                }`}
-            >
-              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] font-bold flex-shrink-0 ${currentUser.id === demo.id ? "bg-yellow-400 text-gray-900" : "bg-white/10 text-white/50"
-                }`}>
-                {demo.name.charAt(0)}
-              </div>
-              <span className="truncate">{demo.name}</span>
-              {currentUser.id === demo.id && <ChevronRight className="w-3 h-3 ml-auto text-yellow-400 flex-shrink-0" />}
-            </button>
-          ))}
         </div>
       </div>
 
