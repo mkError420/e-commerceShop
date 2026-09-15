@@ -97,8 +97,7 @@ export const LoginPage: React.FC<Props> = ({
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 350));
-    const res = login(identifier, password);
+    const res = await login(identifier, password);
     setIsLoading(false);
 
     if (!res.success) {
@@ -145,8 +144,7 @@ export const LoginPage: React.FC<Props> = ({
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 450));
-    const res = registerCustomer(regName, regPhone, regEmail, regPassword);
+    const res = await registerCustomer(regName, regPhone, regEmail, regPassword);
     setIsLoading(false);
 
     if (!res.success) {

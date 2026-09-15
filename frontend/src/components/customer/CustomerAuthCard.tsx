@@ -32,8 +32,7 @@ export const CustomerAuthCard: React.FC = () => {
     setError("");
     if (!name.trim() || !phone.trim()) { setError("Name and phone number are required."); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const result = registerCustomer(name.trim(), phone.trim(), email.trim() || undefined, password.trim() || undefined);
+    const result = await registerCustomer(name.trim(), phone.trim(), email.trim() || undefined, password.trim() || undefined);
     setLoading(false);
     if (!result.success) setError(result.message);
   };

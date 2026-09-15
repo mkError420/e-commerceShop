@@ -6,12 +6,25 @@ export interface UserProfile {
   phone: string;
   email?: string;
   role: "ADMIN" | "CUSTOMER" | "MANAGER";
+  createdAt?: string;
+}
+
+export interface ApiCustomerRecord {
+  id: string;
+  name: string;
+  phoneNumber: string;
+  email: string;
+  role: string;
+  totalOrders: number;
+  totalSpentBDT: number;
+  isBlocked: boolean;
+  registeredDate: string;
 }
 
 export const authService = {
-  // Login with phone or email and password / OTP
-  async login(phoneOrEmail: string, password?: string): Promise<{ success: boolean; token: string; user: UserProfile }> {
-    const res = await apiClient<{ success: boolean; token: string; user: UserProfile }>("/auth/login", {
+  // Login with phone or email and password
+  async login(phoneOrEmail: string, password?: string): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> {
+    const res = await apiClient<{ success: boolean; token: string; user: UserProfile; message?: string }>("/auth/login", {
       method: "POST",
       body: JSON.stringify({ identifier: phoneOrEmail, password }),
     });
@@ -23,11 +36,17 @@ export const authService = {
     return res;
   },
 
-  // Register
-  async register(name: string, phone: string, email?: string): Promise<{ success: boolean; token: string; user: UserProfile }> {
-    const res = await apiClient<{ success: boolean; token: string; user: UserProfile }>("/auth/register", {
+  // Register Customer or Admin in MongoDB
+  async register(
+    name: string,
+    phone: string,
+    email?: string,
+    password?: string,
+    role: "ADMIN" | "CUSTOMER" | "MANAGER" = "CUSTOMER"
+  ): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> {
+    const res = await apiClient<{ success: boolean; token: string; user: UserProfile; message?: string }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, phone, email }),
+      body: JSON.stringify({ name, phone, email, password, role }),
     });
 
     if (res.token) {
@@ -40,6 +59,23 @@ export const authService = {
   // Current user profile
   async getCurrentUser(): Promise<{ success: boolean; user: UserProfile }> {
     return apiClient<{ success: boolean; user: UserProfile }>("/auth/me");
+  },
+
+  // Admin: Get all customers from database
+  async getCustomers(): Promise<{ success: boolean; count: number; customers: ApiCustomerRecord[] }> {
+    return apiClient<{ success: boolean; count: number; customers: ApiCustomerRecord[] }>("/auth/customers");
+  },
+
+  // Admin: Get all users from database
+  async getUsers(): Promise<{ success: boolean; count: number; users: any[] }> {
+    return apiClient<{ success: boolean; count: number; users: any[] }>("/auth/users");
+  },
+
+  // Admin: Delete user from database
+  async deleteUser(id: string): Promise<{ success: boolean; message: string }> {
+    return apiClient<{ success: boolean; message: string }>(`/auth/users/${id}`, {
+      method: "DELETE",
+    });
   },
 
   // Logout

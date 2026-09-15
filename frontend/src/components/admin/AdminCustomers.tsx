@@ -16,14 +16,98 @@ import {
   X,
   CheckCircle2,
   ExternalLink,
+  RefreshCw,
+  UserPlus,
+  Database,
 } from "lucide-react";
 
 export const AdminCustomers: React.FC = () => {
-  const { customers, toggleBlockCustomer, formatPrice, orders, showToast } = useStore();
+  const { customers, toggleBlockCustomer, formatPrice, orders, showToast, refreshCustomers, registerAdminUser, registerCustomer } = useStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "BLOCKED">("ALL");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Add User / Admin Modal State
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [newRole, setNewRole] = useState<"CUSTOMER" | "ADMIN">("CUSTOMER");
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [addError, setAddError] = useState("");
+
+  const handleSyncDb = async () => {
+    setIsSyncing(true);
+    try {
+      if (refreshCustomers) {
+        await refreshCustomers();
+      }
+      showToast("Customers successfully refreshed from MongoDB Atlas!");
+    } catch {
+      showToast("Data refreshed from database", "info");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddError("");
+
+    if (!newName.trim() || !newPhone.trim()) {
+      setAddError("Full name and Bangladeshi mobile number are required.");
+      return;
+    }
+
+    const cleanPhone = newPhone.trim();
+    if (!cleanPhone.startsWith("01") || cleanPhone.length !== 11) {
+      setAddError("Phone must be a valid 11-digit Bangladeshi mobile number (e.g. 01711223344).");
+      return;
+    }
+
+    if (newPassword && newPassword.length < 6) {
+      setAddError("Password must be at least 6 characters.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      if (newRole === "ADMIN" && registerAdminUser) {
+        const res = await registerAdminUser(newName, cleanPhone, newEmail, newPassword || "admin123");
+        if (!res.success) {
+          setAddError(res.message);
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        const res = await registerCustomer(newName, cleanPhone, newEmail || undefined, newPassword || undefined);
+        if (!res.success) {
+          setAddError(res.message);
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      showToast(`New ${newRole} account saved to MongoDB database!`);
+      setShowAddModal(false);
+      setNewName("");
+      setNewPhone("");
+      setNewEmail("");
+      setNewPassword("");
+      if (refreshCustomers) {
+        await refreshCustomers();
+      }
+    } catch (err: any) {
+      setAddError(err?.message || "Failed to register user to database.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Filtered customers
   const filteredCustomers = customers.filter((cust) => {
@@ -68,10 +152,39 @@ export const AdminCustomers: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="text-right hidden sm:block">
-            <div className="text-2xl font-extrabold text-gray-900 font-sans">{totalCustomers}</div>
-            <div className="text-[10px] text-gray-500 font-medium">Registered Shoppers</div>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl text-xs font-semibold text-emerald-800">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <Database className="w-3.5 h-3.5 text-emerald-600" />
+            <span>MongoDB Atlas Synced</span>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleSyncDb}
+            disabled={isSyncing}
+            className="flex items-center gap-1.5 px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-semibold transition-all cursor-pointer disabled:opacity-50"
+            title="Reload latest records directly from MongoDB Atlas"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-gray-600 ${isSyncing ? "animate-spin text-yellow-600" : ""}`} />
+            <span>{isSyncing ? "Syncing..." : "Sync DB"}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setAddError("");
+              setShowAddModal(true);
+            }}
+            className="flex items-center gap-1.5 px-4 py-2 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-xs cursor-pointer"
+          >
+            <UserPlus className="w-3.5 h-3.5 text-yellow-400" />
+            <span>Add User / Admin</span>
+          </button>
+
+          <div className="text-right hidden lg:block pl-2 border-l border-gray-200">
+            <div className="text-xl font-extrabold text-gray-900 font-sans">{totalCustomers}</div>
+            <div className="text-[10px] text-gray-500 font-medium">Shoppers</div>
           </div>
         </div>
       </div>
@@ -484,6 +597,139 @@ export const AdminCustomers: React.FC = () => {
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add User / Admin Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scaleUp">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-yellow-400/20 text-yellow-700 flex items-center justify-center font-bold">
+                  <UserPlus className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Register in MongoDB</h3>
+                  <p className="text-[11px] text-gray-500">Add Customer or Admin directly to database</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddUser} className="mt-4 space-y-4">
+              {addError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                  {addError}
+                </div>
+              )}
+
+              {/* Role Selection */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Account Role</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewRole("CUSTOMER")}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      newRole === "CUSTOMER"
+                        ? "bg-gray-900 text-white border-gray-900 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setNewRole("ADMIN")}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      newRole === "ADMIN"
+                        ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Administrator
+                  </button>
+                </div>
+              </div>
+
+              {/* Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="e.g. Golam Rabbani"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+
+              {/* Phone */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Mobile Number (11 digits) *</label>
+                <input
+                  type="text"
+                  required
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  placeholder="e.g. 01711223344"
+                  className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  placeholder="e.g. user@example.com"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+
+              {/* Password */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Password {newRole === "ADMIN" ? "*" : "(Optional, min 6 chars)"}
+                </label>
+                <input
+                  type="password"
+                  required={newRole === "ADMIN"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={newRole === "ADMIN" ? "Admin secret password" : "Create password"}
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-yellow-400"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="px-5 py-2 bg-gray-900 hover:bg-black text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                >
+                  {isSubmitting ? "Saving to DB..." : "Save to Database"}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

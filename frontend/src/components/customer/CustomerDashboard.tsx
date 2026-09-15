@@ -33,9 +33,6 @@ export const CustomerDashboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-white">
         <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center shadow-2xl space-y-4">
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-yellow-400 flex items-center justify-center mx-auto">
-            <Shield className="w-6 h-6" />
-          </div>
           <div>
             <h2 className="text-xl font-bold text-white">Customer Portal Restricted</h2>
             <p className="text-xs text-gray-400 mt-1">
@@ -134,9 +131,6 @@ export const CustomerDashboard: React.FC = () => {
           <span className="text-xs text-white/50 group-hover:text-white transition-colors">Back to Store</span>
         </button>
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-gray-900" />
-          </div>
           <div>
             <div className="text-white font-bold text-sm leading-tight tracking-wide">BENGAL EDITION</div>
             <div className="text-white/40 text-[10px] tracking-widest uppercase">Customer Portal</div>
