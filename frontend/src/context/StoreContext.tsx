@@ -277,6 +277,8 @@ interface StoreContextType {
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
   addCategory: (category: Category) => void;
+  updateCategory: (category: Category) => void;
+  deleteCategory: (id: string) => void;
 
   // Cart
   cart: CartItem[];
@@ -1222,6 +1224,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast("New category added");
   };
 
+  const updateCategory = (updated: Category) => {
+    setCategories((prev) => prev.map((c) => c.id === updated.id ? updated : c));
+    showToast("Category updated");
+  };
+
+  const deleteCategory = (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
+    showToast("Category deleted", "info");
+  };
+
   const toggleBlockCustomer = (customerId: string) => {
     setCustomers((prev) => {
       const updated = prev.map((c) => (c.id === customerId ? { ...c, isBlocked: !c.isBlocked } : c));
@@ -1262,6 +1274,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateProduct,
         deleteProduct,
         addCategory,
+        updateCategory,
+        deleteCategory,
         cart,
         cartCount,
         cartSubtotalBDT,

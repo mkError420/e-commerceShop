@@ -1,433 +1,690 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { useStore } from "../../context/StoreContext";
 import { Product } from "../../types";
-import { 
-  Plus, 
-  Trash2, 
+import {
+  Plus,
+  Trash2,
   Search,
   Flame,
   X,
   Package,
-  Layers
+  Pencil,
+  AlertTriangle,
+  Star,
+  ArrowUpDown,
+  Filter,
+  ImageIcon,
 } from "lucide-react";
 
+/* ─── helpers ─── */
+function slugify(str: string) {
+  return str.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+}
+
+const EMPTY_FORM = {
+  nameEn: "",
+  nameBn: "",
+  descriptionEn: "",
+  descriptionBn: "",
+  categorySlug: "",
+  subcategorySlug: "",
+  priceBDT: 0,
+  compareAtPriceBDT: 0,
+  costPriceBDT: 0,
+  stockQuantity: 0,
+  lowStockAlert: 5,
+  fabricType: "",
+  craftsmanship: "",
+  imageUrl: "",
+  isFeatured: false,
+  isFlashDeal: false,
+  tags: "",
+};
+type FormState = typeof EMPTY_FORM;
+
+const FieldLabel: React.FC<{ children: React.ReactNode; required?: boolean }> = ({ children, required }) => (
+  <label className="block text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
+    {children} {required && <span className="text-rose-500">*</span>}
+  </label>
+);
+
+const FInput: React.FC<React.InputHTMLAttributes<HTMLInputElement>> = (props) => (
+  <input
+    {...props}
+    className={`w-full p-2.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 transition-all placeholder:text-gray-400 ${props.className ?? ""}`}
+  />
+);
+
+const FTextarea: React.FC<React.TextareaHTMLAttributes<HTMLTextAreaElement>> = (props) => (
+  <textarea
+    {...props}
+    className={`w-full p-2.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 transition-all resize-none placeholder:text-gray-400 ${props.className ?? ""}`}
+  />
+);
+
+const FSelect: React.FC<React.SelectHTMLAttributes<HTMLSelectElement>> = (props) => (
+  <select
+    {...props}
+    className={`w-full p-2.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-medium transition-all ${props.className ?? ""}`}
+  />
+);
+
+/* ─── component ─── */
 export const AdminProducts: React.FC = () => {
   const { products, categories, addProduct, updateProduct, deleteProduct, formatPrice, showToast } = useStore();
 
+  /* filter */
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState("");
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [stockFilter, setStockFilter] = useState<"all" | "low" | "out">("all");
+  const [sortBy, setSortBy] = useState<"nameEn" | "priceBDT" | "stockQuantity">("nameEn");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
 
-  // New Product Form State
-  const [newTitleEn, setNewTitleEn] = useState("");
-  const [newTitleBn, setNewTitleBn] = useState("");
-  const [newCategorySlug, setNewCategorySlug] = useState("womens-fashion");
-  const [newSubcategorySlug, setNewSubcategorySlug] = useState("jamdani-silk-sarees");
-  const [newPriceBDT, setNewPriceBDT] = useState(6500);
-  const [newComparePriceBDT, setNewComparePriceBDT] = useState(7800);
-  const [newStock, setNewStock] = useState(12);
-  const [newFabric, setNewFabric] = useState("84-Count Pure Cotton Khadi");
-  const [newCraftsmanship, setNewCraftsmanship] = useState("Woven by master artisans in Narayanganj");
-  const [newImageUrl, setNewImageUrl] = useState("https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop");
-  const [newIsFlashDeal, setNewIsFlashDeal] = useState(false);
+  /* modal */
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
-  const filteredProducts = products.filter((p) => {
-    if (selectedCategoryFilter && p.categorySlug !== selectedCategoryFilter) return false;
+  /* derived */
+  const lowStockCount = products.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert).length;
+  const outOfStockCount = products.filter((p) => p.stockQuantity === 0).length;
+
+  const filteredProducts = useMemo(() => {
+    let list = products;
+    if (selectedCategoryFilter) list = list.filter((p) => p.categorySlug === selectedCategoryFilter);
+    if (stockFilter === "low") list = list.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert);
+    if (stockFilter === "out") list = list.filter((p) => p.stockQuantity === 0);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      return p.nameEn.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+      list = list.filter(
+        (p) =>
+          p.nameEn.toLowerCase().includes(q) ||
+          p.sku.toLowerCase().includes(q) ||
+          p.categoryNameEn.toLowerCase().includes(q)
+      );
     }
-    return true;
-  });
-
-  const handleCreateProduct = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newTitleEn.trim()) return;
-
-    const catObj = categories.find((c) => c.slug === newCategorySlug);
-    const subObj = catObj?.subcategories?.find((s) => s.slug === newSubcategorySlug);
-
-    addProduct({
-      nameEn: newTitleEn.trim(),
-      nameBn: newTitleBn.trim() || newTitleEn.trim(),
-      descriptionEn: "Artisanal handloom piece crafted in Bangladesh with authentic hand-woven heritage techniques.",
-      descriptionBn: "ঐতিহ্যবাহী নকশায় তৈরি খাঁটি হস্তশিল্প পণ্য।",
-      sku: `BA-BD-${Math.floor(100 + Math.random() * 900)}`,
-      categorySlug: newCategorySlug,
-      categoryNameEn: catObj?.nameEn || "Fashion",
-      categoryNameBn: catObj?.nameBn || "ফ্যাশন",
-      subcategorySlug: newSubcategorySlug,
-      subcategoryNameEn: subObj?.nameEn,
-      subcategoryNameBn: subObj?.nameBn,
-      priceBDT: Number(newPriceBDT),
-      compareAtPriceBDT: newComparePriceBDT ? Number(newComparePriceBDT) : undefined,
-      costPriceBDT: Math.round(Number(newPriceBDT) * 0.55),
-      stockQuantity: Number(newStock),
-      lowStockAlert: 5,
-      images: [newImageUrl],
-      fabricType: newFabric,
-      craftsmanship: newCraftsmanship,
-      isFeatured: true,
-      isFlashDeal: newIsFlashDeal,
-      rating: 5.0,
-      reviewsCount: 1,
-      tags: ["New Arrival", "Dhaka Hub"],
-      variants: [
-        { id: `v-${Date.now()}-1`, title: "Standard Size", size: "Free Size", stock: Number(newStock), priceAdjustmentBDT: 0 },
-      ],
-      reviews: [],
+    list = [...list].sort((a, b) => {
+      const av = a[sortBy];
+      const bv = b[sortBy];
+      if (typeof av === "number" && typeof bv === "number") return sortDir === "asc" ? av - bv : bv - av;
+      return sortDir === "asc" ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
     });
+    return list;
+  }, [products, selectedCategoryFilter, stockFilter, searchQuery, sortBy, sortDir]);
 
-    setIsAddModalOpen(false);
-    showToast("New handloom product added to Dhaka inventory!");
-    setNewTitleEn("");
-    setNewTitleBn("");
+  /* subcategories for selected cat in form */
+  const subcats = useMemo(
+    () => categories.find((c) => c.slug === form.categorySlug)?.subcategories ?? [],
+    [categories, form.categorySlug]
+  );
+
+  /* open add */
+  const openAdd = () => {
+    setForm({ ...EMPTY_FORM, categorySlug: categories[0]?.slug ?? "" });
+    setEditingProduct(null);
+    setIsModalOpen(true);
   };
 
-  const handleStockAdjust = (product: Product, delta: number) => {
-    const updatedStock = Math.max(0, product.stockQuantity + delta);
-    updateProduct(product.id, { stockQuantity: updatedStock });
-    showToast(`Stock updated to ${updatedStock}`);
+  /* open edit */
+  const openEdit = (p: Product) => {
+    setForm({
+      nameEn: p.nameEn,
+      nameBn: p.nameBn,
+      descriptionEn: p.descriptionEn,
+      descriptionBn: p.descriptionBn,
+      categorySlug: p.categorySlug,
+      subcategorySlug: p.subcategorySlug ?? "",
+      priceBDT: p.priceBDT,
+      compareAtPriceBDT: p.compareAtPriceBDT ?? 0,
+      costPriceBDT: p.costPriceBDT ?? 0,
+      stockQuantity: p.stockQuantity,
+      lowStockAlert: p.lowStockAlert,
+      fabricType: p.fabricType,
+      craftsmanship: p.craftsmanship,
+      imageUrl: p.images[0] ?? "",
+      isFeatured: p.isFeatured,
+      isFlashDeal: p.isFlashDeal,
+      tags: p.tags.join(", "),
+    });
+    setEditingProduct(p);
+    setIsModalOpen(true);
   };
 
-  const handleToggleFlashDeal = (product: Product) => {
-    updateProduct(product.id, { isFlashDeal: !product.isFlashDeal });
-    showToast(product.isFlashDeal ? "Removed from Flash Deals" : "Added to Flash Deals!");
+  /* save */
+  const handleSave = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.nameEn.trim() || form.priceBDT <= 0) {
+      showToast("Product name and valid price are required", "error");
+      return;
+    }
+    const catObj = categories.find((c) => c.slug === form.categorySlug);
+    const subObj = catObj?.subcategories?.find((s) => s.slug === form.subcategorySlug);
+    const tagArr = form.tags.split(",").map((t) => t.trim()).filter(Boolean);
+
+    if (editingProduct) {
+      updateProduct({
+        ...editingProduct,
+        nameEn: form.nameEn.trim(),
+        nameBn: form.nameBn.trim() || form.nameEn.trim(),
+        slug: slugify(form.nameEn.trim()),
+        descriptionEn: form.descriptionEn.trim() || editingProduct.descriptionEn,
+        descriptionBn: form.descriptionBn.trim() || editingProduct.descriptionBn,
+        categorySlug: form.categorySlug,
+        categoryNameEn: catObj?.nameEn ?? editingProduct.categoryNameEn,
+        categoryNameBn: catObj?.nameBn ?? editingProduct.categoryNameBn,
+        subcategorySlug: subObj?.slug,
+        subcategoryNameEn: subObj?.nameEn,
+        subcategoryNameBn: subObj?.nameBn,
+        priceBDT: Number(form.priceBDT),
+        compareAtPriceBDT: Number(form.compareAtPriceBDT) || undefined,
+        costPriceBDT: Number(form.costPriceBDT) || undefined,
+        stockQuantity: Number(form.stockQuantity),
+        lowStockAlert: Number(form.lowStockAlert),
+        fabricType: form.fabricType,
+        craftsmanship: form.craftsmanship,
+        images: [form.imageUrl || editingProduct.images[0]],
+        isFeatured: form.isFeatured,
+        isFlashDeal: form.isFlashDeal,
+        tags: tagArr.length ? tagArr : editingProduct.tags,
+      });
+    } else {
+      addProduct({
+        id: `prod-${Date.now()}`,
+        sku: `BA-${Math.floor(1000 + Math.random() * 9000)}`,
+        nameEn: form.nameEn.trim(),
+        nameBn: form.nameBn.trim() || form.nameEn.trim(),
+        slug: slugify(form.nameEn.trim()),
+        descriptionEn: form.descriptionEn.trim() || "Artisanal handloom piece crafted in Bangladesh.",
+        descriptionBn: form.descriptionBn.trim() || "হাতে তৈরি বাংলাদেশি পণ্য।",
+        categorySlug: form.categorySlug,
+        categoryNameEn: catObj?.nameEn ?? "Fashion",
+        categoryNameBn: catObj?.nameBn ?? "ফ্যাশন",
+        subcategorySlug: subObj?.slug,
+        subcategoryNameEn: subObj?.nameEn,
+        subcategoryNameBn: subObj?.nameBn,
+        priceBDT: Number(form.priceBDT),
+        compareAtPriceBDT: Number(form.compareAtPriceBDT) || undefined,
+        costPriceBDT: Number(form.costPriceBDT) || Math.round(Number(form.priceBDT) * 0.55),
+        stockQuantity: Number(form.stockQuantity),
+        lowStockAlert: Number(form.lowStockAlert) || 5,
+        fabricType: form.fabricType || "Handloom Cotton",
+        craftsmanship: form.craftsmanship || "Handcrafted in Bangladesh",
+        images: [
+          form.imageUrl ||
+          "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop",
+        ],
+        isFeatured: form.isFeatured,
+        isFlashDeal: form.isFlashDeal,
+        rating: 5.0,
+        reviewsCount: 0,
+        tags: tagArr.length ? tagArr : ["New Arrival"],
+        variants: [
+          { id: `v-${Date.now()}`, title: "Standard", size: "Free Size", stockQuantity: Number(form.stockQuantity), priceAdjustmentBDT: 0 },
+        ],
+        reviews: [],
+      });
+    }
+    setIsModalOpen(false);
+    setEditingProduct(null);
   };
 
+  /* inline stock ± */
+  const adjustStock = (p: Product, delta: number) => {
+    updateProduct({ ...p, stockQuantity: Math.max(0, p.stockQuantity + delta) });
+  };
+
+  const toggleSort = (field: typeof sortBy) => {
+    if (sortBy === field) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortBy(field); setSortDir("asc"); }
+  };
+
+  /* ═══════════════════════════════════ */
   return (
     <div className="space-y-6">
-      {/* Top Header & Actions */}
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-gray-200 shadow-xs">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">
             <Package className="w-3.5 h-3.5 text-yellow-500" />
             <span>Inventory System</span>
           </div>
-          <h2 className="font-editorial text-2xl font-bold text-gray-900">
-            Product Catalog & Stock Management
-          </h2>
+          <h2 className="font-editorial text-2xl font-bold text-gray-900">Product Catalog &amp; Stock</h2>
           <p className="text-xs text-gray-500 mt-0.5">
-            Manage SKUs, Dhaka warehouse inventory levels, and flash deal promotions ({products.length} total items).
+            {products.length} products · {lowStockCount} low stock · {outOfStockCount} out of stock
           </p>
         </div>
-
         <button
-          onClick={() => setIsAddModalOpen(true)}
-          className="bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-xs font-bold px-4 py-2.5 rounded-lg transition-all flex items-center gap-2 self-start sm:self-auto shadow-sm"
+          onClick={openAdd}
+          className="bg-yellow-400 hover:bg-yellow-500 text-gray-950 text-xs font-bold px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 self-start sm:self-auto shadow-sm"
         >
           <Plus className="w-4 h-4" />
-          <span>Add New Product</span>
+          Add New Product
         </button>
       </div>
 
-      {/* Filter and Search Bar */}
+      {/* Stats */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[
+          { label: "Total Products", val: products.length, cls: "text-gray-900 bg-white" },
+          { label: "Featured", val: products.filter((p) => p.isFeatured).length, cls: "text-blue-800 bg-blue-50" },
+          { label: "Flash Deals", val: products.filter((p) => p.isFlashDeal).length, cls: "text-yellow-900 bg-yellow-50" },
+          { label: "Low / Out of Stock", val: `${lowStockCount} / ${outOfStockCount}`, cls: "text-rose-700 bg-rose-50" },
+        ].map((s) => (
+          <div key={s.label} className={`rounded-xl border border-gray-200 px-4 py-3 shadow-xs ${s.cls}`}>
+            <div className="text-xl font-bold font-mono">{s.val}</div>
+            <div className="text-[11px] font-medium text-gray-500 mt-0.5">{s.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Filters */}
       <div className="flex flex-col sm:flex-row items-center gap-3 bg-white p-4 rounded-xl border border-gray-200 shadow-xs">
         <div className="relative flex-1 w-full">
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by product title or SKU..."
-            className="w-full text-xs p-2.5 pl-9 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 transition-all"
+            placeholder="Search by name, SKU, or category…"
+            className="w-full text-xs p-2.5 pl-9 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 text-gray-900 transition-all"
           />
           <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
         </div>
-
         <select
           value={selectedCategoryFilter}
           onChange={(e) => setSelectedCategoryFilter(e.target.value)}
-          className="text-xs p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 w-full sm:w-56 font-medium transition-all"
+          className="text-xs p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 text-gray-900 font-medium w-full sm:w-48 transition-all"
         >
-          <option value="">All Categories ({products.length})</option>
+          <option value="">All Categories</option>
           {categories.map((c) => (
             <option key={c.id} value={c.slug}>{c.nameEn}</option>
           ))}
         </select>
+        <select
+          value={stockFilter}
+          onChange={(e) => setStockFilter(e.target.value as typeof stockFilter)}
+          className="text-xs p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 text-gray-900 font-medium w-full sm:w-40 transition-all"
+        >
+          <option value="all">All Stock</option>
+          <option value="low">Low Stock ⚠</option>
+          <option value="out">Out of Stock 🚫</option>
+        </select>
+        <div className="flex items-center gap-1.5 text-xs text-gray-500 shrink-0">
+          <Filter className="w-3.5 h-3.5" />
+          <span className="font-medium">{filteredProducts.length} results</span>
+        </div>
       </div>
 
-      {/* Products Table */}
+      {/* Table */}
       <div className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead className="bg-gray-50 text-gray-600 border-b border-gray-200 font-semibold">
               <tr>
-                <th className="py-3.5 px-4">Item & SKU</th>
+                <th className="py-3.5 px-4">Item &amp; SKU</th>
                 <th className="py-3.5 px-3">Category</th>
-                <th className="py-3.5 px-3">Price (BDT)</th>
-                <th className="py-3.5 px-3">Dhaka Hub Stock</th>
-                <th className="py-3.5 px-3">Promotions</th>
+                <th
+                  className="py-3.5 px-3 cursor-pointer hover:text-yellow-600 whitespace-nowrap"
+                  onClick={() => toggleSort("priceBDT")}
+                >
+                  <span className="flex items-center gap-1">Price <ArrowUpDown className="w-3 h-3" /></span>
+                </th>
+                <th
+                  className="py-3.5 px-3 cursor-pointer hover:text-yellow-600 whitespace-nowrap"
+                  onClick={() => toggleSort("stockQuantity")}
+                >
+                  <span className="flex items-center gap-1">Stock <ArrowUpDown className="w-3 h-3" /></span>
+                </th>
+                <th className="py-3.5 px-3">Badges</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {filteredProducts.map((p) => {
-                const isLowStock = p.stockQuantity <= p.lowStockAlert;
-                return (
-                  <tr key={p.id} className="hover:bg-yellow-50/40 transition-colors">
-                    <td className="py-3.5 px-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={p.images[0]}
-                          alt={p.nameEn}
-                          className="w-12 h-14 object-cover rounded-lg bg-gray-100 border border-gray-200"
-                        />
-                        <div>
-                          <p className="font-semibold text-gray-900 line-clamp-1">{p.nameEn}</p>
-                          <p className="text-[11px] text-gray-500 font-mono">SKU: {p.sku}</p>
-                          <span className="text-[10px] text-gray-400 italic">{p.fabricType}</span>
+              {filteredProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-12 text-gray-400">
+                    <Package className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                    <p className="font-medium">No products found</p>
+                    <p className="text-[11px] mt-1">Adjust filters or add a new product.</p>
+                  </td>
+                </tr>
+              ) : (
+                filteredProducts.map((p) => {
+                  const isLowStock = p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert;
+                  const isOut = p.stockQuantity === 0;
+                  return (
+                    <tr key={p.id} className="hover:bg-yellow-50/40 transition-colors group">
+                      {/* Name */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-14 rounded-lg overflow-hidden bg-gray-100 border border-gray-200 shrink-0">
+                            {p.images[0] ? (
+                              <img src={p.images[0]} alt={p.nameEn} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center">
+                                <ImageIcon className="w-5 h-5 text-gray-300" />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 line-clamp-1 max-w-[180px]">{p.nameEn}</p>
+                            <p className="text-[11px] text-gray-500 font-mono">SKU: {p.sku}</p>
+                            <p className="text-[10px] text-gray-400 italic">{p.fabricType}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
+                      </td>
 
-                    <td className="py-3.5 px-3">
-                      <span className="bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-md text-[11px] font-medium text-gray-700">
-                        {p.categoryNameEn}
-                      </span>
-                    </td>
-
-                    <td className="py-3.5 px-3 font-mono font-bold text-gray-900 text-sm">
-                      {formatPrice(p.priceBDT)}
-                    </td>
-
-                    {/* Quick Stock Modifier */}
-                    <td className="py-3.5 px-3">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleStockAdjust(p, -1)}
-                          className="w-6 h-6 bg-gray-100 hover:bg-yellow-400 hover:text-gray-950 text-gray-700 rounded-md text-xs font-bold flex items-center justify-center transition-colors"
-                          title="Decrease stock"
-                        >
-                          -
-                        </button>
-                        <span className={`font-mono font-bold text-xs min-w-[32px] text-center py-1 rounded-md ${
-                          isLowStock ? "text-yellow-900 bg-yellow-100 border border-yellow-300" : "text-gray-900 bg-gray-50 border border-gray-200"
-                        }`}>
-                          {p.stockQuantity}
+                      {/* Category */}
+                      <td className="py-3.5 px-3">
+                        <span className="bg-gray-100 border border-gray-200 px-2.5 py-1 rounded-md text-[11px] font-medium text-gray-700">
+                          {p.categoryNameEn}
                         </span>
-                        <button
-                          onClick={() => handleStockAdjust(p, 1)}
-                          className="w-6 h-6 bg-gray-100 hover:bg-yellow-400 hover:text-gray-950 text-gray-700 rounded-md text-xs font-bold flex items-center justify-center transition-colors"
-                          title="Increase stock"
-                        >
-                          +
-                        </button>
-                      </div>
-                      {isLowStock && (
-                        <span className="text-[10px] text-yellow-800 font-bold block mt-1">
-                          Low Stock Alert
-                        </span>
-                      )}
-                    </td>
+                        {p.subcategoryNameEn && (
+                          <div className="text-[10px] text-gray-400 mt-0.5">{p.subcategoryNameEn}</div>
+                        )}
+                      </td>
 
-                    {/* Promotion toggle */}
-                    <td className="py-3.5 px-3">
-                      <button
-                        onClick={() => handleToggleFlashDeal(p)}
-                        className={`flex items-center gap-1.5 text-[11px] px-2.5 py-1 rounded-md border transition-all ${
-                          p.isFlashDeal
-                            ? "bg-yellow-100 border-yellow-300 text-yellow-900 font-bold"
-                            : "bg-white border-gray-200 text-gray-500 hover:border-gray-400"
-                        }`}
-                      >
-                        <Flame className={`w-3.5 h-3.5 ${p.isFlashDeal ? "fill-yellow-600 text-yellow-600" : "text-gray-400"}`} />
-                        <span>{p.isFlashDeal ? "Flash Deal" : "Normal"}</span>
-                      </button>
-                    </td>
+                      {/* Price */}
+                      <td className="py-3.5 px-3">
+                        <div className="font-mono font-bold text-gray-900">{formatPrice(p.priceBDT)}</div>
+                        {p.compareAtPriceBDT && (
+                          <div className="text-[11px] text-gray-400 line-through font-mono">{formatPrice(p.compareAtPriceBDT)}</div>
+                        )}
+                      </td>
 
-                    {/* Delete Action */}
-                    <td className="py-3.5 px-4 text-right">
-                      <button
-                        onClick={() => {
-                          if (confirm(`Delete ${p.nameEn}?`)) {
-                            deleteProduct(p.id);
-                            showToast("Product deleted from catalog");
-                          }
-                        }}
-                        className="text-gray-400 hover:text-rose-600 p-1.5 transition-colors rounded-md hover:bg-rose-50"
-                        title="Delete Product"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
+                      {/* Stock ± */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => adjustStock(p, -1)}
+                            className="w-6 h-6 bg-gray-100 hover:bg-yellow-400 hover:text-gray-950 text-gray-700 rounded-md text-xs font-bold flex items-center justify-center transition-colors"
+                          >−</button>
+                          <span
+                            className={`font-mono font-bold text-xs min-w-[36px] text-center py-1 rounded-md ${isOut
+                                ? "text-rose-900 bg-rose-100 border border-rose-300"
+                                : isLowStock
+                                  ? "text-yellow-900 bg-yellow-100 border border-yellow-300"
+                                  : "text-gray-900 bg-gray-50 border border-gray-200"
+                              }`}
+                          >{p.stockQuantity}</span>
+                          <button
+                            onClick={() => adjustStock(p, 1)}
+                            className="w-6 h-6 bg-gray-100 hover:bg-yellow-400 hover:text-gray-950 text-gray-700 rounded-md text-xs font-bold flex items-center justify-center transition-colors"
+                          >+</button>
+                        </div>
+                        {isLowStock && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <AlertTriangle className="w-3 h-3 text-yellow-600" />
+                            <span className="text-[10px] text-yellow-800 font-bold">Low</span>
+                          </div>
+                        )}
+                        {isOut && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <AlertTriangle className="w-3 h-3 text-rose-600" />
+                            <span className="text-[10px] text-rose-800 font-bold">Out</span>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Badges */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex flex-col gap-1.5">
+                          <button
+                            onClick={() => updateProduct({ ...p, isFlashDeal: !p.isFlashDeal })}
+                            className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-all ${p.isFlashDeal
+                                ? "bg-yellow-100 border-yellow-300 text-yellow-900 font-bold"
+                                : "bg-white border-gray-200 text-gray-400 hover:border-yellow-300"
+                              }`}
+                          >
+                            <Flame className={`w-3 h-3 ${p.isFlashDeal ? "fill-yellow-600 text-yellow-600" : "text-gray-300"}`} />
+                            {p.isFlashDeal ? "Flash" : "Normal"}
+                          </button>
+                          <button
+                            onClick={() => updateProduct({ ...p, isFeatured: !p.isFeatured })}
+                            className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-all ${p.isFeatured
+                                ? "bg-blue-50 border-blue-200 text-blue-800 font-bold"
+                                : "bg-white border-gray-200 text-gray-400 hover:border-blue-200"
+                              }`}
+                          >
+                            <Star className={`w-3 h-3 ${p.isFeatured ? "fill-blue-500 text-blue-500" : "text-gray-300"}`} />
+                            {p.isFeatured ? "Featured" : "Standard"}
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="py-3.5 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openEdit(p)}
+                            className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            title="Edit Product"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteTarget(p)}
+                            className="p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            title="Delete Product"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      {/* Add New Product Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-xl w-full p-6 sm:p-8 space-y-5 max-h-[90vh] overflow-y-auto border border-gray-200 shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+      {/* ══════ Add / Edit Modal ══════ */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-start justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full my-8 shadow-2xl border border-gray-200">
+            <div className="flex items-center justify-between p-6 border-b border-gray-100">
               <div>
                 <h3 className="font-editorial text-xl font-bold text-gray-900">
-                  Add New Bangladeshi Handloom Product
+                  {editingProduct ? "Edit Product" : "Add New Product"}
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Fill in product attributes, pricing, and craft heritage details.</p>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {editingProduct ? `Editing: ${editingProduct.nameEn}` : "All starred fields are required"}
+                </p>
               </div>
-              <button 
-                onClick={() => setIsAddModalOpen(false)} 
-                className="p-1.5 rounded-lg text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+              <button
+                onClick={() => { setIsModalOpen(false); setEditingProduct(null); }}
+                className="p-2 rounded-xl text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateProduct} className="space-y-4 text-xs">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Product Title (English) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newTitleEn}
-                    onChange={(e) => setNewTitleEn(e.target.value)}
-                    placeholder="e.g. Traditional Dhakai Jamdani Saree"
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Product Title (Bangla)</label>
-                  <input
-                    type="text"
-                    value={newTitleBn}
-                    onChange={(e) => setNewTitleBn(e.target.value)}
-                    placeholder="যেমন: ঐতিহ্যবাহী ঢাকাই জামদানি শাড়ি"
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-bangla"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Category</label>
-                  <select
-                    value={newCategorySlug}
-                    onChange={(e) => setNewCategorySlug(e.target.value)}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-medium"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.slug}>{c.nameEn}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Subcategory</label>
-                  <select
-                    value={newSubcategorySlug}
-                    onChange={(e) => setNewSubcategorySlug(e.target.value)}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-medium"
-                  >
-                    <option value="jamdani-silk-sarees">Jamdani & Silk Sarees</option>
-                    <option value="panjabi">Panjabi</option>
-                    <option value="polo-shirt">Polo Shirt</option>
-                    <option value="footwear">Footwear</option>
-                    <option value="accessories">Accessories</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Retail Price (BDT) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={newPriceBDT}
-                    onChange={(e) => setNewPriceBDT(Number(e.target.value))}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-mono font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Compare Price (BDT)</label>
-                  <input
-                    type="number"
-                    value={newComparePriceBDT}
-                    onChange={(e) => setNewComparePriceBDT(Number(e.target.value))}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="font-semibold text-gray-700 block mb-1">Initial Stock (Dhaka Hub)</label>
-                  <input
-                    type="number"
-                    required
-                    value={newStock}
-                    onChange={(e) => setNewStock(Number(e.target.value))}
-                    className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-mono font-bold"
-                  />
-                </div>
-              </div>
-
+            <form onSubmit={handleSave} className="p-6 space-y-6 text-xs">
+              {/* Section 1: Basic */}
               <div>
-                <label className="font-semibold text-gray-700 block mb-1">Fabric & Material Spec</label>
-                <input
-                  type="text"
-                  value={newFabric}
-                  onChange={(e) => setNewFabric(e.target.value)}
-                  placeholder="e.g. 84-Count Pure Cotton Khadi"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900"
-                />
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">1 — Basic Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <FieldLabel required>Name (English)</FieldLabel>
+                    <FInput required value={form.nameEn} onChange={(e) => setForm({ ...form, nameEn: e.target.value })} placeholder="Traditional Dhakai Jamdani Saree" />
+                  </div>
+                  <div>
+                    <FieldLabel>Name (বাংলা)</FieldLabel>
+                    <FInput value={form.nameBn} onChange={(e) => setForm({ ...form, nameBn: e.target.value })} placeholder="ঢাকাই জামদানি শাড়ি" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Description (English)</FieldLabel>
+                    <FTextarea rows={2} value={form.descriptionEn} onChange={(e) => setForm({ ...form, descriptionEn: e.target.value })} placeholder="Artisanal description…" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Description (বাংলা)</FieldLabel>
+                    <FTextarea rows={2} value={form.descriptionBn} onChange={(e) => setForm({ ...form, descriptionBn: e.target.value })} placeholder="পণ্যের বিস্তারিত…" />
+                  </div>
+                </div>
               </div>
 
+              {/* Section 2: Category */}
               <div>
-                <label className="font-semibold text-gray-700 block mb-1">Craftsmanship Note</label>
-                <input
-                  type="text"
-                  value={newCraftsmanship}
-                  onChange={(e) => setNewCraftsmanship(e.target.value)}
-                  placeholder="e.g. Hand-embroidered in Rupganj"
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900"
-                />
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">2 — Category</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <FieldLabel required>Category</FieldLabel>
+                    <FSelect value={form.categorySlug} onChange={(e) => setForm({ ...form, categorySlug: e.target.value, subcategorySlug: "" })}>
+                      <option value="">— Select Category —</option>
+                      {categories.map((c) => <option key={c.id} value={c.slug}>{c.nameEn}</option>)}
+                    </FSelect>
+                  </div>
+                  <div>
+                    <FieldLabel>Subcategory</FieldLabel>
+                    <FSelect value={form.subcategorySlug} onChange={(e) => setForm({ ...form, subcategorySlug: e.target.value })}>
+                      <option value="">— None —</option>
+                      {subcats.map((s) => <option key={s.id} value={s.slug}>{s.nameEn}</option>)}
+                    </FSelect>
+                  </div>
+                </div>
               </div>
 
+              {/* Section 3: Pricing & Stock */}
               <div>
-                <label className="font-semibold text-gray-700 block mb-1">High-Res Image URL</label>
-                <input
-                  type="url"
-                  value={newImageUrl}
-                  onChange={(e) => setNewImageUrl(e.target.value)}
-                  className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-400 focus:border-yellow-400 text-gray-900 font-mono text-[11px]"
-                />
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">3 — Pricing &amp; Stock</h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
+                  <div>
+                    <FieldLabel required>Retail Price (৳)</FieldLabel>
+                    <FInput type="number" min={1} required value={form.priceBDT} onChange={(e) => setForm({ ...form, priceBDT: Number(e.target.value) })} className="font-mono font-bold" />
+                  </div>
+                  <div>
+                    <FieldLabel>Compare Price (৳)</FieldLabel>
+                    <FInput type="number" min={0} value={form.compareAtPriceBDT} onChange={(e) => setForm({ ...form, compareAtPriceBDT: Number(e.target.value) })} className="font-mono" />
+                  </div>
+                  <div>
+                    <FieldLabel>Cost Price (৳)</FieldLabel>
+                    <FInput type="number" min={0} value={form.costPriceBDT} onChange={(e) => setForm({ ...form, costPriceBDT: Number(e.target.value) })} className="font-mono" />
+                  </div>
+                  <div>
+                    <FieldLabel required>Stock Quantity</FieldLabel>
+                    <FInput type="number" min={0} required value={form.stockQuantity} onChange={(e) => setForm({ ...form, stockQuantity: Number(e.target.value) })} className="font-mono font-bold" />
+                  </div>
+                  <div>
+                    <FieldLabel>Low Stock Alert Threshold</FieldLabel>
+                    <FInput type="number" min={1} value={form.lowStockAlert} onChange={(e) => setForm({ ...form, lowStockAlert: Number(e.target.value) })} className="font-mono" />
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2.5 pt-2">
-                <input
-                  type="checkbox"
-                  id="flashDealCheck"
-                  checked={newIsFlashDeal}
-                  onChange={(e) => setNewIsFlashDeal(e.target.checked)}
-                  className="w-4 h-4 text-yellow-400 rounded border-gray-300 focus:ring-yellow-400 accent-yellow-400"
-                />
-                <label htmlFor="flashDealCheck" className="font-medium text-gray-700 cursor-pointer">
-                  Feature in "Limited Hub Flash Deals" section
+              {/* Section 4: Craft & Media */}
+              <div>
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">4 — Craft &amp; Media</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                  <div>
+                    <FieldLabel>Fabric / Material</FieldLabel>
+                    <FInput value={form.fabricType} onChange={(e) => setForm({ ...form, fabricType: e.target.value })} placeholder="84-Count Cotton Khadi" />
+                  </div>
+                  <div>
+                    <FieldLabel>Craftsmanship Note</FieldLabel>
+                    <FInput value={form.craftsmanship} onChange={(e) => setForm({ ...form, craftsmanship: e.target.value })} placeholder="Woven in Narayanganj" />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Product Image URL</FieldLabel>
+                    <FInput
+                      type="url"
+                      value={form.imageUrl}
+                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+                      placeholder="https://images.unsplash.com/…"
+                      className="font-mono text-[11px]"
+                    />
+                    {form.imageUrl && (
+                      <div className="mt-2 flex items-center gap-3">
+                        <img
+                          src={form.imageUrl}
+                          alt="preview"
+                          className="w-14 h-18 object-cover rounded-lg border border-gray-200"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                        />
+                        <span className="text-[11px] text-gray-400">Image preview</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <FieldLabel>Tags (comma-separated)</FieldLabel>
+                    <FInput value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} placeholder="New Arrival, Eid Special, Bestseller" />
+                  </div>
+                </div>
+              </div>
+
+              {/* Promotions */}
+              <div className="flex flex-wrap gap-6 pt-1">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.isFlashDeal} onChange={(e) => setForm({ ...form, isFlashDeal: e.target.checked })} className="w-4 h-4 rounded border-gray-300 accent-yellow-400" />
+                  <span className="font-semibold text-gray-700 flex items-center gap-1.5">
+                    <Flame className="w-3.5 h-3.5 text-yellow-500" /> Flash Deal
+                  </span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={form.isFeatured} onChange={(e) => setForm({ ...form, isFeatured: e.target.checked })} className="w-4 h-4 rounded border-gray-300 accent-yellow-400" />
+                  <span className="font-semibold text-gray-700 flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-blue-500" /> Featured Product
+                  </span>
                 </label>
               </div>
 
               <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2.5 border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors"
+                  onClick={() => { setIsModalOpen(false); setEditingProduct(null); }}
+                  className="px-5 py-2.5 border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl font-medium text-xs transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 rounded-lg font-bold shadow-sm transition-all"
+                  className="px-6 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 rounded-xl font-bold text-xs shadow-sm transition-all"
                 >
-                  Save Product
+                  {editingProduct ? "Save Changes" : "Create Product"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* ══════ Delete Confirm Modal ══════ */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-200 text-center space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6 text-rose-500" />
+            </div>
+            <div>
+              <h3 className="font-editorial text-lg font-bold text-gray-900">Delete Product?</h3>
+              <p className="text-xs text-gray-500 mt-1">
+                <span className="font-semibold text-gray-900">{deleteTarget.nameEn}</span> will be permanently removed.
+                This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 py-2.5 border border-gray-200 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  deleteProduct(deleteTarget.id);
+                  setDeleteTarget(null);
+                }}
+                className="flex-1 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded-xl text-xs font-bold transition-colors shadow-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+
