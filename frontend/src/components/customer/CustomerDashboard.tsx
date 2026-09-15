@@ -11,7 +11,7 @@ import { CustomerSupport } from "./CustomerSupport";
 import {
   LayoutDashboard, ShoppingBag, MapPin, Heart, Tag, User, Headphones,
   LogOut, Star, Menu, X, ArrowLeft, Sparkles,
-  Shield, Trophy
+  Trophy
 } from "lucide-react";
 
 type DashTab = "overview" | "orders" | "addresses" | "wishlist" | "vouchers" | "profile" | "support";
@@ -184,13 +184,6 @@ export const CustomerDashboard: React.FC = () => {
 
       {/* Footer actions */}
       <div className="px-3 py-4 border-t border-white/10 space-y-1">
-        <button
-          onClick={() => navigate("/admin")}
-          className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-white/40 hover:text-white hover:bg-white/8 transition-colors"
-        >
-          <Shield className="w-3.5 h-3.5" />
-          <span>{t("Admin Dashboard", "অ্যাডমিন")}</span>
-        </button>
         <button
           onClick={logoutCustomer}
           className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-xs text-red-400/70 hover:text-red-400 hover:bg-red-500/10 transition-colors"
