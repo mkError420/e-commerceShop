@@ -10,53 +10,46 @@ import {
   EyeOff,
   ArrowRight,
   ArrowLeft,
-  Sparkles,
   CheckCircle2,
   AlertCircle,
   KeyRound,
   Trophy,
   UserPlus,
   LogIn,
+  LogOut,
 } from "lucide-react";
 
 interface Props {
-  initialTab?: "customer" | "admin";
   initialMode?: "login" | "register";
 }
 
 export const LoginPage: React.FC<Props> = ({
-  initialTab = "customer",
   initialMode = "login",
 }) => {
   const {
-    loginAdmin,
-    loginCustomer,
+    login,
     registerCustomer,
-    demoCustomers,
     navigate,
     navigation,
     t,
-    language,
     isAdminAuthenticated,
     currentUser,
+    logoutAdmin,
+    logoutCustomer,
   } = useStore();
 
-  // Read tab/mode from query param if available
+  // Read mode from query param if available
   const queryParams = new URLSearchParams(navigation.path.split("?")[1] || "");
-  const tabParam = queryParams.get("tab");
   const modeParam = queryParams.get("mode");
 
-  const [activeTab, setActiveTab] = useState<"customer" | "admin">(
-    tabParam === "admin" ? "admin" : initialTab
-  );
-  const [customerMode, setCustomerMode] = useState<"login" | "register">(
+  const [authMode, setAuthMode] = useState<"login" | "register">(
     modeParam === "register" ? "register" : initialMode
   );
 
-  // Customer Login Form State
-  const [customerIdentifier, setCustomerIdentifier] = useState("");
-  const [customerPassword, setCustomerPassword] = useState("");
-  const [showCustomerPassword, setShowCustomerPassword] = useState(false);
+  // Unified Sign In Form State (Same for Admin & Customer)
+  const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Customer Register Form State
   const [regName, setRegName] = useState("");
@@ -66,51 +59,46 @@ export const LoginPage: React.FC<Props> = ({
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
 
-  // Shop Admin Login Form State
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [showAdminPassword, setShowAdminPassword] = useState(false);
-
   // Feedback & Loading States
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Sync tab with URL if changed externally
+  // Reset errors on mode change
   useEffect(() => {
-    if (tabParam === "admin") {
-      setActiveTab("admin");
-    } else if (tabParam === "customer") {
-      setActiveTab("customer");
-    }
-  }, [tabParam]);
+    setErrorMessage("");
+    setSuccessMessage("");
+  }, [authMode]);
 
-  // If already logged in, show status or auto-redirect
-  useEffect(() => {
-    if (activeTab === "admin" && isAdminAuthenticated) {
-      navigate("/admin");
-    }
-  }, [isAdminAuthenticated, activeTab, navigate]);
-
-  // Handle Customer Login
-  const handleCustomerLogin = async (e: React.FormEvent) => {
+  // Handle Unified Sign In (Admin & Customer in same field)
+  const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!customerIdentifier.trim()) {
+    if (!identifier.trim()) {
       setErrorMessage(
         t(
-          "Please enter your mobile number or email address",
-          "অনুগ্রহ করে আপনার মোবাইল নম্বর বা ইমেইল লিখুন"
+          "Please enter your email address or mobile number",
+          "অনুগ্রহ করে আপনার ইমেইল অথবা মোবাইল নম্বর লিখুন"
+        )
+      );
+      return;
+    }
+
+    if (!password.trim()) {
+      setErrorMessage(
+        t(
+          "Please enter your password",
+          "অনুগ্রহ করে আপনার পাসওয়ার্ড লিখুন"
         )
       );
       return;
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 400));
-    const res = loginCustomer(customerIdentifier, customerPassword);
+    await new Promise((r) => setTimeout(r, 350));
+    const res = login(identifier, password);
     setIsLoading(false);
 
     if (!res.success) {
@@ -157,7 +145,7 @@ export const LoginPage: React.FC<Props> = ({
     }
 
     setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 450));
     const res = registerCustomer(regName, regPhone, regEmail, regPassword);
     setIsLoading(false);
 
@@ -166,36 +154,10 @@ export const LoginPage: React.FC<Props> = ({
     }
   };
 
-  // Handle Shop Admin Login
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMessage("");
-    setSuccessMessage("");
-
-    if (!adminEmail.trim() || !adminPassword.trim()) {
-      setErrorMessage(
-        t(
-          "Admin email and password are required",
-          "অ্যাডমিন ইমেইল এবং পাসওয়ার্ড আবশ্যক"
-        )
-      );
-      return;
-    }
-
-    setIsLoading(true);
-    await new Promise((r) => setTimeout(r, 450));
-    const res = loginAdmin(adminEmail, adminPassword);
-    setIsLoading(false);
-
-    if (!res.success) {
-      setErrorMessage(res.message);
-    }
-  };
-
-  // One-click autofill for Shop Admin Demo Credentials
-  const autofillAdminCredentials = () => {
-    setAdminEmail("mk.rabbani.cse@gmail.com");
-    setAdminPassword("sup123456123");
+  // Quick fill Shop Admin Credentials for instant testing
+  const autofillAdmin = () => {
+    setIdentifier("mk.rabbani.cse@gmail.com");
+    setPassword("sup123456123");
     setErrorMessage("");
   };
 
@@ -208,14 +170,12 @@ export const LoginPage: React.FC<Props> = ({
           className="flex items-center gap-2 text-xs font-semibold text-[#555555] hover:text-[#1A1A1A] transition-colors group"
         >
           <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-          <span>{t("Back to Heritage Storefront", "স্টোরফ্রন্টে ফিরে যান")}</span>
+          <span>{t("Back to Storefront", "স্টোরফ্রন্টে ফিরে যান")}</span>
         </button>
 
         {/* Brand Identity */}
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-[#1A1A1A] text-yellow-400 flex items-center justify-center font-bold shadow-sm">
-          </div>
-          <div className="hidden sm:block">
+          <div className="hidden sm:block text-center">
             <div className="font-bold text-sm leading-tight text-[#1A1A1A] tracking-wider">
               BENGAL EDITION
             </div>
@@ -230,43 +190,66 @@ export const LoginPage: React.FC<Props> = ({
         </div>
       </header>
 
-      {/* Main Form Centerpiece */}
+      {/* Main Authentication Centerpiece */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-lg">
-          {/* Role Tab Selector (Customer vs Shop Admin) */}
-          <div className="bg-gray-200/80 p-1 rounded-xl flex gap-1 mb-6 shadow-inner">
-            <button
-              onClick={() => {
-                setActiveTab("customer");
-                setErrorMessage("");
-                setSuccessMessage("");
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${activeTab === "customer"
-                ? "bg-white text-[#1A1A1A] shadow-md"
-                : "text-[#555555] hover:text-[#1A1A1A]"
-                }`}
-            >
-              <User className="w-4 h-4 text-[#1A1A1A]" />
-              <span>{t("Customer Account", "কাস্টমার অ্যাকাউন্ট")}</span>
-            </button>
+        <div className="w-full max-w-md">
 
-            <button
-              onClick={() => {
-                setActiveTab("admin");
-                setErrorMessage("");
-                setSuccessMessage("");
-              }}
-              className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-lg text-xs sm:text-sm font-bold transition-all ${activeTab === "admin"
-                ? "bg-[#1A1A1A] text-white shadow-md"
-                : "text-[#555555] hover:text-[#1A1A1A]"
-                }`}
-            >
-              <ShieldCheck className="w-4 h-4 text-yellow-400" />
-              <span>{t("Shop Admin Portal", "শপ অ্যাডমিন পোর্টাল")}</span>
-            </button>
-          </div>
+          {/* If already signed in, show current session status */}
+          {isAdminAuthenticated && (
+            <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-2xl p-5 text-center shadow-sm space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-200 text-yellow-900 text-xs font-bold">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                <span>Signed In as Shop Admin</span>
+              </div>
+              <p className="text-xs text-yellow-950 font-medium">
+                You are currently logged in with Admin privileges.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate("/admin")}
+                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold py-2 px-3 rounded-lg text-xs transition-colors"
+                >
+                  Go to Admin Dashboard
+                </button>
+                <button
+                  onClick={logoutAdmin}
+                  className="bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center gap-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* Feedback Alert Messages */}
+          {currentUser && !isAdminAuthenticated && (
+            <div className="mb-6 bg-white border border-gray-200 rounded-2xl p-5 text-center shadow-sm space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
+                <User className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Signed In as {currentUser.name}</span>
+              </div>
+              <p className="text-xs text-gray-600">
+                Customer account active ({currentUser.phone || currentUser.email})
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigate("/customer")}
+                  className="flex-1 bg-[#1A1A1A] hover:bg-black text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors"
+                >
+                  Go to Customer Dashboard
+                </button>
+                <button
+                  onClick={logoutCustomer}
+                  className="bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center gap-1"
+                >
+                  <LogOut className="w-3.5 h-3.5" />
+                  <span>Sign Out</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Feedback Alerts */}
           {errorMessage && (
             <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-800 text-xs animate-in fade-in duration-200">
               <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
@@ -281,99 +264,176 @@ export const LoginPage: React.FC<Props> = ({
             </div>
           )}
 
-          {/* ═════════════════════════════════════════════════════════════════ */}
-          {/* TAB 1: CUSTOMER PORTAL                                           */}
-          {/* ═════════════════════════════════════════════════════════════════ */}
-          {activeTab === "customer" && (
-            <div className="bg-white border border-[#E0E0E0] rounded-2xl shadow-xl overflow-hidden">
-              {/* Customer Sub-tabs: Sign In vs Register */}
-              <div className="flex border-b border-[#E0E0E0]">
-                <button
-                  onClick={() => {
-                    setCustomerMode("login");
-                    setErrorMessage("");
-                  }}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${customerMode === "login"
+          {/* Authentication Card */}
+          <div className="bg-white border border-[#E0E0E0] rounded-2xl shadow-xl overflow-hidden">
+            {/* Unified Mode Switcher: Sign In vs New Registration */}
+            <div className="flex border-b border-[#E0E0E0]">
+              <button
+                onClick={() => setAuthMode("login")}
+                className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  authMode === "login"
                     ? "bg-[#1A1A1A] text-white"
                     : "text-[#666666] hover:bg-gray-50"
-                    }`}
-                >
-                  <LogIn className="w-4 h-4" />
-                  <span>{t("Customer Sign In", "লগ ইন করুন")}</span>
-                </button>
+                }`}
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{t("Sign In", "লগ ইন")}</span>
+              </button>
 
-                <button
-                  onClick={() => {
-                    setCustomerMode("register");
-                    setErrorMessage("");
-                  }}
-                  className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${customerMode === "register"
+              <button
+                onClick={() => setAuthMode("register")}
+                className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
+                  authMode === "register"
                     ? "bg-[#1A1A1A] text-white"
                     : "text-[#666666] hover:bg-gray-50"
-                    }`}
-                >
-                  <UserPlus className="w-4 h-4" />
-                  <span>{t("New Registration", "নতুন রেজিস্ট্রেশন")}</span>
-                </button>
-              </div>
+                }`}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{t("New Registration", "নতুন রেজিস্ট্রেশন")}</span>
+              </button>
+            </div>
 
-              <div className="p-6 sm:p-8">
-                {/* ─── Customer Login Form ──────────────────────────────────── */}
-                {customerMode === "login" ? (
-                  <form onSubmit={handleCustomerLogin} className="space-y-4">
+            <div className="p-6 sm:p-8">
+              {/* ═══════════════════════════════════════════════════════════════ */}
+              {/* UNIFIED SIGN IN FORM (Same fields for Admin & Customer)        */}
+              {/* ═══════════════════════════════════════════════════════════════ */}
+              {authMode === "login" ? (
+                <div className="space-y-5">
+                  <div className="text-center sm:text-left">
+                    <h2 className="text-lg font-bold text-[#1A1A1A]">
+                      {t("Welcome Back", "স্বাগতম")}
+                    </h2>
+                    <p className="text-xs text-[#666666] mt-0.5">
+                      {t(
+                        "Sign in to access your dashboard (Admin & Customer).",
+                        "আপনার ড্যাশবোর্ডে প্রবেশ করতে লগ ইন করুন।"
+                      )}
+                    </p>
+                  </div>
+
+                  <form onSubmit={handleSignIn} className="space-y-4">
+                    {/* Identifier Field: Email or Phone */}
                     <div>
                       <label className="block text-xs font-semibold text-[#1A1A1A] mb-1.5">
-                        {t("Mobile Number or Email", "মোবাইল নম্বর বা ইমেইল")} *
+                        {t("Email Address or Mobile Number", "ইমেইল বা মোবাইল নম্বর")} *
                       </label>
                       <div className="relative">
-                        <Smartphone className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
+                        <div className="absolute left-3.5 top-3 text-[#888888]">
+                          {identifier.includes("@") ? (
+                            <Mail className="w-4 h-4" />
+                          ) : (
+                            <Smartphone className="w-4 h-4" />
+                          )}
+                        </div>
                         <input
                           type="text"
-                          value={customerIdentifier}
-                          onChange={(e) => setCustomerIdentifier(e.target.value)}
-                          placeholder="01711223344 or name@example.com"
+                          value={identifier}
+                          onChange={(e) => setIdentifier(e.target.value)}
+                          placeholder="mk.rabbani.cse@gmail.com or 01711223344"
                           className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
                           required
+                          autoComplete="username"
                         />
                       </div>
                     </div>
 
+                    {/* Password Field */}
                     <div>
                       <div className="flex items-center justify-between mb-1.5">
                         <label className="text-xs font-semibold text-[#1A1A1A]">
-                          {t("Password (Optional for Demo)", "পাসওয়ার্ড")}
+                          {t("Password", "পাসওয়ার্ড")} *
                         </label>
                       </div>
                       <div className="relative">
                         <Lock className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
                         <input
-                          type={showCustomerPassword ? "text" : "password"}
-                          value={customerPassword}
-                          onChange={(e) => setCustomerPassword(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
+                          type={showPassword ? "text" : "password"}
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="••••••••••••"
+                          className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
+                          required
+                          autoComplete="current-password"
                         />
                         <button
                           type="button"
-                          onClick={() => setShowCustomerPassword(!showCustomerPassword)}
+                          onClick={() => setShowPassword(!showPassword)}
                           className="absolute right-3.5 top-3 text-[#888888] hover:text-[#1A1A1A]"
                         >
-                          {showCustomerPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
 
+                    {/* Sign In Action Button */}
                     <button
                       type="submit"
                       disabled={isLoading}
                       className="w-full bg-[#1A1A1A] hover:bg-black text-white font-semibold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50 mt-2"
                     >
-                      <span>{isLoading ? t("Authenticating...", "যাচাই করা হচ্ছে...") : t("Sign In to My Account", "অ্যাকাউন্টে প্রবেশ করুন")}</span>
+                      <LogIn className="w-4 h-4" />
+                      <span>{isLoading ? t("Verifying...", "যাচাই করা হচ্ছে...") : t("Sign In", "সাইন ইন করুন")}</span>
                       <ArrowRight className="w-4 h-4" />
                     </button>
                   </form>
-                ) : (
-                  /* ─── Customer Register Form ─────────────────────────────── */
+
+                  {/* Shop Admin Quick Test Helper Card */}
+                  <div className="pt-4 border-t border-gray-100">
+                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
+                          <ShieldCheck className="w-3.5 h-3.5 text-yellow-600" />
+                          <span>Shop Admin Credentials</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-mono mt-0.5 truncate">
+                          Mail: <span className="text-gray-800 font-semibold">mk.rabbani.cse@gmail.com</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 font-mono">
+                          Pass: <span className="text-gray-800 font-semibold">sup123456123</span>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={autofillAdmin}
+                        className="px-2.5 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 rounded-lg text-xs font-bold transition-all whitespace-nowrap self-start sm:self-auto shadow-2xs"
+                      >
+                        Autofill Admin
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Switch to Registration */}
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-[#666666]">
+                      {t("Don't have a customer account?", "নতুন কাস্টমার?")}{" "}
+                      <button
+                        type="button"
+                        onClick={() => setAuthMode("register")}
+                        className="font-bold text-[#1A1A1A] hover:underline"
+                      >
+                        {t("Register Here →", "রেজিস্ট্রেশন করুন →")}
+                      </button>
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                /* ═══════════════════════════════════════════════════════════════ */
+                /* CUSTOMER REGISTRATION FORM                                    */
+                /* ═══════════════════════════════════════════════════════════════ */
+                <div className="space-y-4">
+                  <div className="text-center sm:text-left mb-2">
+                    <h2 className="text-lg font-bold text-[#1A1A1A]">
+                      {t("Create Customer Account", "নতুন কাস্টমার অ্যাকাউন্ট")}
+                    </h2>
+                    <p className="text-xs text-[#666666] mt-0.5">
+                      {t(
+                        "Register to track orders, save addresses, and earn rewards.",
+                        "অর্ডার ট্র্যাকিং এবং লয়্যালটি রিওয়ার্ড পেতে অ্যাকাউন্ট খুলুন।"
+                      )}
+                    </p>
+                  </div>
+
                   <form onSubmit={handleCustomerRegister} className="space-y-3.5">
                     <div>
                       <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">
@@ -441,7 +501,7 @@ export const LoginPage: React.FC<Props> = ({
                             value={regPassword}
                             onChange={(e) => setRegPassword(e.target.value)}
                             placeholder="Min 6 characters"
-                            className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
+                            className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
                             required
                           />
                           <button
@@ -465,7 +525,7 @@ export const LoginPage: React.FC<Props> = ({
                             value={regConfirmPassword}
                             onChange={(e) => setRegConfirmPassword(e.target.value)}
                             placeholder="Re-type password"
-                            className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
+                            className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
                             required
                           />
                         </div>
@@ -476,8 +536,8 @@ export const LoginPage: React.FC<Props> = ({
                     <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2.5 text-amber-900">
                       <Trophy className="w-4 h-4 text-amber-700 flex-shrink-0" />
                       <div className="text-[11px] leading-tight">
-                        <span className="font-bold">{t("Registration Welcome Gift:", "স্বাগত উপহার:")}</span>{" "}
-                        {t("Instantly receive 100 Heritage Loyalty Points upon sign up.", "রেজিস্ট্রেশন করলেই ১০০ লয়্যালটি পয়েন্ট পাবেন।")}
+                        <span className="font-bold">{t("Welcome Reward:", "স্বাগত উপহার:")}</span>{" "}
+                        {t("Receive 100 Heritage Loyalty Points instantly upon registration.", "রেজিস্ট্রেশন করলেই ১০০ লয়্যালটি পয়েন্ট পাবেন।")}
                       </div>
                     </div>
 
@@ -490,130 +550,30 @@ export const LoginPage: React.FC<Props> = ({
                       <span>{isLoading ? t("Creating Account...", "অ্যাকাউন্ট তৈরি হচ্ছে...") : t("Create Customer Account", "রেজিস্ট্রেশন সম্পন্ন করুন")}</span>
                     </button>
                   </form>
-                )}
-              </div>
-            </div>
-          )}
 
-          {/* ═════════════════════════════════════════════════════════════════ */}
-          {/* TAB 2: SHOP ADMIN PORTAL                                         */}
-          {/* ═════════════════════════════════════════════════════════════════ */}
-          {activeTab === "admin" && (
-            <div className="bg-[#1A1A1A] text-white border border-[#333333] rounded-2xl shadow-2xl overflow-hidden">
-              {/* Admin Card Header */}
-              <div className="p-6 bg-gradient-to-b from-[#2A2A2A] to-[#1A1A1A] border-b border-white/10 text-center">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-semibold mb-3">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>Authorized Staff Only</span>
-                </div>
-                <h2 className="text-xl font-bold tracking-tight text-white">
-                  {t("Shop Admin Portal", "শপ অ্যাডমিন পোর্টাল")}
-                </h2>
-                <p className="text-xs text-white/50 mt-1 max-w-sm mx-auto">
-                  {t(
-                    "Sign in to manage inventory, catalog, fulfillment, orders, and courier tracking.",
-                    "ইনভেন্টরি, ক্যাটালগ ও কুরিয়ার ডেলিভারি ম্যানেজ করতে লগ ইন করুন।"
-                  )}
-                </p>
-              </div>
-
-              {/* Admin Login Form */}
-              <div className="p-6 sm:p-8 space-y-4">
-                <form onSubmit={handleAdminLogin} className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-semibold text-white/80 mb-1.5">
-                      {t("Admin Email Address", "অ্যাডমিন ইমেইল")} *
-                    </label>
-                    <div className="relative">
-                      <Mail className="absolute left-3.5 top-3 w-4 h-4 text-white/40" />
-                      <input
-                        type="email"
-                        value={adminEmail}
-                        onChange={(e) => setAdminEmail(e.target.value)}
-                        placeholder="mk.rabbani.cse@gmail.com"
-                        className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm bg-white/5 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-yellow-400 focus:bg-white/10 transition-all font-mono"
-                        required
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold text-white/80">
-                        {t("Admin Secret Password", "অ্যাডমিন পাসওয়ার্ড")} *
-                      </label>
-                      <span className="text-[10px] text-white/40 font-mono">
-                        Protected Session
-                      </span>
-                    </div>
-                    <div className="relative">
-                      <Lock className="absolute left-3.5 top-3 w-4 h-4 text-white/40" />
-                      <input
-                        type={showAdminPassword ? "text" : "password"}
-                        value={adminPassword}
-                        onChange={(e) => setAdminPassword(e.target.value)}
-                        placeholder="••••••••••••"
-                        className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm bg-white/5 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-yellow-400 focus:bg-white/10 transition-all font-mono"
-                        required
-                      />
+                  {/* Switch back to Sign In */}
+                  <div className="text-center pt-2">
+                    <p className="text-xs text-[#666666]">
+                      {t("Already have an account?", "ইতিমধ্যেই অ্যাকাউন্ট আছে?")}{" "}
                       <button
                         type="button"
-                        onClick={() => setShowAdminPassword(!showAdminPassword)}
-                        className="absolute right-3.5 top-3 text-white/40 hover:text-white"
+                        onClick={() => setAuthMode("login")}
+                        className="font-bold text-[#1A1A1A] hover:underline"
                       >
-                        {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        {t("Sign In →", "সাইন ইন করুন →")}
                       </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-gray-950 font-bold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-lg disabled:opacity-50 mt-2"
-                  >
-                    <KeyRound className="w-4 h-4 text-gray-950" />
-                    <span>
-                      {isLoading
-                        ? t("Verifying Credentials...", "ভেরিফাই করা হচ্ছে...")
-                        : t("Unlock Admin Dashboard", "অ্যাডমিন ড্যাশবোর্ডে প্রবেশ করুন")}
-                    </span>
-                  </button>
-                </form>
-
-                {/* 1-Click Autofill Admin Credentials Card */}
-                <div className="mt-4 pt-4 border-t border-white/10">
-                  <div className="bg-white/5 border border-white/10 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-[11px] font-bold text-yellow-300 flex items-center gap-1.5">
-                        <KeyRound className="w-3 h-3" />
-                        <span>Shop Admin Credentials</span>
-                      </div>
-                      <div className="text-[10px] text-white/60 font-mono mt-0.5 truncate">
-                        Mail: <span className="text-white">mk.rabbani.cse@gmail.com</span>
-                      </div>
-                      <div className="text-[10px] text-white/60 font-mono">
-                        Pass: <span className="text-white">sup123456123</span>
-                      </div>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={autofillAdminCredentials}
-                      className="px-3 py-1.5 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg text-xs font-semibold transition-all whitespace-nowrap self-start sm:self-auto"
-                    >
-                      Fill Admin Credentials
-                    </button>
+                    </p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       </main>
 
       {/* Footer */}
       <footer className="py-4 text-center text-[11px] text-[#888888] border-t border-[#EAEAEA] bg-white">
-        © 2026 BENGAL EDITION · Secure Atelier E-Commerce System · NBR BIN: 002381940-0101
+        © 2026 BENGAL EDITION · Secure Unified Authentication · NBR BIN: 002381940-0101
       </footer>
     </div>
   );

@@ -15,6 +15,7 @@ import {
 } from "../types";
 import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
+import { authService } from "../services/authService";
 
 // Pre-seeded Bangladeshi demo customer profiles
 const DEMO_CUSTOMERS: CustomerUser[] = [
@@ -305,6 +306,9 @@ interface StoreContextType {
   customers: Customer[];
   toggleBlockCustomer: (customerId: string) => void;
 
+  // Auth & Unified Login
+  login: (identifier: string, password: string) => { success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string };
+
   // Shop Admin Auth
   isAdminAuthenticated: boolean;
   adminUser: { email: string; name: string } | null;
@@ -369,7 +373,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
   const [categories, setCategories] = useState<Category[]>(CATEGORIES_DATA);
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
-  const [customers, setCustomers] = useState<Customer[]>(INITIAL_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_admin_customers");
+      if (stored) return JSON.parse(stored) as Customer[];
+    } catch { /* ignore */ }
+    return INITIAL_CUSTOMERS;
+  });
   const [coupons, setCoupons] = useState<Coupon[]>(MOCK_COUPONS);
   
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -586,6 +596,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOrders((prev) => [newOrder, ...prev]);
     setLatestOrderId(newOrder.id);
     clearCart();
+
+    // Update customer spend & order count in Admin Customers database
+    setCustomers((prev) => {
+      const updated = prev.map((c) => {
+        if (
+          c.phoneNumber === newOrder.customerPhone ||
+          (c.email && c.email !== "N/A" && c.email.toLowerCase() === newOrder.customerEmail?.toLowerCase())
+        ) {
+          return {
+            ...c,
+            totalOrders: (c.totalOrders || 0) + 1,
+            totalSpentBDT: (c.totalSpentBDT || 0) + newOrder.totalBDT,
+          };
+        }
+        return c;
+      });
+      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
     return newOrder;
   };
 
@@ -618,6 +648,132 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast(language === 'bn' ? "পণ্যগুলো ব্যাগে যোগ করা হয়েছে" : "Items added to bag — ready to reorder!");
   };
 
+  // ─── Unified Auth (Same login fields for Admin & Customer) ───────────────────
+  const login = (identifier: string, password: string): { success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string } => {
+    const cleanId = identifier.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    if (!cleanId || !cleanPass) {
+      return {
+        success: false,
+        message: language === 'bn' ? "ইমেইল/মোবাইল এবং পাসওয়ার্ড আবশ্যক!" : "Email/phone and password are required."
+      };
+    }
+
+    // 1. Check Shop Admin credentials
+    if (cleanId === ADMIN_CREDENTIALS.email.toLowerCase()) {
+      if (cleanPass === ADMIN_CREDENTIALS.password) {
+        setIsAdminAuthenticated(true);
+        setCurrentUser(null);
+        try {
+          localStorage.setItem("be_admin_authenticated", "true");
+          localStorage.removeItem("be_current_user");
+        } catch { /* ignore */ }
+        showToast(language === 'bn' ? "অ্যাডমিন লগইন সফল হয়েছে!" : "Shop Admin logged in successfully!");
+        setNavigation({ path: "/admin" });
+        return { success: true, role: "ADMIN", message: "Admin login successful" };
+      } else {
+        return {
+          success: false,
+          message: language === 'bn' ? "ভুল অ্যাডমিন পাসওয়ার্ড! অনুগ্রহ করে সঠিক পাসওয়ার্ড দিন।" : "Incorrect password for Shop Admin account."
+        };
+      }
+    }
+
+    // 2. Check registered customer accounts
+    const registered = registeredCustomers.find(
+      (c) => (c.email && c.email.toLowerCase() === cleanId) || c.phone.toLowerCase() === cleanId
+    );
+    if (registered) {
+      if (registered.password && cleanPass !== registered.password) {
+        return {
+          success: false,
+          message: language === 'bn' ? "ভুল পাসওয়ার্ড! অনুগ্রহ করে পুনরায় চেষ্টা করুন।" : "Incorrect password. Please try again."
+        };
+      }
+      setIsAdminAuthenticated(false);
+      setCurrentUser(registered);
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(registered));
+        localStorage.removeItem("be_admin_authenticated");
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? `স্বাগতম, ${registered.name}!` : `Welcome back, ${registered.name}!`);
+      setNavigation({ path: "/customer" });
+      return { success: true, role: "CUSTOMER", message: `Welcome, ${registered.name}` };
+    }
+
+    // 3. Check demo customer accounts
+    const demo = DEMO_CUSTOMERS.find(
+      (c) => (c.email && c.email.toLowerCase() === cleanId) || c.phone.toLowerCase() === cleanId
+    );
+    if (demo) {
+      setIsAdminAuthenticated(false);
+      setCurrentUser(demo);
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(demo));
+        localStorage.removeItem("be_admin_authenticated");
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? `স্বাগতম, ${demo.name}!` : `Welcome back, ${demo.name}!`);
+      setNavigation({ path: "/customer" });
+      return { success: true, role: "CUSTOMER", message: `Welcome, ${demo.name}` };
+    }
+
+    // 4. Quick registration for valid 11-digit Bangladeshi mobile numbers
+    if (cleanId.startsWith("01") && cleanId.length === 11) {
+      const newUser: CustomerUser = {
+        id: `cust-${Date.now()}`,
+        name: `Customer ${cleanId.slice(-4)}`,
+        phone: cleanId,
+        password: cleanPass || undefined,
+        role: "CUSTOMER",
+        loyaltyTier: "Bronze",
+        loyaltyPoints: 50,
+        joinedDate: new Date().toISOString().split("T")[0],
+        notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
+        savedAddresses: [],
+      };
+      setRegisteredCustomers((prev) => {
+        const updated = [newUser, ...prev];
+        try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+        return updated;
+      });
+
+      // Also set at Admin Customers database
+      const newAdminCustomer: Customer = {
+        id: newUser.id,
+        name: newUser.name,
+        phoneNumber: newUser.phone,
+        email: "N/A",
+        totalOrders: 0,
+        totalSpentBDT: 0,
+        isBlocked: false,
+        registeredDate: newUser.joinedDate,
+      };
+      setCustomers((prev) => {
+        const updated = [newAdminCustomer, ...prev.filter((c) => c.phoneNumber !== newAdminCustomer.phoneNumber)];
+        try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+        return updated;
+      });
+
+      setIsAdminAuthenticated(false);
+      setCurrentUser(newUser);
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(newUser));
+        localStorage.removeItem("be_admin_authenticated");
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? "লগইন সফল হয়েছে!" : "Signed in successfully!");
+      setNavigation({ path: "/customer" });
+      return { success: true, role: "CUSTOMER", message: "Account created and signed in" };
+    }
+
+    return {
+      success: false,
+      message: language === 'bn'
+        ? "কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে রেজিস্ট্রেশন করুন অথবা সঠিক তথ্য দিন।"
+        : "No account found with this email/mobile or incorrect password. Please register or verify credentials."
+    };
+  };
+
   // ─── Shop Admin Auth ────────────────────────────────────────────────────────
   const loginAdmin = (email: string, pass: string): { success: boolean; message: string } => {
     const isEmailMatch = email.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase();
@@ -625,8 +781,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     if (isEmailMatch && isPassMatch) {
       setIsAdminAuthenticated(true);
+      setCurrentUser(null);
       try {
         localStorage.setItem("be_admin_authenticated", "true");
+        localStorage.removeItem("be_current_user");
       } catch { /* ignore */ }
       showToast(language === 'bn' ? "অ্যাডমিন লগইন সফল হয়েছে!" : "Shop Admin logged in successfully!");
       setNavigation({ path: "/admin" });
@@ -657,11 +815,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const loginCustomer = (identifier: string, password?: string): { success: boolean; message: string } => {
     const cleanId = identifier.trim().toLowerCase();
 
-    // Check if user accidentally entered Admin credentials in Customer Login
+    // Check if user entered Admin credentials
     if (cleanId === ADMIN_CREDENTIALS.email.toLowerCase() && password === ADMIN_CREDENTIALS.password) {
       setIsAdminAuthenticated(true);
+      setCurrentUser(null);
       try {
         localStorage.setItem("be_admin_authenticated", "true");
+        localStorage.removeItem("be_current_user");
       } catch { /* ignore */ }
       showToast("Shop Admin credentials recognized — redirecting to Admin Dashboard!");
       setNavigation({ path: "/admin" });
@@ -673,9 +833,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       (c) => c.phone.toLowerCase() === cleanId || (c.email && c.email.toLowerCase() === cleanId)
     );
     if (demo) {
+      setIsAdminAuthenticated(false);
       setCurrentUser(demo);
       try {
         localStorage.setItem("be_current_user", JSON.stringify(demo));
+        localStorage.removeItem("be_admin_authenticated");
       } catch { /* ignore */ }
       showToast(language === 'bn' ? `স্বাগতম, ${demo.name}!` : `Welcome back, ${demo.name}!`);
       setNavigation({ path: "/customer" });
@@ -693,9 +855,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           message: language === 'bn' ? "ভুল পাসওয়ার্ড! অনুগ্রহ করে পুনরায় চেষ্টা করুন।" : "Incorrect password. Please try again."
         };
       }
+      setIsAdminAuthenticated(false);
       setCurrentUser(registered);
       try {
         localStorage.setItem("be_current_user", JSON.stringify(registered));
+        localStorage.removeItem("be_admin_authenticated");
       } catch { /* ignore */ }
       showToast(language === 'bn' ? `স্বাগতম, ${registered.name}!` : `Welcome back, ${registered.name}!`);
       setNavigation({ path: "/customer" });
@@ -721,8 +885,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
         return updated;
       });
+      setIsAdminAuthenticated(false);
       setCurrentUser(newUser);
-      try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(newUser));
+        localStorage.removeItem("be_admin_authenticated");
+      } catch { /* ignore */ }
       showToast(`Welcome! Account created successfully.`);
       setNavigation({ path: "/customer" });
       return { success: true, message: "Account created" };
@@ -761,8 +929,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: false, message: "An account with this phone or email already exists. Please Sign In." };
     }
 
+    const todayDate = new Date().toISOString().split("T")[0];
+    const newCustId = `cust-${Date.now()}`;
+
     const newUser: CustomerUser = {
-      id: `cust-${Date.now()}`,
+      id: newCustId,
       name: name.trim(),
       phone: cleanPhone,
       email: email?.trim() || undefined,
@@ -770,17 +941,43 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       role: "CUSTOMER",
       loyaltyTier: "Bronze",
       loyaltyPoints: 100, // Welcome reward bonus
-      joinedDate: new Date().toISOString().split("T")[0],
+      joinedDate: todayDate,
       notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: true },
       savedAddresses: [],
     };
 
+    // 1. Save to customer accounts database (localStorage)
     setRegisteredCustomers((prev) => {
       const updated = [newUser, ...prev];
       try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
       return updated;
     });
 
+    // 2. Set at Admin Dashboard customer records with full details
+    const newAdminCustomer: Customer = {
+      id: newCustId,
+      name: newUser.name,
+      phoneNumber: newUser.phone,
+      email: newUser.email || "N/A",
+      totalOrders: 0,
+      totalSpentBDT: 0,
+      isBlocked: false,
+      registeredDate: todayDate,
+    };
+
+    setCustomers((prev) => {
+      const updated = [newAdminCustomer, ...prev.filter((c) => c.phoneNumber !== newAdminCustomer.phoneNumber)];
+      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    // 3. Sync to backend database (MongoDB via backend API)
+    try {
+      authService.register(newUser.name, newUser.phone, newUser.email).catch(() => {});
+    } catch { /* ignore */ }
+
+    setIsAdminAuthenticated(false);
+    try { localStorage.removeItem("be_admin_authenticated"); } catch { /* ignore */ }
     setCurrentUser(newUser);
     try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
     showToast(
@@ -901,9 +1098,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const toggleBlockCustomer = (customerId: string) => {
-    setCustomers((prev) => 
-      prev.map((c) => c.id === customerId ? { ...c, isBlocked: !c.isBlocked } : c)
-    );
+    setCustomers((prev) => {
+      const updated = prev.map((c) => (c.id === customerId ? { ...c, isBlocked: !c.isBlocked } : c));
+      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
     showToast("Customer status updated");
   };
 
@@ -958,6 +1157,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         latestOrderId,
         customers,
         toggleBlockCustomer,
+        login,
         isAdminAuthenticated,
         adminUser: isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null,
         loginAdmin,

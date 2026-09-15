@@ -30,6 +30,7 @@ export const Header: React.FC = () => {
     setSearchQuery,
     products,
     currentUser,
+    isAdminAuthenticated,
   } = useStore();
 
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
@@ -105,8 +106,19 @@ export const Header: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-3.5 ml-auto">
-            {/* Customer Account / Sign In shortcut */}
-            {currentUser ? (
+            {/* Account / Sign In shortcut */}
+            {isAdminAuthenticated ? (
+              <button
+                onClick={() => navigate("/admin")}
+                className="text-[11px] text-yellow-300 hover:text-white flex items-center gap-1.5 transition-colors font-semibold"
+              >
+                <ShieldCheck className="w-3 h-3 text-yellow-400" />
+                <span>Shop Admin</span>
+                <span className="text-[9px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.2 rounded font-mono">
+                  PORTAL
+                </span>
+              </button>
+            ) : currentUser ? (
               <button
                 onClick={() => navigate("/customer")}
                 className="text-[11px] text-white/80 hover:text-white flex items-center gap-1.5 transition-colors"
@@ -482,7 +494,16 @@ export const Header: React.FC = () => {
           </button>
 
           {/* Login / Account Button */}
-          {currentUser ? (
+          {isAdminAuthenticated ? (
+            <button
+              onClick={() => navigate("/admin")}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border bg-[#1A1A1A] text-yellow-400 border-yellow-400/40 hover:bg-black"
+              title="Shop Admin Dashboard"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-yellow-400" />
+              <span>Admin</span>
+            </button>
+          ) : currentUser ? (
             <button
               onClick={() => navigate("/customer")}
               className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border bg-[#1A1A1A] text-white border-[#1A1A1A] hover:bg-[#333333]"
@@ -743,41 +764,55 @@ export const Header: React.FC = () => {
                   {t("Atelier Management", "ম্যানেজমেন্ট")}
                 </div>
 
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    navigate("/customer");
-                  }}
-                  className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#F5F5F5] hover:bg-[#1A1A1A] hover:text-white transition-colors flex items-center justify-between text-[#1A1A1A]"
-                >
-                  <span className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-amber-600" />
-                    <span>{t("Customer Account", "কাস্টমার পোর্টাল")}</span>
-                  </span>
-                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium">
-                    {currentUser?.loyaltyTier || "Member"}
-                  </span>
-                </button>
-
-                <button
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    navigate(currentUser ? "/customer" : "/login");
-                  }}
-                  className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#1A1A1A] text-white hover:bg-[#333333] transition-colors flex items-center justify-between"
-                >
-                  <span className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-yellow-400" />
-                    <span>
-                      {currentUser
-                        ? t(`Hi, ${currentUser.name.split(" ")[0]}`, `হ্যালো, ${currentUser.name.split(" ")[0]}`)
-                        : t("Login / Register", "লগ ইন / নিবন্ধন")}
+                {isAdminAuthenticated ? (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      navigate("/admin");
+                    }}
+                    className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#1A1A1A] text-yellow-300 hover:bg-black transition-colors flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-yellow-400" />
+                      <span>Shop Admin Dashboard</span>
                     </span>
-                  </span>
-                  <span className="text-[10px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded font-mono">
-                    {currentUser ? currentUser.loyaltyTier : "Guest"}
-                  </span>
-                </button>
+                    <span className="text-[10px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded font-mono">
+                      STAFF
+                    </span>
+                  </button>
+                ) : currentUser ? (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      navigate("/customer");
+                    }}
+                    className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#1A1A1A] text-white hover:bg-[#333333] transition-colors flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-yellow-400" />
+                      <span>{currentUser.name}</span>
+                    </span>
+                    <span className="text-[10px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded font-mono">
+                      {currentUser.loyaltyTier}
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsMobileMenuOpen(false);
+                      navigate("/login");
+                    }}
+                    className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#1A1A1A] text-white hover:bg-[#333333] transition-colors flex items-center justify-between"
+                  >
+                    <span className="flex items-center gap-2">
+                      <User className="w-4 h-4 text-yellow-400" />
+                      <span>{t("Login / Register", "লগ ইন / নিবন্ধন")}</span>
+                    </span>
+                    <span className="text-[10px] bg-white/20 text-white px-1.5 py-0.5 rounded font-mono">
+                      Guest
+                    </span>
+                  </button>
+                )}
               </div>
 
               {/* Support & Dhaka Atelier Details */}

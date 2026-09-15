@@ -21,10 +21,12 @@ import {
   ShieldCheck,
   Clock,
   CircleDot,
-  LogOut
+  LogOut,
+  Users
 } from "lucide-react";
 import { AdminProducts } from "./AdminProducts";
 import { AdminOrders } from "./AdminOrders";
+import { AdminCustomers } from "./AdminCustomers";
 import { AdminCoupons } from "./AdminCoupons";
 import { AdminSettings } from "./AdminSettings";
 
@@ -33,19 +35,58 @@ export const AdminDashboard: React.FC = () => {
     orders, 
     products, 
     coupons, 
+    customers,
     formatPrice, 
     navigate, 
     setIsArchitectureModalOpen, 
     setIsSeoModalOpen,
     isAdminAuthenticated,
     logoutAdmin,
+    currentUser,
+    logoutCustomer,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "customers" | "coupons" | "settings">("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // If not authenticated as Admin, prompt to login
+  // If not authenticated as Admin, prompt to login or redirect customer
   if (!isAdminAuthenticated) {
+    if (currentUser) {
+      return (
+        <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-white">
+          <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center shadow-2xl space-y-4">
+            <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 flex items-center justify-center mx-auto">
+              <ShieldCheck className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Admin Access Restricted</h2>
+              <p className="text-xs text-gray-400 mt-1">
+                You are currently signed in as customer <span className="text-white font-semibold">{currentUser.name}</span>.
+                Customer accounts cannot access the Shop Admin dashboard.
+              </p>
+            </div>
+            <div className="space-y-2 pt-2">
+              <button
+                onClick={() => navigate("/customer")}
+                className="w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold rounded-xl text-xs transition-all shadow-md"
+              >
+                Go to My Customer Dashboard
+              </button>
+              <button
+                onClick={() => {
+                  logoutCustomer();
+                  navigate("/login");
+                }}
+                className="w-full py-2 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl text-xs transition-all"
+              >
+                Sign Out & Switch to Admin Login
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-white">
         <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center shadow-2xl space-y-4">
@@ -59,10 +100,10 @@ export const AdminDashboard: React.FC = () => {
             </p>
           </div>
           <button
-            onClick={() => navigate("/login?tab=admin")}
+            onClick={() => navigate("/login")}
             className="w-full py-3 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-gray-950 font-bold rounded-xl text-sm transition-all shadow-lg"
           >
-            Go to Shop Admin Login
+            Go to Sign In
           </button>
           <button
             onClick={() => navigate("/")}
@@ -104,6 +145,12 @@ export const AdminDashboard: React.FC = () => {
       badge: pendingOrdersCount > 0 ? { count: pendingOrdersCount, alert: false } : null,
     },
     {
+      id: "customers" as const,
+      label: "Customer Accounts",
+      icon: Users,
+      badge: { count: customers.length, alert: false },
+    },
+    {
       id: "coupons" as const,
       label: "Vouchers & Marketing",
       icon: Tag,
@@ -122,6 +169,7 @@ export const AdminDashboard: React.FC = () => {
       case "overview": return "Executive Overview";
       case "products": return "Product Catalog & Stock";
       case "orders": return "Orders & Courier Logistics";
+      case "customers": return "Customer Directory & Accounts";
       case "coupons": return "Marketing Vouchers";
       case "settings": return "Logistics & Gateway Settings";
       default: return "Admin Portal";
@@ -402,8 +450,8 @@ export const AdminDashboard: React.FC = () => {
                 </div>
               </div>
 
-              {/* 4 KPI Metric Cards (Gray Surface with Simple Yellow Highlights) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {/* 5 KPI Metric Cards (Gray Surface with Simple Yellow Highlights) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
                 {/* 1. Paid Revenue */}
                 <div className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-yellow-400 transition-all admin-card-hover group">
                   <div className="flex items-center justify-between text-xs text-gray-500">
@@ -440,6 +488,29 @@ export const AdminDashboard: React.FC = () => {
                       {pendingOrdersCount} Pending
                     </span>
                     <span>in packaging queue</span>
+                  </div>
+                </div>
+
+                {/* 3. Registered Customers */}
+                <div
+                  onClick={() => setActiveTab("customers")}
+                  className="bg-white border border-gray-200 rounded-xl p-5 shadow-xs hover:border-yellow-400 transition-all admin-card-hover group cursor-pointer"
+                  title="Click to manage all customers"
+                >
+                  <div className="flex items-center justify-between text-xs text-gray-500">
+                    <span className="font-medium text-gray-600">Registered Shoppers</span>
+                    <div className="w-9 h-9 rounded-lg bg-gray-100 text-gray-800 border border-gray-200 flex items-center justify-center group-hover:bg-yellow-400 group-hover:text-gray-950 transition-colors">
+                      <Users className="w-4 h-4" />
+                    </div>
+                  </div>
+                  <div className="text-2xl font-extrabold text-gray-900 mt-3 font-sans">
+                    {customers.length}
+                  </div>
+                  <div className="text-[11px] text-gray-600 font-medium mt-2 flex items-center gap-1.5">
+                    <span className="inline-flex items-center text-emerald-700 font-semibold bg-emerald-50 px-1.5 py-0.5 rounded">
+                      {customers.filter(c => !c.isBlocked).length} Active
+                    </span>
+                    <span>Database records</span>
                   </div>
                 </div>
 
@@ -625,11 +696,84 @@ export const AdminDashboard: React.FC = () => {
                   </table>
                 </div>
               </div>
+
+              {/* Recently Registered Customers Preview */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 gap-2">
+                  <div>
+                    <h3 className="font-editorial text-lg font-bold text-gray-900">
+                      Recently Registered Customers
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Live shopper registrations synced to database with verified contact details
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("customers")}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-900 hover:text-yellow-600 transition-colors"
+                  >
+                    <span>Manage All Customers ({customers.length})</span>
+                    <ChevronRight className="w-4 h-4 text-yellow-500" />
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-600">
+                    <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
+                      <tr>
+                        <th className="py-3 px-4">Customer Name &amp; ID</th>
+                        <th className="py-3 px-4">Phone Number</th>
+                        <th className="py-3 px-4">Email</th>
+                        <th className="py-3 px-4">Registered Date</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {customers.slice(0, 5).map((cust) => (
+                        <tr key={cust.id} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3.5 px-4 font-semibold text-gray-900">
+                            <div>{cust.name}</div>
+                            <div className="text-[10px] text-gray-400 font-mono">{cust.id}</div>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-gray-800">
+                            {cust.phoneNumber}
+                          </td>
+                          <td className="py-3.5 px-4 text-gray-500">
+                            {cust.email || "—"}
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-gray-500">
+                            {cust.registeredDate || "2026"}
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              cust.isBlocked
+                                ? "bg-rose-100 text-rose-800"
+                                : "bg-emerald-50 text-emerald-800"
+                            }`}>
+                              {cust.isBlocked ? "BLOCKED" : "ACTIVE"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => setActiveTab("customers")}
+                              className="text-xs font-semibold text-gray-700 hover:text-gray-950 bg-gray-100 hover:bg-yellow-400 px-2.5 py-1 rounded transition-colors"
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
           {activeTab === "products" && <AdminProducts />}
           {activeTab === "orders" && <AdminOrders />}
+          {activeTab === "customers" && <AdminCustomers />}
           {activeTab === "coupons" && <AdminCoupons />}
           {activeTab === "settings" && <AdminSettings />}
         </main>

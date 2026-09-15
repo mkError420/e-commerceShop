@@ -24,12 +24,76 @@ const LOYALTY_COLORS: Record<string, { bg: string; text: string; border: string;
 };
 
 export const CustomerDashboard: React.FC = () => {
-  const { currentUser, logoutCustomer, navigate, t, orders, wishlist } = useStore();
+  const { currentUser, isAdminAuthenticated, logoutAdmin, logoutCustomer, navigate, t, orders, wishlist } = useStore();
   const [activeTab, setActiveTab] = useState<DashTab>("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // If Shop Admin attempts to access Customer Dashboard:
+  if (isAdminAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-white">
+        <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center shadow-2xl space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 text-yellow-400 flex items-center justify-center mx-auto">
+            <Shield className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Customer Portal Restricted</h2>
+            <p className="text-xs text-gray-400 mt-1">
+              You are currently signed in as <span className="text-yellow-400 font-semibold">Shop Admin</span>.
+              Admin accounts cannot access the Customer Dashboard.
+            </p>
+          </div>
+          <div className="space-y-2 pt-2">
+            <button
+              onClick={() => navigate("/admin")}
+              className="w-full py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold rounded-xl text-xs transition-all shadow-md"
+            >
+              Go to Shop Admin Dashboard
+            </button>
+            <button
+              onClick={() => {
+                logoutAdmin();
+                navigate("/login");
+              }}
+              className="w-full py-2 bg-white/10 hover:bg-white/15 text-white font-semibold rounded-xl text-xs transition-all"
+            >
+              Sign Out & Switch to Customer Login
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If not logged in as customer:
   if (!currentUser) {
-    return <CustomerAuthCard />;
+    return (
+      <div className="min-h-screen bg-[#F8F8F6] flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-xl space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-gray-100 text-gray-800 flex items-center justify-center mx-auto">
+            <User className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">Customer Sign In Required</h2>
+            <p className="text-xs text-gray-500 mt-1">
+              Please sign in to view your orders, saved addresses, and loyalty rewards.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/login")}
+            className="w-full py-2.5 bg-[#1A1A1A] hover:bg-black text-white font-bold rounded-xl text-xs transition-all shadow-md"
+          >
+            Sign In to Customer Account
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="text-xs text-gray-400 hover:text-gray-900 transition-colors block mx-auto"
+          >
+            ← Return to Storefront
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const customerOrders = orders.filter(
