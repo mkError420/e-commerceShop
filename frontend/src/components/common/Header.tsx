@@ -129,15 +129,6 @@ export const Header: React.FC = () => {
 
             <span className="text-white/20 hidden sm:inline">|</span>
 
-            {/* Admin Portal Shortcut */}
-            <button
-              onClick={() => navigate("/login?tab=admin")}
-              className="text-[11px] text-white/60 hover:text-yellow-300 flex items-center gap-1 transition-colors hidden sm:flex"
-            >
-              <ShieldCheck className="w-3 h-3" />
-              <span>{t("Admin Portal", "অ্যাডমিন")}</span>
-            </button>
-
             {/* Language Switcher */}
             <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
               <button
@@ -504,18 +495,29 @@ export const Header: React.FC = () => {
             )}
           </button>
 
-          {/* Admin Dashboard Quick Button (hidden on narrow screens, accessible in drawer) */}
-          <button
-            onClick={() => navigate("/admin")}
-            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border ${navigation.path.startsWith("/admin")
-              ? "bg-[#1A1A1A] text-white border-[#1A1A1A]"
-              : "bg-[#F5F5F5] text-[#1A1A1A] border-[#E0E0E0] hover:bg-[#1A1A1A] hover:text-white"
-              }`}
-            title="Access Admin Dashboard Suite"
-          >
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>Admin</span>
-          </button>
+          {/* Login / Account Button */}
+          {currentUser ? (
+            <button
+              onClick={() => navigate("/customer")}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border bg-[#1A1A1A] text-white border-[#1A1A1A] hover:bg-[#333333]"
+              title={`${currentUser.name} — ${currentUser.loyaltyTier} Member`}
+            >
+              <User className="w-3.5 h-3.5 text-yellow-400" />
+              <span>{currentUser.name.split(" ")[0]}</span>
+              <span className="text-[10px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded font-mono">
+                {currentUser.loyaltyTier}
+              </span>
+            </button>
+          ) : (
+            <button
+              onClick={() => navigate("/login")}
+              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-semibold tracking-wide transition-all border bg-[#F5F5F5] text-[#1A1A1A] border-[#E0E0E0] hover:bg-[#1A1A1A] hover:text-white"
+              title={t("Sign In or Register", "লগ ইন বা নিবন্ধন")}
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>{t("Login", "লগ ইন")}</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -774,16 +776,20 @@ export const Header: React.FC = () => {
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
-                    navigate("/admin");
+                    navigate(currentUser ? "/customer" : "/login");
                   }}
-                  className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#F5F5F5] hover:bg-[#1A1A1A] hover:text-white transition-colors flex items-center justify-between text-[#1A1A1A]"
+                  className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#1A1A1A] text-white hover:bg-[#333333] transition-colors flex items-center justify-between"
                 >
                   <span className="flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-600" />
-                    <span>Admin Dashboard</span>
+                    <User className="w-4 h-4 text-yellow-400" />
+                    <span>
+                      {currentUser
+                        ? t(`Hi, ${currentUser.name.split(" ")[0]}`, `হ্যালো, ${currentUser.name.split(" ")[0]}`)
+                        : t("Login / Register", "লগ ইন / নিবন্ধন")}
+                    </span>
                   </span>
-                  <span className="text-[10px] bg-[#E0E0E0] text-[#1A1A1A] px-1.5 py-0.5 rounded font-mono">
-                    Staff
+                  <span className="text-[10px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.5 rounded font-mono">
+                    {currentUser ? currentUser.loyaltyTier : "Guest"}
                   </span>
                 </button>
               </div>
