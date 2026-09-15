@@ -6,6 +6,8 @@ import {
   Order, 
   Coupon, 
   Customer, 
+  CustomerUser,
+  CustomerAddress,
   Currency, 
   Language, 
   ProductVariant, 
@@ -13,6 +15,93 @@ import {
 } from "../types";
 import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
+
+// Pre-seeded Bangladeshi demo customer profiles
+const DEMO_CUSTOMERS: CustomerUser[] = [
+  {
+    id: "cust-1",
+    name: "Md. Tanvir Hossain",
+    phone: "01711223344",
+    email: "tanvir.h@gmail.com",
+    role: "CUSTOMER",
+    loyaltyTier: "Gold",
+    loyaltyPoints: 1840,
+    joinedDate: "2026-01-15",
+    notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: true },
+    savedAddresses: [
+      {
+        id: "addr-1",
+        label: "Home",
+        fullName: "Md. Tanvir Hossain",
+        phone: "01711223344",
+        division: "Dhaka",
+        district: "Dhaka City",
+        thana: "Dhanmondi",
+        streetLine: "House 42, Road 9A, Dhanmondi R/A",
+        isDefault: true,
+      },
+      {
+        id: "addr-2",
+        label: "Office",
+        fullName: "Tanvir Hossain",
+        phone: "01711223344",
+        division: "Dhaka",
+        district: "Dhaka City",
+        thana: "Motijheel",
+        streetLine: "Level 8, Rupayan Trade Center, Dhaka",
+        isDefault: false,
+      },
+    ],
+  },
+  {
+    id: "cust-2",
+    name: "Arafat Rahman",
+    phone: "01819876543",
+    email: "arafat.ctg@yahoo.com",
+    role: "CUSTOMER",
+    loyaltyTier: "Silver",
+    loyaltyPoints: 680,
+    joinedDate: "2026-03-22",
+    notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
+    savedAddresses: [
+      {
+        id: "addr-3",
+        label: "Home",
+        fullName: "Arafat Rahman",
+        phone: "01819876543",
+        division: "Chattogram",
+        district: "Chattogram City",
+        thana: "Panchlaish",
+        streetLine: "Plot 12, GEC Circle",
+        isDefault: true,
+      },
+    ],
+  },
+  {
+    id: "cust-3",
+    name: "Farzana Yasmin",
+    phone: "01912345678",
+    email: "farzana.y@outlook.com",
+    role: "CUSTOMER",
+    loyaltyTier: "Bronze",
+    loyaltyPoints: 310,
+    joinedDate: "2026-08-10",
+    notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: true },
+    savedAddresses: [
+      {
+        id: "addr-4",
+        label: "Home",
+        fullName: "Farzana Yasmin",
+        phone: "01912345678",
+        division: "Dhaka",
+        district: "Dhaka City",
+        thana: "Gulshan",
+        streetLine: "Apt 5B, Road 113, Gulshan 2",
+        isDefault: true,
+      },
+    ],
+  },
+];
 
 const USD_TO_BDT_RATE = 122.50; // 1 USD = ৳122.50 BDT
 
@@ -157,7 +246,7 @@ const INITIAL_CUSTOMERS: Customer[] = [
 ];
 
 interface NavigationState {
-  path: string; // e.g., '/', '/shop', '/category/jamdani-silk-sarees', '/product/royal-dhakai-jamdani-saree-84-count', '/cart', '/checkout', '/account', '/admin'
+  path: string;
   params?: Record<string, string>;
 }
 
@@ -208,11 +297,31 @@ interface StoreContextType {
   orders: Order[];
   createOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt">) => Order;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  cancelCustomerOrder: (orderId: string, reason?: string) => void;
+  reorderItems: (orderId: string) => void;
   latestOrderId: string | null;
 
-  // Customers
+  // Customers (Admin)
   customers: Customer[];
   toggleBlockCustomer: (customerId: string) => void;
+
+  // Current Customer Auth
+  currentUser: CustomerUser | null;
+  demoCustomers: CustomerUser[];
+  loginCustomer: (identifier: string) => { success: boolean; message: string };
+  registerCustomer: (name: string, phone: string, email?: string) => { success: boolean; message: string };
+  logoutCustomer: () => void;
+  switchDemoCustomer: (customerId: string) => void;
+  updateCustomerProfile: (data: Partial<CustomerUser>) => void;
+  addCustomerAddress: (address: Omit<CustomerAddress, 'id'>) => void;
+  updateCustomerAddress: (id: string, data: Partial<CustomerAddress>) => void;
+  deleteCustomerAddress: (id: string) => void;
+  setDefaultAddress: (id: string) => void;
+
+  // Wishlist
+  wishlist: string[];
+  toggleWishlist: (productId: string) => void;
+  isWishlisted: (productId: string) => boolean;
 
   // Coupons
   coupons: Coupon[];
@@ -268,6 +377,38 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Customer auth — default to first demo customer (Md. Tanvir Hossain)
+  const [currentUser, setCurrentUser] = useState<CustomerUser | null>(() => {
+    try {
+      const stored = localStorage.getItem("be_current_user");
+      if (stored) return JSON.parse(stored) as CustomerUser;
+    } catch { /* ignore */ }
+    return DEMO_CUSTOMERS[0]; // pre-logged as Tanvir for demo
+  });
+
+  // Wishlist — array of product IDs
+  const [wishlist, setWishlist] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_wishlist");
+      if (stored) return JSON.parse(stored) as string[];
+    } catch { /* ignore */ }
+    return [];
+  });
+
+  // Persist currentUser
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem("be_current_user", JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem("be_current_user");
+    }
+  }, [currentUser]);
+
+  // Persist wishlist
+  useEffect(() => {
+    localStorage.setItem("be_wishlist", JSON.stringify(wishlist));
+  }, [wishlist]);
 
   // Browser back/forward navigation support
   useEffect(() => {
@@ -425,6 +566,160 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast(`Order status updated to ${status}`);
   };
 
+  const cancelCustomerOrder = (orderId: string, _reason?: string) => {
+    setOrders((prev) =>
+      prev.map((ord) =>
+        ord.id === orderId && (ord.status === "PENDING" || ord.status === "PROCESSING")
+          ? { ...ord, status: "CANCELLED" as OrderStatus }
+          : ord
+      )
+    );
+    showToast(language === 'bn' ? "অর্ডার বাতিল করা হয়েছে" : "Order cancelled successfully", "info");
+  };
+
+  const reorderItems = (orderId: string) => {
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) return;
+    order.items.forEach((item) => {
+      const product = products.find((p) => p.id === item.productId);
+      if (product) addToCart(product, undefined, item.quantity);
+    });
+    setIsCartDrawerOpen(true);
+    showToast(language === 'bn' ? "পণ্যগুলো ব্যাগে যোগ করা হয়েছে" : "Items added to bag — ready to reorder!");
+  };
+
+  // ─── Customer Auth ───────────────────────────────────────────────────────────
+  const loginCustomer = (identifier: string): { success: boolean; message: string } => {
+    const demo = DEMO_CUSTOMERS.find(
+      (c) => c.phone === identifier.trim() || (c.email && c.email.toLowerCase() === identifier.trim().toLowerCase())
+    );
+    if (demo) {
+      setCurrentUser(demo);
+      showToast(language === 'bn' ? `স্বাগতম, ${demo.name}!` : `Welcome back, ${demo.name}!`);
+      return { success: true, message: `Welcome, ${demo.name}` };
+    }
+    // Create new customer on the fly (Bangladeshi rapid phone checkout pattern)
+    if (identifier.trim().startsWith("01") && identifier.trim().length === 11) {
+      const newUser: CustomerUser = {
+        id: `cust-${Date.now()}`,
+        name: `Customer ${identifier.trim().slice(-4)}`,
+        phone: identifier.trim(),
+        role: "CUSTOMER",
+        loyaltyTier: "Bronze",
+        loyaltyPoints: 0,
+        joinedDate: new Date().toISOString().split("T")[0],
+        notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
+        savedAddresses: [],
+      };
+      setCurrentUser(newUser);
+      showToast(`Welcome, new customer!`);
+      return { success: true, message: "Account created" };
+    }
+    return { success: false, message: "Please enter a valid 11-digit Bangladeshi mobile number" };
+  };
+
+  const registerCustomer = (name: string, phone: string, email?: string): { success: boolean; message: string } => {
+    if (!name.trim() || !phone.trim()) {
+      return { success: false, message: "Name and phone are required" };
+    }
+    const newUser: CustomerUser = {
+      id: `cust-${Date.now()}`,
+      name: name.trim(),
+      phone: phone.trim(),
+      email: email?.trim(),
+      role: "CUSTOMER",
+      loyaltyTier: "Bronze",
+      loyaltyPoints: 0,
+      joinedDate: new Date().toISOString().split("T")[0],
+      notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
+      savedAddresses: [],
+    };
+    setCurrentUser(newUser);
+    showToast(language === 'bn' ? `স্বাগতম, ${newUser.name}!` : `Account created! Welcome, ${newUser.name}`);
+    return { success: true, message: "Registered" };
+  };
+
+  const logoutCustomer = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("be_current_user");
+    showToast(language === 'bn' ? "লগ আউট সফল" : "Signed out successfully", "info");
+  };
+
+  const switchDemoCustomer = (customerId: string) => {
+    const demo = DEMO_CUSTOMERS.find((c) => c.id === customerId);
+    if (demo) {
+      setCurrentUser(demo);
+      showToast(`Switched to ${demo.name}'s account`);
+    }
+  };
+
+  const updateCustomerProfile = (data: Partial<CustomerUser>) => {
+    if (!currentUser) return;
+    setCurrentUser((prev) => prev ? { ...prev, ...data } : null);
+    showToast(language === 'bn' ? "প্রোফাইল আপডেট হয়েছে" : "Profile updated successfully");
+  };
+
+  const addCustomerAddress = (address: Omit<CustomerAddress, 'id'>) => {
+    if (!currentUser) return;
+    const newAddr: CustomerAddress = { ...address, id: `addr-${Date.now()}` };
+    setCurrentUser((prev) => {
+      if (!prev) return null;
+      const updated = address.isDefault
+        ? prev.savedAddresses.map((a) => ({ ...a, isDefault: false }))
+        : prev.savedAddresses;
+      return { ...prev, savedAddresses: [...updated, newAddr] };
+    });
+    showToast(language === 'bn' ? "ঠিকানা সংরক্ষিত হয়েছে" : "Address saved");
+  };
+
+  const updateCustomerAddress = (id: string, data: Partial<CustomerAddress>) => {
+    if (!currentUser) return;
+    setCurrentUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        savedAddresses: prev.savedAddresses.map((a) => a.id === id ? { ...a, ...data } : a),
+      };
+    });
+    showToast(language === 'bn' ? "ঠিকানা আপডেট হয়েছে" : "Address updated");
+  };
+
+  const deleteCustomerAddress = (id: string) => {
+    if (!currentUser) return;
+    setCurrentUser((prev) => {
+      if (!prev) return null;
+      return { ...prev, savedAddresses: prev.savedAddresses.filter((a) => a.id !== id) };
+    });
+    showToast(language === 'bn' ? "ঠিকানা মুছে ফেলা হয়েছে" : "Address removed", "info");
+  };
+
+  const setDefaultAddress = (id: string) => {
+    if (!currentUser) return;
+    setCurrentUser((prev) => {
+      if (!prev) return null;
+      return {
+        ...prev,
+        savedAddresses: prev.savedAddresses.map((a) => ({ ...a, isDefault: a.id === id })),
+      };
+    });
+    showToast(language === 'bn' ? "ডিফল্ট ঠিকানা সেট হয়েছে" : "Default address updated");
+  };
+
+  // ─── Wishlist ────────────────────────────────────────────────────────────────
+  const toggleWishlist = (productId: string) => {
+    const exists = wishlist.includes(productId);
+    setWishlist((prev) => exists ? prev.filter((id) => id !== productId) : [...prev, productId]);
+    const product = products.find((p) => p.id === productId);
+    showToast(
+      exists
+        ? (language === 'bn' ? "পছন্দের তালিকা থেকে সরানো হয়েছে" : "Removed from wishlist")
+        : (language === 'bn' ? `${product?.nameBn || "পণ্য"} পছন্দের তালিকায় যোগ হয়েছে` : `${product?.nameEn || "Item"} saved to wishlist ♥`),
+      exists ? "info" : "success"
+    );
+  };
+
+  const isWishlisted = (productId: string): boolean => wishlist.includes(productId);
+
   // Product CRUD
   const addProduct = (product: Product) => {
     setProducts((prev) => [product, ...prev]);
@@ -496,9 +791,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         orders,
         createOrder,
         updateOrderStatus,
+        cancelCustomerOrder,
+        reorderItems,
         latestOrderId,
         customers,
         toggleBlockCustomer,
+        currentUser,
+        demoCustomers: DEMO_CUSTOMERS,
+        loginCustomer,
+        registerCustomer,
+        logoutCustomer,
+        switchDemoCustomer,
+        updateCustomerProfile,
+        addCustomerAddress,
+        updateCustomerAddress,
+        deleteCustomerAddress,
+        setDefaultAddress,
+        wishlist,
+        toggleWishlist,
+        isWishlisted,
         coupons,
         addCoupon,
         toggleCouponActive,

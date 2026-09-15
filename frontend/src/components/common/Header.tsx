@@ -29,6 +29,7 @@ export const Header: React.FC = () => {
     searchQuery,
     setSearchQuery,
     products,
+    currentUser,
   } = useStore();
 
   const [isMegaMenuOpen, setIsMegaMenuOpen] = useState(false);
@@ -423,6 +424,20 @@ export const Header: React.FC = () => {
             {isMobileSearchOpen ? <X className="w-5 h-5" /> : <Search className="w-5 h-5" />}
           </button>
 
+          {/* Customer Account Portal Button */}
+          <button
+            onClick={() => navigate("/customer")}
+            className={`p-2 rounded-full transition-colors flex items-center justify-center min-w-[40px] min-h-[40px] ${
+              navigation.path.startsWith("/customer") || navigation.path.startsWith("/account")
+                ? "bg-[#1A1A1A] text-white"
+                : "text-[#1A1A1A] hover:bg-[#F5F5F5] active:bg-[#EAEAEA]"
+            }`}
+            title={currentUser ? `${currentUser.name} (${currentUser.loyaltyTier} Member)` : t("Customer Portal", "কাস্টমার পোর্টাল")}
+            aria-label="Customer Account"
+          >
+            <User className="w-5 h-5" />
+          </button>
+
           {/* Account / Order Track Link */}
           <button
             onClick={() => navigate("/track-order")}
@@ -698,6 +713,22 @@ export const Header: React.FC = () => {
                 <div className="px-2 py-1 text-[11px] font-bold text-[#777777] uppercase tracking-wider">
                   {t("Atelier Management", "ম্যানেজমেন্ট")}
                 </div>
+
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    navigate("/customer");
+                  }}
+                  className="w-full text-left py-2 px-3 rounded-lg text-xs font-semibold bg-[#F5F5F5] hover:bg-[#1A1A1A] hover:text-white transition-colors flex items-center justify-between text-[#1A1A1A]"
+                >
+                  <span className="flex items-center gap-2">
+                    <User className="w-4 h-4 text-amber-600" />
+                    <span>{t("Customer Account", "কাস্টমার পোর্টাল")}</span>
+                  </span>
+                  <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium">
+                    {currentUser?.loyaltyTier || "Member"}
+                  </span>
+                </button>
 
                 <button
                   onClick={() => {

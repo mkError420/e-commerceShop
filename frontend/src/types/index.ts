@@ -143,6 +143,42 @@ export interface Customer {
   registeredDate: string;
 }
 
+export type LoyaltyTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
+
+export interface CustomerAddress {
+  id: string;
+  label: 'Home' | 'Office' | 'Other';
+  fullName: string;
+  phone: string;
+  division: string;
+  district: string;
+  thana: string;
+  streetLine: string;
+  isDefault: boolean;
+}
+
+export interface NotificationPrefs {
+  smsOrderAlerts: boolean;
+  whatsappTracking: boolean;
+  promotionalEmails: boolean;
+}
+
+export interface CustomerUser {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  avatar?: string;
+  gender?: 'male' | 'female' | 'other';
+  birthday?: string;
+  role: 'CUSTOMER' | 'ADMIN' | 'MANAGER';
+  loyaltyTier: LoyaltyTier;
+  loyaltyPoints: number;
+  savedAddresses: CustomerAddress[];
+  notificationPrefs: NotificationPrefs;
+  joinedDate: string;
+}
+
 export interface FilterOptions {
   category?: string;
   subcategory?: string;

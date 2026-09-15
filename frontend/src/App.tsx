@@ -12,6 +12,7 @@ import { CheckoutPage } from "./components/storefront/CheckoutPage";
 import { OrderSuccessPage } from "./components/storefront/OrderSuccessPage";
 import { TrackOrderPage } from "./components/storefront/TrackOrderPage";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
+import { CustomerDashboard } from "./components/customer/CustomerDashboard";
 import { ArchitectureModal } from "./components/modals/ArchitectureModal";
 import { SeoModal } from "./components/modals/SeoModal";
 import { CheckCircle2, AlertCircle } from "lucide-react";
@@ -27,6 +28,17 @@ const MainRouter: React.FC = () => {
         <AdminDashboard />
         <ArchitectureModal />
         <SeoModal />
+        <ToastNotification toast={toast} />
+      </div>
+    );
+  }
+
+  // Render Customer Dashboard with its dedicated layout
+  if (path.startsWith("/customer") || path.startsWith("/account")) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <CustomerDashboard />
+        <ArchitectureModal />
         <ToastNotification toast={toast} />
       </div>
     );
