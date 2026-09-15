@@ -13,13 +13,25 @@ import { OrderSuccessPage } from "./components/storefront/OrderSuccessPage";
 import { TrackOrderPage } from "./components/storefront/TrackOrderPage";
 import { AdminDashboard } from "./components/admin/AdminDashboard";
 import { CustomerDashboard } from "./components/customer/CustomerDashboard";
+import { LoginPage } from "./components/auth/LoginPage";
 import { ArchitectureModal } from "./components/modals/ArchitectureModal";
 import { SeoModal } from "./components/modals/SeoModal";
 import { CheckCircle2, AlertCircle } from "lucide-react";
 
 const MainRouter: React.FC = () => {
-  const { navigation, toast } = useStore();
+  const { navigation, toasts } = useStore();
   const path = navigation.path;
+
+  // Render Dedicated Login / Registration Page
+  if (path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/register")) {
+    return (
+      <div className="min-h-screen bg-[#F8F8F6]">
+        <LoginPage />
+        <ArchitectureModal />
+        <ToastNotification toasts={toasts} />
+      </div>
+    );
+  }
 
   // Render Admin separately with its dedicated layout
   if (path.startsWith("/admin")) {
@@ -28,7 +40,7 @@ const MainRouter: React.FC = () => {
         <AdminDashboard />
         <ArchitectureModal />
         <SeoModal />
-        <ToastNotification toast={toast} />
+        <ToastNotification toasts={toasts} />
       </div>
     );
   }
@@ -39,7 +51,7 @@ const MainRouter: React.FC = () => {
       <div className="min-h-screen bg-gray-50">
         <CustomerDashboard />
         <ArchitectureModal />
-        <ToastNotification toast={toast} />
+        <ToastNotification toasts={toasts} />
       </div>
     );
   }
@@ -114,31 +126,38 @@ const MainRouter: React.FC = () => {
       <SeoModal />
 
       {/* Toast Notification */}
-      <ToastNotification toast={toast} />
+      <ToastNotification toasts={toasts} />
     </div>
   );
 };
 
-// Reusable Toast Component
-const ToastNotification: React.FC<{ toast: { message: string; type: "success" | "error" | "info" } | null }> = ({
-  toast,
+// Reusable Toast Component — renders all active toasts from the toasts array
+const ToastNotification: React.FC<{ toasts: { id: string; text: string; type: "success" | "error" | "info" }[] }> = ({
+  toasts,
 }) => {
-  if (!toast) return null;
+  if (!toasts || toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5 duration-300">
-      <div className={`px-4 py-3 rounded-lg shadow-xl text-xs font-semibold flex items-center gap-2 border ${
-        toast.type === "error"
-          ? "bg-rose-900 text-white border-rose-700"
-          : "bg-[#1A1A1A] text-white border-[#333333]"
-      }`}>
-        {toast.type === "error" ? (
-          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
-        ) : (
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-        )}
-        <span>{toast.message}</span>
-      </div>
+    <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none">
+      {toasts.map((toast) => (
+        <div
+          key={toast.id}
+          className={`px-4 py-3 rounded-lg shadow-xl text-xs font-semibold flex items-center gap-2 border pointer-events-auto ${
+            toast.type === "error"
+              ? "bg-rose-900 text-white border-rose-700"
+              : toast.type === "info"
+              ? "bg-slate-800 text-white border-slate-600"
+              : "bg-[#1A1A1A] text-white border-[#333333]"
+          }`}
+        >
+          {toast.type === "error" ? (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
+          <span>{toast.text}</span>
+        </div>
+      ))}
     </div>
   );
 };

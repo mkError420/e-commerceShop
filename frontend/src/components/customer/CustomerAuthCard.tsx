@@ -8,6 +8,7 @@ export const CustomerAuthCard: React.FC = () => {
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [identifier, setIdentifier] = useState("");
+  const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -20,8 +21,8 @@ export const CustomerAuthCard: React.FC = () => {
     setError("");
     if (!identifier.trim()) { setError("Please enter your mobile number or email."); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const result = loginCustomer(identifier.trim());
+    await new Promise((r) => setTimeout(r, 400));
+    const result = loginCustomer(identifier.trim(), password.trim() || undefined);
     setLoading(false);
     if (!result.success) setError(result.message);
   };
@@ -31,8 +32,8 @@ export const CustomerAuthCard: React.FC = () => {
     setError("");
     if (!name.trim() || !phone.trim()) { setError("Name and phone number are required."); return; }
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const result = registerCustomer(name.trim(), phone.trim(), email.trim() || undefined);
+    await new Promise((r) => setTimeout(r, 400));
+    const result = registerCustomer(name.trim(), phone.trim(), email.trim() || undefined, password.trim() || undefined);
     setLoading(false);
     if (!result.success) setError(result.message);
   };
@@ -95,6 +96,29 @@ export const CustomerAuthCard: React.FC = () => {
                       placeholder="01711223344 or email@example.com"
                       className="w-full pl-9 pr-4 py-2.5 text-sm border border-[#E0E0E0] rounded-lg focus:outline-none focus:border-[#1A1A1A] transition-colors"
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#1A1A1A] mb-1.5">
+                    {t("Password (Optional for Demo)", "পাসওয়ার্ড")}
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-[#999]" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="w-full pl-9 pr-9 py-2.5 text-sm border border-[#E0E0E0] rounded-lg focus:outline-none focus:border-[#1A1A1A] transition-colors"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3 top-2.5 text-[#999] hover:text-[#1A1A1A]"
+                    >
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -161,6 +185,30 @@ export const CustomerAuthCard: React.FC = () => {
                       placeholder="your@email.com"
                       className="w-full pl-9 pr-4 py-2.5 text-sm border border-[#E0E0E0] rounded-lg focus:outline-none focus:border-[#1A1A1A] transition-colors"
                     />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-[#1A1A1A] mb-1.5">
+                    {t("Password", "পাসওয়ার্ড")} *
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-2.5 w-4 h-4 text-[#999]" />
+                    <input
+                      type={showPass ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Min 6 characters"
+                      className="w-full pl-9 pr-9 py-2.5 text-sm border border-[#E0E0E0] rounded-lg focus:outline-none focus:border-[#1A1A1A] transition-colors"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="absolute right-3 top-2.5 text-[#999] hover:text-[#1A1A1A]"
+                    >
+                      {showPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
                 {error && (

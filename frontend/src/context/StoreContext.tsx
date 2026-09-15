@@ -305,11 +305,17 @@ interface StoreContextType {
   customers: Customer[];
   toggleBlockCustomer: (customerId: string) => void;
 
+  // Shop Admin Auth
+  isAdminAuthenticated: boolean;
+  adminUser: { email: string; name: string } | null;
+  loginAdmin: (email: string, pass: string) => { success: boolean; message: string };
+  logoutAdmin: () => void;
+
   // Current Customer Auth
   currentUser: CustomerUser | null;
   demoCustomers: CustomerUser[];
-  loginCustomer: (identifier: string) => { success: boolean; message: string };
-  registerCustomer: (name: string, phone: string, email?: string) => { success: boolean; message: string };
+  loginCustomer: (identifier: string, password?: string) => { success: boolean; message: string };
+  registerCustomer: (name: string, phone: string, email?: string, password?: string) => { success: boolean; message: string };
   logoutCustomer: () => void;
   switchDemoCustomer: (customerId: string) => void;
   updateCustomerProfile: (data: Partial<CustomerUser>) => void;
@@ -377,6 +383,29 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [isSearchOpen, setIsSearchOpen] = useState<boolean>(false);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  // Shop Admin credentials requested by user
+  const ADMIN_CREDENTIALS = {
+    email: "mk.rabbani.cse@gmail.com",
+    password: "sup123456123",
+    name: "Shop Admin (Golam Rabbani)",
+  };
+
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("be_admin_authenticated") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const [registeredCustomers, setRegisteredCustomers] = useState<CustomerUser[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_registered_customers");
+      if (stored) return JSON.parse(stored) as CustomerUser[];
+    } catch { /* ignore */ }
+    return [];
+  });
 
   // Customer auth — default to first demo customer (Md. Tanvir Hossain)
   const [currentUser, setCurrentUser] = useState<CustomerUser | null>(() => {
@@ -588,61 +617,184 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast(language === 'bn' ? "পণ্যগুলো ব্যাগে যোগ করা হয়েছে" : "Items added to bag — ready to reorder!");
   };
 
+  // ─── Shop Admin Auth ────────────────────────────────────────────────────────
+  const loginAdmin = (email: string, pass: string): { success: boolean; message: string } => {
+    const isEmailMatch = email.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase();
+    const isPassMatch = pass.trim() === ADMIN_CREDENTIALS.password;
+
+    if (isEmailMatch && isPassMatch) {
+      setIsAdminAuthenticated(true);
+      try {
+        localStorage.setItem("be_admin_authenticated", "true");
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? "অ্যাডমিন লগইন সফল হয়েছে!" : "Shop Admin logged in successfully!");
+      setNavigation({ path: "/admin" });
+      return { success: true, message: "Admin login successful" };
+    }
+
+    return {
+      success: false,
+      message: language === 'bn'
+        ? "ভুল ইমেইল অথবা পাসওয়ার্ড! অনুগ্রহ করে সঠিক তথ্য প্রদান করুন।"
+        : "Invalid Admin email or password! Please verify credentials."
+    };
+  };
+
+  const logoutAdmin = () => {
+    setIsAdminAuthenticated(false);
+    try {
+      localStorage.removeItem("be_admin_authenticated");
+    } catch { /* ignore */ }
+    showToast(language === 'bn' ? "অ্যাডমিন লগ আউট সম্পন্ন" : "Admin signed out", "info");
+    setNavigation({ path: "/login" });
+  };
+
   // ─── Customer Auth ───────────────────────────────────────────────────────────
-  const loginCustomer = (identifier: string): { success: boolean; message: string } => {
+  const loginCustomer = (identifier: string, password?: string): { success: boolean; message: string } => {
+    const cleanId = identifier.trim().toLowerCase();
+
+    // Check if user accidentally entered Admin credentials in Customer Login
+    if (cleanId === ADMIN_CREDENTIALS.email.toLowerCase() && password === ADMIN_CREDENTIALS.password) {
+      setIsAdminAuthenticated(true);
+      try {
+        localStorage.setItem("be_admin_authenticated", "true");
+      } catch { /* ignore */ }
+      showToast("Shop Admin credentials recognized — redirecting to Admin Dashboard!");
+      setNavigation({ path: "/admin" });
+      return { success: true, message: "Redirecting to Admin Portal" };
+    }
+
+    // 1. Check demo customer accounts
     const demo = DEMO_CUSTOMERS.find(
-      (c) => c.phone === identifier.trim() || (c.email && c.email.toLowerCase() === identifier.trim().toLowerCase())
+      (c) => c.phone.toLowerCase() === cleanId || (c.email && c.email.toLowerCase() === cleanId)
     );
     if (demo) {
       setCurrentUser(demo);
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(demo));
+      } catch { /* ignore */ }
       showToast(language === 'bn' ? `স্বাগতম, ${demo.name}!` : `Welcome back, ${demo.name}!`);
+      setNavigation({ path: "/customer" });
       return { success: true, message: `Welcome, ${demo.name}` };
     }
-    // Create new customer on the fly (Bangladeshi rapid phone checkout pattern)
+
+    // 2. Check registered customer accounts
+    const registered = registeredCustomers.find(
+      (c) => c.phone.toLowerCase() === cleanId || (c.email && c.email.toLowerCase() === cleanId)
+    );
+    if (registered) {
+      if (registered.password && password && registered.password !== password) {
+        return {
+          success: false,
+          message: language === 'bn' ? "ভুল পাসওয়ার্ড! অনুগ্রহ করে পুনরায় চেষ্টা করুন।" : "Incorrect password. Please try again."
+        };
+      }
+      setCurrentUser(registered);
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(registered));
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? `স্বাগতম, ${registered.name}!` : `Welcome back, ${registered.name}!`);
+      setNavigation({ path: "/customer" });
+      return { success: true, message: `Welcome, ${registered.name}` };
+    }
+
+    // 3. Fallback for valid 11-digit Bangladeshi mobile numbers
     if (identifier.trim().startsWith("01") && identifier.trim().length === 11) {
       const newUser: CustomerUser = {
         id: `cust-${Date.now()}`,
         name: `Customer ${identifier.trim().slice(-4)}`,
         phone: identifier.trim(),
+        password: password || undefined,
         role: "CUSTOMER",
         loyaltyTier: "Bronze",
-        loyaltyPoints: 0,
+        loyaltyPoints: 50,
         joinedDate: new Date().toISOString().split("T")[0],
         notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
         savedAddresses: [],
       };
+      setRegisteredCustomers((prev) => {
+        const updated = [newUser, ...prev];
+        try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+        return updated;
+      });
       setCurrentUser(newUser);
-      showToast(`Welcome, new customer!`);
+      try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
+      showToast(`Welcome! Account created successfully.`);
+      setNavigation({ path: "/customer" });
       return { success: true, message: "Account created" };
     }
-    return { success: false, message: "Please enter a valid 11-digit Bangladeshi mobile number" };
+
+    return {
+      success: false,
+      message: language === 'bn'
+        ? "কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে রেজিস্ট্রেশন করুন।"
+        : "No account found with this phone or email. Please register below."
+    };
   };
 
-  const registerCustomer = (name: string, phone: string, email?: string): { success: boolean; message: string } => {
+  const registerCustomer = (
+    name: string,
+    phone: string,
+    email?: string,
+    password?: string
+  ): { success: boolean; message: string } => {
     if (!name.trim() || !phone.trim()) {
-      return { success: false, message: "Name and phone are required" };
+      return { success: false, message: "Full name and Bangladeshi mobile number are required." };
     }
+    const cleanPhone = phone.trim();
+    if (!cleanPhone.startsWith("01") || cleanPhone.length !== 11) {
+      return { success: false, message: "Please enter a valid 11-digit Bangladeshi phone (e.g. 01711223344)." };
+    }
+    if (password && password.length < 6) {
+      return { success: false, message: "Password must be at least 6 characters long." };
+    }
+
+    // Check existing
+    const exists = [...DEMO_CUSTOMERS, ...registeredCustomers].some(
+      (c) => c.phone === cleanPhone || (email && c.email && c.email.toLowerCase() === email.trim().toLowerCase())
+    );
+    if (exists) {
+      return { success: false, message: "An account with this phone or email already exists. Please Sign In." };
+    }
+
     const newUser: CustomerUser = {
       id: `cust-${Date.now()}`,
       name: name.trim(),
-      phone: phone.trim(),
-      email: email?.trim(),
+      phone: cleanPhone,
+      email: email?.trim() || undefined,
+      password: password || undefined,
       role: "CUSTOMER",
       loyaltyTier: "Bronze",
-      loyaltyPoints: 0,
+      loyaltyPoints: 100, // Welcome reward bonus
       joinedDate: new Date().toISOString().split("T")[0],
-      notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
+      notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: true },
       savedAddresses: [],
     };
+
+    setRegisteredCustomers((prev) => {
+      const updated = [newUser, ...prev];
+      try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
     setCurrentUser(newUser);
-    showToast(language === 'bn' ? `স্বাগতম, ${newUser.name}!` : `Account created! Welcome, ${newUser.name}`);
+    try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
+    showToast(
+      language === 'bn'
+        ? `অভিনন্দন ${newUser.name}! অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে এবং ১০০ লয়্যালটি পয়েন্ট পেয়েছেন!`
+        : `Welcome to Bengal Edition, ${newUser.name}! +100 bonus loyalty points added!`
+    );
+    setNavigation({ path: "/customer" });
     return { success: true, message: "Registered" };
   };
 
   const logoutCustomer = () => {
     setCurrentUser(null);
-    localStorage.removeItem("be_current_user");
+    try {
+      localStorage.removeItem("be_current_user");
+    } catch { /* ignore */ }
     showToast(language === 'bn' ? "লগ আউট সফল" : "Signed out successfully", "info");
+    setNavigation({ path: "/login" });
   };
 
   const switchDemoCustomer = (customerId: string) => {
@@ -796,6 +948,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         latestOrderId,
         customers,
         toggleBlockCustomer,
+        isAdminAuthenticated,
+        adminUser: isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null,
+        loginAdmin,
+        logoutAdmin,
         currentUser,
         demoCustomers: DEMO_CUSTOMERS,
         loginCustomer,

@@ -20,7 +20,8 @@ import {
   Sparkles,
   ShieldCheck,
   Clock,
-  CircleDot
+  CircleDot,
+  LogOut
 } from "lucide-react";
 import { AdminProducts } from "./AdminProducts";
 import { AdminOrders } from "./AdminOrders";
@@ -35,11 +36,44 @@ export const AdminDashboard: React.FC = () => {
     formatPrice, 
     navigate, 
     setIsArchitectureModalOpen, 
-    setIsSeoModalOpen 
+    setIsSeoModalOpen,
+    isAdminAuthenticated,
+    logoutAdmin,
   } = useStore();
-  
+
   const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "coupons" | "settings">("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // If not authenticated as Admin, prompt to login
+  if (!isAdminAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center p-4 text-white">
+        <div className="w-full max-w-md bg-gray-900 border border-gray-800 rounded-2xl p-8 text-center shadow-2xl space-y-4">
+          <div className="w-12 h-12 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 flex items-center justify-center mx-auto">
+            <ShieldCheck className="w-6 h-6" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Admin Access Restricted</h2>
+            <p className="text-xs text-gray-400 mt-1">
+              Please sign in with your Shop Admin credentials to access the Atelier Management suite.
+            </p>
+          </div>
+          <button
+            onClick={() => navigate("/login?tab=admin")}
+            className="w-full py-3 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-gray-950 font-bold rounded-xl text-sm transition-all shadow-lg"
+          >
+            Go to Shop Admin Login
+          </button>
+          <button
+            onClick={() => navigate("/")}
+            className="text-xs text-gray-400 hover:text-white transition-colors"
+          >
+            ← Return to Storefront
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   // Analytics Metrics
   const totalRevenueBDT = orders.reduce((sum, o) => sum + (o.paymentStatus === "PAID" ? o.totalBDT : 0), 0);
@@ -232,14 +266,23 @@ export const AdminDashboard: React.FC = () => {
             <ExternalLink className="w-3.5 h-3.5" />
           </button>
 
-          <div className="flex items-center gap-3 pt-2">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-yellow-400/40 flex items-center justify-center font-bold text-xs text-yellow-300">
-              BA
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-gray-800/80">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-yellow-400 to-amber-500 border border-yellow-400/40 flex items-center justify-center font-bold text-xs text-gray-950">
+                GR
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold text-white truncate">Golam Rabbani</p>
+                <p className="text-[10px] text-yellow-300/80 truncate font-mono">mk.rabbani.cse@gmail.com</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-medium text-white truncate">Administrator</p>
-              <p className="text-[10px] text-gray-400 truncate font-mono">admin@bengalarchive.bd</p>
-            </div>
+            <button
+              onClick={logoutAdmin}
+              className="p-1.5 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors shrink-0"
+              title="Sign Out from Admin Dashboard"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </aside>
@@ -301,10 +344,20 @@ export const AdminDashboard: React.FC = () => {
             {/* Storefront Button */}
             <button
               onClick={() => navigate("/")}
-              className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition-colors shadow-xs"
+              className="flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors shadow-xs"
             >
               <ExternalLink className="w-3.5 h-3.5 text-yellow-400" />
               <span className="hidden sm:inline">Storefront</span>
+            </button>
+
+            {/* Logout Button */}
+            <button
+              onClick={logoutAdmin}
+              className="flex items-center gap-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold px-3 py-2 rounded-lg transition-colors"
+              title="Sign Out from Admin"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-600" />
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
         </header>

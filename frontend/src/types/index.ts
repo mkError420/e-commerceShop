@@ -168,6 +168,7 @@ export interface CustomerUser {
   name: string;
   phone: string;
   email?: string;
+  password?: string;
   avatar?: string;
   gender?: 'male' | 'female' | 'other';
   birthday?: string;

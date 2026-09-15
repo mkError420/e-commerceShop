@@ -97,29 +97,70 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 bg-white border-b border-[#E0E0E0] select-none">
       {/* 1. Editorial Top Bar */}
       <div className="bg-[#1A1A1A] text-[#F5F5F5] text-xs py-1.5 px-3 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto flex items-center justify-end">
-          {/* Language Switcher */}
-          <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
+          {/* Announcement */}
+          <div className="text-[11px] text-white/70 hidden md:flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>{t("Express Handloom Delivery Across All 64 Districts of Bangladesh", "৬৪ জেলায় দ্রুততম হ্যান্ডলুম ডেলিভারি ও সহজ রিটার্ন")}</span>
+          </div>
+
+          <div className="flex items-center gap-3.5 ml-auto">
+            {/* Customer Account / Sign In shortcut */}
+            {currentUser ? (
+              <button
+                onClick={() => navigate("/customer")}
+                className="text-[11px] text-white/80 hover:text-white flex items-center gap-1.5 transition-colors"
+              >
+                <User className="w-3 h-3 text-yellow-400" />
+                <span className="font-semibold truncate max-w-[120px]">{currentUser.name.split(" ")[0]}</span>
+                <span className="text-[9px] bg-yellow-400/20 text-yellow-300 px-1.5 py-0.2 rounded font-mono">
+                  {currentUser.loyaltyTier}
+                </span>
+              </button>
+            ) : (
+              <button
+                onClick={() => navigate("/login")}
+                className="text-[11px] text-white/80 hover:text-white flex items-center gap-1 transition-colors"
+              >
+                <User className="w-3 h-3 text-yellow-400" />
+                <span>{t("Sign In / Register", "লগ ইন / সাইন আপ")}</span>
+              </button>
+            )}
+
+            <span className="text-white/20 hidden sm:inline">|</span>
+
+            {/* Admin Portal Shortcut */}
             <button
-              onClick={() => setLanguage("en")}
-              className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${language === "en"
-                ? "bg-white text-[#1A1A1A] font-bold"
-                : "text-[#CCCCCC] hover:text-white"
-                }`}
-              aria-label="Switch to English"
+              onClick={() => navigate("/login?tab=admin")}
+              className="text-[11px] text-white/60 hover:text-yellow-300 flex items-center gap-1 transition-colors hidden sm:flex"
             >
-              EN
+              <ShieldCheck className="w-3 h-3" />
+              <span>{t("Admin Portal", "অ্যাডমিন")}</span>
             </button>
-            <button
-              onClick={() => setLanguage("bn")}
-              className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${language === "bn"
-                ? "bg-white text-[#1A1A1A] font-bold"
-                : "text-[#CCCCCC] hover:text-white"
-                }`}
-              aria-label="Switch to Bengali"
-            >
-              বাং
-            </button>
+
+            {/* Language Switcher */}
+            <div className="flex items-center bg-[#2A2A2A] rounded p-0.5 border border-[#444444]">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${language === "en"
+                  ? "bg-white text-[#1A1A1A] font-bold"
+                  : "text-[#CCCCCC] hover:text-white"
+                  }`}
+                aria-label="Switch to English"
+              >
+                EN
+              </button>
+              <button
+                onClick={() => setLanguage("bn")}
+                className={`px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-[11px] font-medium rounded transition-colors ${language === "bn"
+                  ? "bg-white text-[#1A1A1A] font-bold"
+                  : "text-[#CCCCCC] hover:text-white"
+                  }`}
+                aria-label="Switch to Bengali"
+              >
+                বাং
+              </button>
+            </div>
           </div>
         </div>
       </div>
