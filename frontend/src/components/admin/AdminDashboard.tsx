@@ -22,9 +22,11 @@ import {
   Clock,
   CircleDot,
   LogOut,
-  Users
+  Users,
+  FolderTree
 } from "lucide-react";
 import { AdminProducts } from "./AdminProducts";
+import { AdminCategories } from "./AdminCategories";
 import { AdminOrders } from "./AdminOrders";
 import { AdminCustomers } from "./AdminCustomers";
 import { AdminCoupons } from "./AdminCoupons";
@@ -34,6 +36,7 @@ export const AdminDashboard: React.FC = () => {
   const { 
     orders, 
     products, 
+    categories,
     coupons, 
     customers,
     formatPrice, 
@@ -46,7 +49,7 @@ export const AdminDashboard: React.FC = () => {
     logoutCustomer,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "orders" | "customers" | "coupons" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "categories" | "orders" | "customers" | "coupons" | "settings">("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // If not authenticated as Admin, prompt to login or redirect customer
@@ -139,6 +142,12 @@ export const AdminDashboard: React.FC = () => {
       badge: lowStockProducts.length > 0 ? { count: lowStockProducts.length, alert: true } : null,
     },
     {
+      id: "categories" as const,
+      label: "Categories & Taxonomy",
+      icon: FolderTree,
+      badge: { count: categories.length, alert: false },
+    },
+    {
       id: "orders" as const,
       label: "Orders & Fulfillment",
       icon: ShoppingCart,
@@ -168,6 +177,7 @@ export const AdminDashboard: React.FC = () => {
     switch (activeTab) {
       case "overview": return "Executive Overview";
       case "products": return "Product Catalog & Stock";
+      case "categories": return "Category & Sub-Category Catalog";
       case "orders": return "Orders & Courier Logistics";
       case "customers": return "Customer Directory & Accounts";
       case "coupons": return "Marketing Vouchers";
@@ -772,6 +782,7 @@ export const AdminDashboard: React.FC = () => {
           )}
 
           {activeTab === "products" && <AdminProducts />}
+          {activeTab === "categories" && <AdminCategories />}
           {activeTab === "orders" && <AdminOrders />}
           {activeTab === "customers" && <AdminCustomers />}
           {activeTab === "coupons" && <AdminCoupons />}

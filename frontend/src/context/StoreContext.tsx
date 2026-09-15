@@ -16,6 +16,7 @@ import {
 import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
 import { authService } from "../services/authService";
+import { categoryService } from "../services/categoryService";
 
 // Pre-seeded Bangladeshi demo customer profiles
 const DEMO_CUSTOMERS: CustomerUser[] = [
@@ -276,9 +277,13 @@ interface StoreContextType {
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
-  addCategory: (category: Category) => void;
-  updateCategory: (category: Category) => void;
-  deleteCategory: (id: string) => void;
+  refreshCategories: () => Promise<void>;
+  addCategory: (category: Category) => Promise<void>;
+  updateCategory: (category: Category) => Promise<void>;
+  deleteCategory: (id: string) => Promise<void>;
+  addSubcategory: (categoryId: string, subcategory: Category) => Promise<void>;
+  updateSubcategory: (categoryId: string, subcategory: Category) => Promise<void>;
+  deleteSubcategory: (categoryId: string, subId: string) => Promise<void>;
 
   // Cart
   cart: CartItem[];
@@ -375,7 +380,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [language, setLanguage] = useState<Language>("en");
   
   const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
-  const [categories, setCategories] = useState<Category[]>(CATEGORIES_DATA);
+  const [categories, setCategories] = useState<Category[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_categories");
+      if (stored) return JSON.parse(stored) as Category[];
+    } catch { /* ignore */ }
+    return CATEGORIES_DATA;
+  });
   const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try {
@@ -1111,9 +1122,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Synchronize customers from MongoDB Atlas on application startup
+  // Synchronize customers and categories from MongoDB Atlas on application startup
   useEffect(() => {
     refreshCustomers();
+    refreshCategories();
   }, []);
 
   const logoutCustomer = () => {
@@ -1219,19 +1231,171 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     showToast("Product removed", "info");
   };
 
-  const addCategory = (category: Category) => {
-    setCategories((prev) => [...prev, category]);
-    showToast("New category added");
+  // Category CRUD with Backend API & Database synchronization
+  const refreshCategories = async (): Promise<void> => {
+    try {
+      const res = await categoryService.getCategories();
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setCategories(res.data);
+        try { localStorage.setItem("be_categories", JSON.stringify(res.data)); } catch { /* ignore */ }
+      }
+    } catch (err: any) {
+      console.warn("[Categories] Database sync error, using cached categories:", err?.message);
+    }
   };
 
-  const updateCategory = (updated: Category) => {
-    setCategories((prev) => prev.map((c) => c.id === updated.id ? updated : c));
-    showToast("Category updated");
+  const addCategory = async (category: Category) => {
+    setCategories((prev) => {
+      const updated = [category, ...prev.filter((c) => c.id !== category.id && c.slug !== category.slug)];
+      try { localStorage.setItem("be_categories", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    try {
+      await categoryService.createCategory({
+        nameEn: category.nameEn,
+        nameBn: category.nameBn,
+        slug: category.slug,
+        descriptionEn: category.descriptionEn,
+        descriptionBn: category.descriptionBn,
+        image: category.image,
+        isFeatured: category.isFeatured,
+      });
+      showToast(language === 'bn' ? "নতুন ক্যাটাগরি ডেটাবেজে সংরক্ষিত হয়েছে" : "New category saved to database!");
+    } catch (err: any) {
+      console.warn("[Categories] Failed to sync new category to backend API:", err?.message);
+      showToast(language === 'bn' ? "ক্যাটাগরি লোকাল স্টোরেজে যুক্ত হয়েছে" : "Category added locally");
+    }
   };
 
-  const deleteCategory = (id: string) => {
-    setCategories((prev) => prev.filter((c) => c.id !== id));
-    showToast("Category deleted", "info");
+  const updateCategory = async (updated: Category) => {
+    setCategories((prev) => {
+      const list = prev.map((c) => (c.id === updated.id || c.slug === updated.slug ? updated : c));
+      try { localStorage.setItem("be_categories", JSON.stringify(list)); } catch { /* ignore */ }
+      return list;
+    });
+
+    try {
+      await categoryService.updateCategory(updated.id || updated.slug, {
+        nameEn: updated.nameEn,
+        nameBn: updated.nameBn,
+        slug: updated.slug,
+        descriptionEn: updated.descriptionEn,
+        descriptionBn: updated.descriptionBn,
+        image: updated.image,
+        isFeatured: updated.isFeatured,
+      });
+      showToast(language === 'bn' ? "ক্যাটাগরি ডেটাবেজে আপডেট হয়েছে" : "Category updated in database!");
+    } catch (err: any) {
+      console.warn("[Categories] Failed to update category on backend:", err?.message);
+      showToast(language === 'bn' ? "ক্যাটাগরি আপডেট হয়েছে" : "Category updated");
+    }
+  };
+
+  const deleteCategory = async (id: string) => {
+    setCategories((prev) => {
+      const list = prev.filter((c) => c.id !== id && c.slug !== id);
+      try { localStorage.setItem("be_categories", JSON.stringify(list)); } catch { /* ignore */ }
+      return list;
+    });
+
+    try {
+      await categoryService.deleteCategory(id);
+      showToast(language === 'bn' ? "ক্যাটাগরি ডেটাবেজ থেকে মুছে ফেলা হয়েছে" : "Category removed from database", "info");
+    } catch (err: any) {
+      console.warn("[Categories] Failed to delete category on backend:", err?.message);
+      showToast(language === 'bn' ? "ক্যাটাগরি মুছে ফেলা হয়েছে" : "Category deleted", "info");
+    }
+  };
+
+  const addSubcategory = async (categoryId: string, subcategory: Category) => {
+    setCategories((prev) => {
+      const list = prev.map((cat) => {
+        if (cat.id === categoryId || cat.slug === categoryId) {
+          const subs = cat.subcategories || [];
+          return {
+            ...cat,
+            subcategories: [...subs.filter((s) => s.id !== subcategory.id && s.slug !== subcategory.slug), subcategory],
+          };
+        }
+        return cat;
+      });
+      try { localStorage.setItem("be_categories", JSON.stringify(list)); } catch { /* ignore */ }
+      return list;
+    });
+
+    try {
+      await categoryService.createSubcategory(categoryId, {
+        nameEn: subcategory.nameEn,
+        nameBn: subcategory.nameBn,
+        slug: subcategory.slug,
+        descriptionEn: subcategory.descriptionEn,
+        descriptionBn: subcategory.descriptionBn,
+        image: subcategory.image,
+        isFeatured: subcategory.isFeatured,
+        parentSlug: categoryId,
+      });
+      showToast(language === 'bn' ? "সাব-ক্যাটাগরি ডেটাবেজে যুক্ত হয়েছে" : "Sub-category created in database!");
+    } catch (err: any) {
+      console.warn("[Categories] Failed to save subcategory to backend:", err?.message);
+      showToast(language === 'bn' ? "সাব-ক্যাটাগরি যুক্ত হয়েছে" : "Sub-category added locally");
+    }
+  };
+
+  const updateSubcategory = async (categoryId: string, subcategory: Category) => {
+    setCategories((prev) => {
+      const list = prev.map((cat) => {
+        if (cat.id === categoryId || cat.slug === categoryId) {
+          const subs = (cat.subcategories || []).map((s) =>
+            s.id === subcategory.id || s.slug === subcategory.slug ? subcategory : s
+          );
+          return { ...cat, subcategories: subs };
+        }
+        return cat;
+      });
+      try { localStorage.setItem("be_categories", JSON.stringify(list)); } catch { /* ignore */ }
+      return list;
+    });
+
+    try {
+      await categoryService.updateSubcategory(categoryId, subcategory.id || subcategory.slug, {
+        nameEn: subcategory.nameEn,
+        nameBn: subcategory.nameBn,
+        slug: subcategory.slug,
+        descriptionEn: subcategory.descriptionEn,
+        descriptionBn: subcategory.descriptionBn,
+        image: subcategory.image,
+        isFeatured: subcategory.isFeatured,
+      });
+      showToast(language === 'bn' ? "সাব-ক্যাটাগরি আপডেট হয়েছে" : "Sub-category updated in database!");
+    } catch (err: any) {
+      console.warn("[Categories] Failed to update subcategory on backend:", err?.message);
+      showToast(language === 'bn' ? "সাব-ক্যাটাগরি আপডেট হয়েছে" : "Sub-category updated");
+    }
+  };
+
+  const deleteSubcategory = async (categoryId: string, subId: string) => {
+    setCategories((prev) => {
+      const list = prev.map((cat) => {
+        if (cat.id === categoryId || cat.slug === categoryId) {
+          return {
+            ...cat,
+            subcategories: (cat.subcategories || []).filter((s) => s.id !== subId && s.slug !== subId),
+          };
+        }
+        return cat;
+      });
+      try { localStorage.setItem("be_categories", JSON.stringify(list)); } catch { /* ignore */ }
+      return list;
+    });
+
+    try {
+      await categoryService.deleteSubcategory(categoryId, subId);
+      showToast(language === 'bn' ? "সাব-ক্যাটাগরি মুছে ফেলা হয়েছে" : "Sub-category deleted", "info");
+    } catch (err: any) {
+      console.warn("[Categories] Failed to delete subcategory on backend:", err?.message);
+      showToast(language === 'bn' ? "সাব-ক্যাটাগরি মুছে ফেলা হয়েছে" : "Sub-category deleted", "info");
+    }
   };
 
   const toggleBlockCustomer = (customerId: string) => {
@@ -1273,9 +1437,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addProduct,
         updateProduct,
         deleteProduct,
+        refreshCategories,
         addCategory,
         updateCategory,
         deleteCategory,
+        addSubcategory,
+        updateSubcategory,
+        deleteSubcategory,
         cart,
         cartCount,
         cartSubtotalBDT,
