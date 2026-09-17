@@ -45,4 +45,22 @@ export const orderService = {
       body: JSON.stringify({ status, trackingNumber, paymentStatus }),
     });
   },
+
+  // Admin: Full update of order details (items, address, courier, notes)
+  async updateOrder(
+    orderId: string,
+    orderPayload: Partial<Order>
+  ): Promise<{ success: boolean; data: Order }> {
+    return apiClient<{ success: boolean; data: Order }>(`/orders/${orderId}`, {
+      method: "PUT",
+      body: JSON.stringify(orderPayload),
+    });
+  },
+
+  // Admin: Delete an order
+  async deleteOrder(orderId: string): Promise<{ success: boolean; message: string; orderId: string }> {
+    return apiClient<{ success: boolean; message: string; orderId: string }>(`/orders/${orderId}`, {
+      method: "DELETE",
+    });
+  },
 };

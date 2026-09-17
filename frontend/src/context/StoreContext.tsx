@@ -287,8 +287,11 @@ interface StoreContextType {
   orders: Order[];
   refreshOrders: () => Promise<void>;
   createOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt">) => Order;
+  createAdminOrder: (orderData: Partial<Order>) => Promise<Order | null>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   updateOrderPaymentStatus: (orderId: string, paymentStatus: PaymentStatus) => void;
+  updateOrderDetails: (orderId: string, data: Partial<Order>) => Promise<boolean>;
+  deleteOrder: (orderId: string) => Promise<boolean>;
   cancelCustomerOrder: (orderId: string, reason?: string) => void;
   reorderItems: (orderId: string) => void;
   latestOrderId: string | null;
@@ -717,6 +720,81 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.warn("[Orders] Backend payment status update notice:", err?.message);
     });
     showToast(`Payment status updated to ${paymentStatus}`);
+  };
+
+  const updateOrderDetails = async (orderId: string, data: Partial<Order>): Promise<boolean> => {
+    try {
+      setOrders((prev) =>
+        prev.map((ord) => (ord.id === orderId ? { ...ord, ...data } : ord))
+      );
+      const res = await orderService.updateOrder(orderId, data);
+      if (res.success && res.data) {
+        setOrders((prev) =>
+          prev.map((ord) => (ord.id === orderId ? { ...ord, ...res.data } : ord))
+        );
+      }
+      showToast("Order details updated successfully!");
+      return true;
+    } catch (err: any) {
+      console.warn("[Orders] Update error:", err?.message);
+      showToast(err?.message || "Failed to update order", "error");
+      return false;
+    }
+  };
+
+  const deleteOrder = async (orderId: string): Promise<boolean> => {
+    try {
+      setOrders((prev) => prev.filter((ord) => ord.id !== orderId));
+      await orderService.deleteOrder(orderId);
+      showToast("Order removed successfully!");
+      return true;
+    } catch (err: any) {
+      console.warn("[Orders] Delete error:", err?.message);
+      showToast(err?.message || "Failed to delete order", "error");
+      return false;
+    }
+  };
+
+  const createAdminOrder = async (orderData: Partial<Order>): Promise<Order | null> => {
+    try {
+      const res = await orderService.createOrder(orderData);
+      if (res.success && res.data) {
+        setOrders((prev) => [res.data, ...prev]);
+        showToast(`Manual Order #${res.data.id} created!`);
+        return res.data;
+      }
+      return null;
+    } catch (err: any) {
+      console.warn("[Orders] Create manual order notice:", err?.message);
+      const fallbackOrder: Order = {
+        id: `ord-${Date.now()}`,
+        orderNumber: `BD-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
+        customerName: orderData.customerName || "Walk-in Customer",
+        customerPhone: orderData.customerPhone || "01700000000",
+        customerEmail: orderData.customerEmail,
+        division: orderData.division || "Dhaka",
+        district: orderData.district || "Dhaka",
+        thana: orderData.thana || "",
+        streetLine: orderData.streetLine || "",
+        deliveryZone: orderData.deliveryZone || "INSIDE_DHAKA",
+        shippingFeeBDT: orderData.shippingFeeBDT ?? 70,
+        subtotalBDT: orderData.subtotalBDT ?? 0,
+        discountBDT: orderData.discountBDT ?? 0,
+        vatTaxBDT: 0,
+        totalBDT: orderData.totalBDT ?? 0,
+        status: orderData.status || "PENDING",
+        paymentGateway: orderData.paymentGateway || "CASH_ON_DELIVERY",
+        paymentStatus: orderData.paymentStatus || "PENDING",
+        courierName: orderData.courierName || "Steadfast Courier",
+        trackingId: orderData.trackingId || `ST-${Date.now().toString().slice(-6)}`,
+        items: orderData.items || [],
+        notes: orderData.notes,
+        createdAt: new Date().toISOString(),
+      };
+      setOrders((prev) => [fallbackOrder, ...prev]);
+      showToast(`Order #${fallbackOrder.id} created!`);
+      return fallbackOrder;
+    }
   };
 
   const cancelCustomerOrder = (orderId: string, _reason?: string) => {
@@ -1936,8 +2014,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         orders,
         refreshOrders,
         createOrder,
+        createAdminOrder,
         updateOrderStatus,
         updateOrderPaymentStatus,
+        updateOrderDetails,
+        deleteOrder,
         cancelCustomerOrder,
         reorderItems,
         latestOrderId,

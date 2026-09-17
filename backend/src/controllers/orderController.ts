@@ -390,4 +390,110 @@ export const orderController = {
       data: current,
     });
   },
+
+  // PUT /api/v1/orders/:id - Update order details (Admin)
+  async update(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const body = req.body;
+
+    const isObjectId = mongoose.Types.ObjectId.isValid(id);
+    const query: Record<string, any> = {
+      $or: [
+        { id },
+        { orderNumber: id },
+        ...(isObjectId ? [{ _id: id }] : []),
+      ],
+    };
+
+    let updatedDoc: any = null;
+    try {
+      if (isDatabaseConnected()) {
+        const updateData: Record<string, any> = {
+          ...body,
+          updatedAt: new Date(),
+        };
+        if (body.customerPhone) updateData.customerPhone = body.customerPhone;
+        if (body.phone) updateData.customerPhone = body.phone;
+        if (body.customerEmail) updateData.customerEmail = body.customerEmail;
+        if (body.email) updateData.customerEmail = body.email;
+        if (body.streetLine) updateData.streetLine = body.streetLine;
+        if (body.address) updateData.streetLine = body.address;
+
+        updatedDoc = await OrderModel.findOneAndUpdate(query, { $set: updateData }, { new: true }).lean();
+        if (updatedDoc) {
+          console.log(`✅ [MongoDB] Order updated in database: #${updatedDoc.orderNumber}`);
+        }
+      }
+    } catch (err: any) {
+      console.warn("[MongoDB] Order update notice:", err?.message);
+    }
+
+    // Update memory store
+    const memOrder = dbStore.orders.find((o) => o.id === id || o.orderNumber === id);
+    if (memOrder) {
+      if (body.customerName !== undefined) memOrder.customerName = body.customerName;
+      if (body.customerPhone !== undefined || body.phone !== undefined) memOrder.phone = body.customerPhone || body.phone;
+      if (body.customerEmail !== undefined || body.email !== undefined) memOrder.email = body.customerEmail || body.email;
+      if (body.division !== undefined) memOrder.division = body.division;
+      if (body.district !== undefined) memOrder.district = body.district;
+      if (body.thana !== undefined) memOrder.thana = body.thana;
+      if (body.streetLine !== undefined || body.address !== undefined) memOrder.address = body.streetLine || body.address;
+      if (body.courierName !== undefined || body.courier !== undefined) memOrder.courier = body.courierName || body.courier;
+      if (body.trackingId !== undefined || body.trackingNumber !== undefined) memOrder.trackingNumber = body.trackingId || body.trackingNumber;
+      if (body.status !== undefined) memOrder.status = body.status;
+      if (body.paymentStatus !== undefined) memOrder.paymentStatus = body.paymentStatus;
+      if (body.paymentGateway !== undefined || body.paymentMethod !== undefined) memOrder.paymentMethod = body.paymentGateway || body.paymentMethod;
+      if (body.shippingFeeBDT !== undefined) memOrder.shippingFee = body.shippingFeeBDT;
+      if (body.totalBDT !== undefined) memOrder.totalAmount = body.totalBDT;
+      if (body.subtotalBDT !== undefined) memOrder.subtotal = body.subtotalBDT;
+      if (body.items !== undefined) memOrder.items = body.items;
+      if (body.notes !== undefined) memOrder.notes = body.notes;
+    }
+
+    const current = updatedDoc ? formatOrderOutput(updatedDoc) : memOrder ? formatOrderOutput(memOrder) : { id, ...body };
+
+    res.json({
+      success: true,
+      message: "Order updated successfully",
+      data: current,
+    });
+  },
+
+  // DELETE /api/v1/orders/:id - Delete order (Admin)
+  async delete(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+
+    let deletedFromDb = false;
+    try {
+      if (isDatabaseConnected()) {
+        const isObjectId = mongoose.Types.ObjectId.isValid(id);
+        const query: Record<string, any> = {
+          $or: [
+            { id },
+            { orderNumber: id },
+            ...(isObjectId ? [{ _id: id }] : []),
+          ],
+        };
+        const result = await OrderModel.deleteOne(query);
+        if (result.deletedCount > 0) {
+          deletedFromDb = true;
+          console.log(`✅ [MongoDB] Order deleted from database: ${id}`);
+        }
+      }
+    } catch (err: any) {
+      console.warn("[MongoDB] Order delete notice:", err?.message);
+    }
+
+    // Delete from memory store
+    const idx = dbStore.orders.findIndex((o) => o.id === id || o.orderNumber === id);
+    if (idx !== -1) {
+      dbStore.orders.splice(idx, 1);
+    }
+
+    res.json({
+      success: true,
+      message: deletedFromDb ? "Order deleted from database" : "Order deleted successfully",
+      orderId: id,
+    });
+  },
 };

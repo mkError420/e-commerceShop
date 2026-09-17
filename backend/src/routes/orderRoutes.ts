@@ -22,5 +22,7 @@ router.get(
   orderController.getAll
 );
 router.patch("/:id/status", orderController.updateStatus);
+router.put("/:id", orderController.update);
+router.delete("/:id", orderController.delete);
 
 export default router;
