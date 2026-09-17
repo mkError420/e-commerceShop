@@ -17,6 +17,7 @@ import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
 import { authService } from "../services/authService";
 import { categoryService } from "../services/categoryService";
+import { productService } from "../services/productService";
 
 // Pre-seeded Bangladeshi demo customer profiles
 const DEMO_CUSTOMERS: CustomerUser[] = [
@@ -379,7 +380,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [currency, setCurrency] = useState<Currency>("BDT");
   const [language, setLanguage] = useState<Language>("en");
   
-  const [products, setProducts] = useState<Product[]>(MOCK_PRODUCTS);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_products");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Product[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return MOCK_PRODUCTS;
+  });
   const [categories, setCategories] = useState<Category[]>(() => {
     try {
       const stored = localStorage.getItem("be_categories");
@@ -1215,19 +1225,93 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const isWishlisted = (productId: string): boolean => wishlist.includes(productId);
 
-  // Product CRUD
+  // Product CRUD with Local Storage Persistence and Database Sync
   const addProduct = (product: Product) => {
-    setProducts((prev) => [product, ...prev]);
+    setProducts((prev) => {
+      const updated = [product, ...prev.filter((p) => p.id !== product.id)];
+      try {
+        localStorage.setItem("be_products", JSON.stringify(updated));
+      } catch (err) {
+        console.warn("[Products] LocalStorage save warning:", err);
+      }
+      return updated;
+    });
+
+    // Asynchronously synchronize with Backend API
+    productService
+      .createProduct({
+        id: product.id,
+        nameEn: product.nameEn,
+        nameBn: product.nameBn,
+        slug: product.slug,
+        sku: product.sku,
+        categorySlug: product.categorySlug,
+        categoryNameEn: product.categoryNameEn,
+        categoryNameBn: product.categoryNameBn,
+        subcategorySlug: product.subcategorySlug,
+        priceBDT: product.priceBDT,
+        compareAtPriceBDT: product.compareAtPriceBDT,
+        stockQuantity: product.stockQuantity,
+        images: product.images,
+        descriptionEn: product.descriptionEn,
+        descriptionBn: product.descriptionBn,
+        isFeatured: product.isFeatured,
+        isFlashDeal: product.isFlashDeal,
+      })
+      .catch((err) => {
+        console.warn("[Products] Backend database sync notice (saved in local store):", err?.message);
+      });
+
     showToast("New product created successfully");
   };
 
   const updateProduct = (updated: Product) => {
-    setProducts((prev) => prev.map((p) => p.id === updated.id ? updated : p));
+    setProducts((prev) => {
+      const updatedList = prev.map((p) => (p.id === updated.id ? updated : p));
+      try {
+        localStorage.setItem("be_products", JSON.stringify(updatedList));
+      } catch (err) {
+        console.warn("[Products] LocalStorage update warning:", err);
+      }
+      return updatedList;
+    });
+
+    productService
+      .updateProduct(updated.id, {
+        nameEn: updated.nameEn,
+        nameBn: updated.nameBn,
+        slug: updated.slug,
+        priceBDT: updated.priceBDT,
+        compareAtPriceBDT: updated.compareAtPriceBDT,
+        stockQuantity: updated.stockQuantity,
+        images: updated.images,
+        descriptionEn: updated.descriptionEn,
+        descriptionBn: updated.descriptionBn,
+        isFeatured: updated.isFeatured,
+        isFlashDeal: updated.isFlashDeal,
+      })
+      .catch((err) => {
+        console.warn("[Products] Backend database update notice (updated in local store):", err?.message);
+      });
+
     showToast("Product updated");
   };
 
   const deleteProduct = (id: string) => {
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    setProducts((prev) => {
+      const updatedList = prev.filter((p) => p.id !== id);
+      try {
+        localStorage.setItem("be_products", JSON.stringify(updatedList));
+      } catch (err) {
+        console.warn("[Products] LocalStorage delete warning:", err);
+      }
+      return updatedList;
+    });
+
+    productService.deleteProduct(id).catch((err) => {
+      console.warn("[Products] Backend database delete notice:", err?.message);
+    });
+
     showToast("Product removed", "info");
   };
 

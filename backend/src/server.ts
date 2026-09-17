@@ -4,9 +4,17 @@ import morgan from "morgan";
 import { ENV } from "./config/env";
 import { connectDatabase } from "./config/db";
 import apiRoutes from "./routes/index";
+import path from "path";
+import fs from "fs";
 import { notFoundHandler, errorHandler } from "./middleware/errorMiddleware";
 
 const app = express();
+
+// Ensure static uploads directory exists
+const uploadDir = path.resolve(process.cwd(), "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 // Middlewares
 app.use(
@@ -30,6 +38,9 @@ app.use(
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan(ENV.NODE_ENV === "development" ? "dev" : "combined"));
+
+// Serve static uploads
+app.use("/uploads", express.static(uploadDir));
 
 // Health Check
 app.get("/api/v1/health", (req, res) => {

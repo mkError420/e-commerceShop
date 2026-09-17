@@ -74,29 +74,34 @@ export const productController = {
   // POST /api/v1/products - Create product (Admin)
   async create(req: Request, res: Response): Promise<void> {
     const body = req.body;
-    if (!body.nameEn || !body.regularPrice || !body.category) {
-      res.status(400).json({ success: false, message: "nameEn, regularPrice, and category are required" });
+    const regularPrice = body.regularPrice ?? body.priceBDT;
+    const category = body.category ?? body.categorySlug;
+
+    if (!body.nameEn || !regularPrice || !category) {
+      res.status(400).json({ success: false, message: "nameEn, price (regularPrice/priceBDT), and category (category/categorySlug) are required" });
       return;
     }
 
     const slug = body.slug || body.nameEn.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const sku = body.sku || `SKU-${Date.now().toString(36).toUpperCase()}`;
+    const stock = Number(body.stock ?? body.stockQuantity ?? 10);
+    const salePrice = body.salePrice ?? body.compareAtPriceBDT ? Number(body.salePrice ?? body.compareAtPriceBDT) : undefined;
 
     const newProduct: StoredProduct = {
-      id: `prod-${Date.now()}`,
+      id: body.id || `prod-${Date.now()}`,
       nameEn: body.nameEn,
       nameBn: body.nameBn,
       slug,
       sku,
       descriptionEn: body.descriptionEn || "",
       descriptionBn: body.descriptionBn,
-      category: body.category,
-      subCategory: body.subCategory,
-      regularPrice: Number(body.regularPrice),
-      salePrice: body.salePrice ? Number(body.salePrice) : undefined,
-      stock: Number(body.stock || 10),
-      dhakaHubStock: Number(body.dhakaHubStock || Math.floor((body.stock || 10) * 0.6)),
-      chittagongHubStock: Number(body.chittagongHubStock || Math.floor((body.stock || 10) * 0.4)),
+      category,
+      subCategory: body.subCategory ?? body.subcategorySlug,
+      regularPrice: Number(regularPrice),
+      salePrice,
+      stock,
+      dhakaHubStock: Number(body.dhakaHubStock || Math.floor(stock * 0.6)),
+      chittagongHubStock: Number(body.chittagongHubStock || Math.floor(stock * 0.4)),
       images: body.images && body.images.length ? body.images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=900&auto=format&fit=crop"],
       sizes: body.sizes || ["Standard"],
       colors: body.colors || [{ name: "Standard", hex: "#1A1A1A" }],

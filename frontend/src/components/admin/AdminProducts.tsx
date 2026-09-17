@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useStore } from "../../context/StoreContext";
 import { Product } from "../../types";
+import { uploadService } from "../../services/uploadService";
 import {
   Plus,
   Trash2,
@@ -14,6 +15,10 @@ import {
   ArrowUpDown,
   Filter,
   ImageIcon,
+  UploadCloud,
+  Loader2,
+  CheckCircle2,
+  Link2,
 } from "lucide-react";
 
 /* ─── helpers ─── */
@@ -86,6 +91,57 @@ export const AdminProducts: React.FC = () => {
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
 
+  /* Image Upload State (Free Storage System) */
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadMode, setUploadMode] = useState<"file" | "url">("file");
+  const [dragActive, setDragActive] = useState(false);
+  const [storageInfo, setStorageInfo] = useState<string | null>(null);
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const res = await uploadService.uploadProductImage(file);
+      if (res.success && res.url) {
+        setForm((prev) => ({ ...prev, imageUrl: res.url }));
+        setStorageInfo(
+          res.storage === "IMAGEKIT_FREE_CDN"
+            ? "ImageKit Cloud CDN"
+            : res.storage === "CLOUDINARY_FREE_CDN"
+            ? "Cloudinary Free CDN"
+            : res.storage === "LOCAL_SERVER_STORAGE"
+            ? "Free Server Storage (/uploads)"
+            : "Offline Image Store"
+        );
+        showToast("Image uploaded & saved properly!");
+      }
+    } catch (err: any) {
+      showToast(err?.message || "Failed to upload image", "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
   /* derived */
   const lowStockCount = products.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert).length;
   const outOfStockCount = products.filter((p) => p.stockQuantity === 0).length;
@@ -123,11 +179,15 @@ export const AdminProducts: React.FC = () => {
   const openAdd = () => {
     setForm({ ...EMPTY_FORM, categorySlug: categories[0]?.slug ?? "" });
     setEditingProduct(null);
+    setStorageInfo(null);
+    setIsUploading(false);
+    setUploadMode("file");
     setIsModalOpen(true);
   };
 
   /* open edit */
   const openEdit = (p: Product) => {
+    const firstImg = p.images[0] ?? "";
     setForm({
       nameEn: p.nameEn,
       nameBn: p.nameBn,
@@ -142,12 +202,25 @@ export const AdminProducts: React.FC = () => {
       lowStockAlert: p.lowStockAlert,
       fabricType: p.fabricType,
       craftsmanship: p.craftsmanship,
-      imageUrl: p.images[0] ?? "",
+      imageUrl: firstImg,
       isFeatured: p.isFeatured,
       isFlashDeal: p.isFlashDeal,
       tags: p.tags.join(", "),
     });
     setEditingProduct(p);
+    setStorageInfo(
+      firstImg.includes("imagekit.io")
+        ? "ImageKit Cloud CDN"
+        : firstImg.includes("/uploads/")
+        ? "Free Server Storage"
+        : firstImg.includes("cloudinary")
+        ? "Cloudinary Free CDN"
+        : firstImg.startsWith("data:image")
+        ? "Direct Offline Image"
+        : "External Image URL"
+    );
+    setIsUploading(false);
+    setUploadMode(firstImg.startsWith("http") && !firstImg.includes("/uploads/") && !firstImg.includes("cloudinary") && !firstImg.includes("imagekit.io") ? "url" : "file");
     setIsModalOpen(true);
   };
 
@@ -586,24 +659,163 @@ export const AdminProducts: React.FC = () => {
                     <FieldLabel>Craftsmanship Note</FieldLabel>
                     <FInput value={form.craftsmanship} onChange={(e) => setForm({ ...form, craftsmanship: e.target.value })} placeholder="Woven in Narayanganj" />
                   </div>
-                  <div className="sm:col-span-2">
-                    <FieldLabel>Product Image URL</FieldLabel>
-                    <FInput
-                      type="url"
-                      value={form.imageUrl}
-                      onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-                      placeholder="https://images.unsplash.com/…"
-                      className="font-mono text-[11px]"
+                  <div className="sm:col-span-2 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <FieldLabel required>Product Image</FieldLabel>
+                      <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg text-[11px]">
+                        <button
+                          type="button"
+                          onClick={() => setUploadMode("file")}
+                          className={`px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1.5 ${
+                            uploadMode === "file"
+                              ? "bg-white text-gray-900 shadow-xs font-semibold"
+                              : "text-gray-500 hover:text-gray-900"
+                          }`}
+                        >
+                          <UploadCloud className="w-3 h-3 text-yellow-600" />
+                          Upload File (Free)
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setUploadMode("url")}
+                          className={`px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1.5 ${
+                            uploadMode === "url"
+                              ? "bg-white text-gray-900 shadow-xs font-semibold"
+                              : "text-gray-500 hover:text-gray-900"
+                          }`}
+                        >
+                          <Link2 className="w-3 h-3 text-blue-500" />
+                          Paste URL
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Hidden Native File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          handleFileUpload(e.target.files[0]);
+                          e.target.value = ""; // reset
+                        }
+                      }}
                     />
-                    {form.imageUrl && (
-                      <div className="mt-2 flex items-center gap-3">
-                        <img
-                          src={form.imageUrl}
-                          alt="preview"
-                          className="w-14 h-18 object-cover rounded-lg border border-gray-200"
-                          onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+
+                    {uploadMode === "file" ? (
+                      <div>
+                        {form.imageUrl ? (
+                          <div className="relative flex items-center gap-4 p-3 bg-emerald-50/50 border border-emerald-200 rounded-xl">
+                            <img
+                              src={form.imageUrl}
+                              alt="Product preview"
+                              className="w-20 h-24 object-cover rounded-lg border border-emerald-300 shadow-xs bg-white shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop";
+                              }}
+                            />
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                              <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                <span>Image Saved &amp; Ready</span>
+                              </div>
+                              <p className="text-[11px] text-gray-500 truncate font-mono">
+                                {form.imageUrl.startsWith("data:") ? "Offline Embedded Image (Data URL)" : form.imageUrl}
+                              </p>
+                              {storageInfo && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                  ⚡ {storageInfo}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-2 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => fileInputRef.current?.click()}
+                                  disabled={isUploading}
+                                  className="text-xs font-semibold text-gray-700 hover:text-gray-900 underline flex items-center gap-1"
+                                >
+                                  {isUploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <UploadCloud className="w-3 h-3" />}
+                                  Replace Image
+                                </button>
+                                <span className="text-gray-300">·</span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setForm((prev) => ({ ...prev, imageUrl: "" }));
+                                    setStorageInfo(null);
+                                  }}
+                                  className="text-xs font-semibold text-rose-600 hover:text-rose-700"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ) : (
+                          <div
+                            onDragEnter={handleDrag}
+                            onDragLeave={handleDrag}
+                            onDragOver={handleDrag}
+                            onDrop={handleDrop}
+                            onClick={() => fileInputRef.current?.click()}
+                            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
+                              dragActive
+                                ? "border-yellow-500 bg-yellow-50/50"
+                                : "border-gray-200 hover:border-yellow-400 bg-gray-50 hover:bg-yellow-50/20"
+                            }`}
+                          >
+                            {isUploading ? (
+                              <div className="py-2 flex flex-col items-center justify-center space-y-2">
+                                <Loader2 className="w-8 h-8 text-yellow-500 animate-spin" />
+                                <div className="text-xs font-bold text-gray-700">Uploading &amp; saving image...</div>
+                                <div className="text-[11px] text-gray-400">Storing to free local / CDN storage</div>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center mx-auto text-yellow-600">
+                                  <UploadCloud className="w-5 h-5" />
+                                </div>
+                                <div className="text-xs font-semibold text-gray-800">
+                                  <span className="text-yellow-600 font-bold hover:underline">Click to upload</span> or drag and drop image
+                                </div>
+                                <p className="text-[11px] text-gray-400">
+                                  PNG, JPG, WebP, GIF up to 10MB · 100% Free Storage
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <FInput
+                          type="url"
+                          value={form.imageUrl}
+                          onChange={(e) => {
+                            setForm({ ...form, imageUrl: e.target.value });
+                            setStorageInfo("External Web URL");
+                          }}
+                          placeholder="https://images.unsplash.com/…"
+                          className="font-mono text-[11px]"
                         />
-                        <span className="text-[11px] text-gray-400">Image preview</span>
+                        {form.imageUrl && (
+                          <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                            <img
+                              src={form.imageUrl}
+                              alt="preview"
+                              className="w-12 h-14 object-cover rounded-lg border border-gray-200"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = "none";
+                              }}
+                            />
+                            <div className="text-[11px] text-gray-500">
+                              External image URL linked
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

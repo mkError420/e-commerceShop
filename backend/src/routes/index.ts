@@ -7,6 +7,7 @@ import paymentRoutes from "./paymentRoutes";
 import couponRoutes from "./couponRoutes";
 import locationRoutes from "./locationRoutes";
 import analyticsRoutes from "./analyticsRoutes";
+import uploadRoutes from "./uploadRoutes";
 
 const router = Router();
 
@@ -18,5 +19,6 @@ router.use("/payments", paymentRoutes);
 router.use("/coupons", couponRoutes);
 router.use("/locations", locationRoutes);
 router.use("/analytics", analyticsRoutes);
+router.use("/upload", uploadRoutes);
 
 export default router;

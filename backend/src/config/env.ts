@@ -7,10 +7,26 @@ dotenv.config({ path: path.resolve(process.cwd(), "backend/.env") });
 
 export const ENV = {
   PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
+  SERVER_URL: process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5000}`,
   NODE_ENV: process.env.NODE_ENV || "development",
   CLIENT_URL: process.env.CLIENT_URL || "http://localhost:3000",
   JWT_SECRET: process.env.JWT_SECRET || "default_jwt_secret_shorobor_bd_2026",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
+
+  // Free Cloud Image CDN (ImageKit.io - 20GB Free Tier)
+  IMAGEKIT: {
+    PUBLIC_KEY: process.env.IMAGEKIT_PUBLIC_KEY || "",
+    PRIVATE_KEY: process.env.IMAGEKIT_PRIVATE_KEY || "",
+    URL_ENDPOINT: process.env.IMAGEKIT_URL_ENDPOINT || "",
+  },
+
+  // Free Cloud Image CDN (Cloudinary - Optional)
+  CLOUDINARY: {
+    CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || "",
+    API_KEY: process.env.CLOUDINARY_API_KEY || "",
+    API_SECRET: process.env.CLOUDINARY_API_SECRET || "",
+    UPLOAD_PRESET: process.env.CLOUDINARY_UPLOAD_PRESET || "",
+  },
   
   // MongoDB Database Configuration
   MONGODB_URI:
