@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
+import mongoose from "mongoose";
 import { CustomerModel, IAddress } from "../models/Customer";
+import { UserModel } from "../models/User";
+import { dbStore, StoredUser } from "../config/inMemoryStore";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 
 // ─── Helper: Safe customer profile (strips sensitive fields) ─────────────────
@@ -338,7 +341,7 @@ export const customerController = {
     try {
       const { id } = req.params;
       const isHex24ObjectId = mongoose.Types.ObjectId.isValid(id) && /^[0-9a-fA-F]{24}$/.test(id);
-      
+
       let deleted = null;
       try {
         if (isHex24ObjectId) {
@@ -361,7 +364,7 @@ export const customerController = {
             $or: [{ id }, { phone: id }, { email: id }],
           });
         }
-      } catch {}
+      } catch { }
 
       // Clean up in-memory store
       const idx = dbStore.users.findIndex((u) => u && (u.id === id || u.phone === id));
