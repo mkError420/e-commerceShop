@@ -1,6 +1,7 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef } from "react";
 import { useStore } from "../../context/StoreContext";
 import { HeroBanner } from "../../types";
+import { uploadService } from "../../services/uploadService";
 import {
   Sparkles,
   Plus,
@@ -23,7 +24,11 @@ import {
   Play,
   Flame,
   Tag,
-  Check
+  Check,
+  UploadCloud,
+  Loader2,
+  Cloud,
+  Link2,
 } from "lucide-react";
 
 const CURATED_BANNER_PRESETS = [
@@ -53,6 +58,340 @@ const CURATED_BANNER_PRESETS = [
     tag: "Handcrafted Leather",
   },
 ];
+
+interface ImageKitBannerUploaderProps {
+  currentUrl: string;
+  onChange: (url: string) => void;
+  onTagSuggest?: (tag: string) => void;
+}
+
+const ImageKitBannerUploader: React.FC<ImageKitBannerUploaderProps> = ({
+  currentUrl,
+  onChange,
+  onTagSuggest,
+}) => {
+  const [tab, setTab] = useState<"file" | "url" | "presets">("file");
+  const [isUploading, setIsUploading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const [inputUrl, setInputUrl] = useState("");
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const isImageKit = currentUrl && currentUrl.includes("ik.imagekit.io");
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    setIsUploading(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+    try {
+      const res = await uploadService.uploadBannerImage(file);
+      if (res.success && res.url) {
+        onChange(res.url);
+        setStatusMessage("✅ Banner image uploaded & saved to ImageKit.io CDN!");
+      } else {
+        setErrorMessage("Upload failed, please try again.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to upload banner to ImageKit.io");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileUpload(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleImportUrl = async () => {
+    if (!inputUrl || !inputUrl.startsWith("http")) {
+      setErrorMessage("Please enter a valid HTTP/HTTPS image URL");
+      return;
+    }
+    setIsUploading(true);
+    setErrorMessage(null);
+    setStatusMessage(null);
+    try {
+      const res = await uploadService.uploadBannerImageUrl(inputUrl);
+      if (res.success && res.url) {
+        onChange(res.url);
+        setStatusMessage("✅ External image saved & hosted on ImageKit.io CDN!");
+        setInputUrl("");
+      } else {
+        setErrorMessage("Failed to import image.");
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Failed to save image to ImageKit.io");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 bg-gray-50/90 p-4 rounded-xl border border-gray-200 shadow-xs">
+      <div className="flex items-center justify-between">
+        <label className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
+          <ImageIcon className="w-3.5 h-3.5 text-yellow-500" />
+          <span>Hero Banner Image</span>
+          <span className="text-rose-500">*</span>
+        </label>
+        {isImageKit ? (
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-emerald-100/90 border border-emerald-300 px-2.5 py-0.5 rounded-full shadow-xs">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            ImageKit.io CDN Saved
+          </span>
+        ) : currentUrl ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 bg-amber-100/80 border border-amber-300 px-2 py-0.5 rounded-full">
+            <Cloud className="w-3 h-3 text-amber-600" />
+            Auto-saves to ImageKit.io
+          </span>
+        ) : null}
+      </div>
+
+      {/* Mode Switch Tabs */}
+      <div className="flex items-center gap-1 p-1 bg-gray-200/80 rounded-lg text-xs font-semibold">
+        <button
+          type="button"
+          onClick={() => {
+            setTab("file");
+            setStatusMessage(null);
+            setErrorMessage(null);
+          }}
+          className={`flex-1 py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            tab === "file" ? "bg-white text-gray-950 shadow-xs" : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          <UploadCloud className="w-3.5 h-3.5 text-yellow-600" />
+          <span>Device Upload</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab("url");
+            setStatusMessage(null);
+            setErrorMessage(null);
+          }}
+          className={`flex-1 py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            tab === "url" ? "bg-white text-gray-950 shadow-xs" : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          <Link2 className="w-3.5 h-3.5 text-blue-600" />
+          <span>Import Web URL</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setTab("presets");
+            setStatusMessage(null);
+            setErrorMessage(null);
+          }}
+          className={`flex-1 py-1.5 px-2 rounded-md transition-all flex items-center justify-center gap-1.5 ${
+            tab === "presets" ? "bg-white text-gray-950 shadow-xs" : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+          <span>ImageKit Presets</span>
+        </button>
+      </div>
+
+      {/* Tab 1: File Upload */}
+      {tab === "file" && (
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) {
+                handleFileUpload(e.target.files[0]);
+              }
+            }}
+          />
+          <div
+            onDragEnter={handleDrag}
+            onDragLeave={handleDrag}
+            onDragOver={handleDrag}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+              dragActive
+                ? "border-yellow-500 bg-yellow-50/70 scale-[0.99]"
+                : "border-gray-300 hover:border-yellow-400 bg-white"
+            }`}
+          >
+            {isUploading ? (
+              <div className="py-2.5 flex flex-col items-center justify-center gap-2">
+                <Loader2 className="w-6 h-6 text-yellow-600 animate-spin" />
+                <p className="text-xs font-bold text-gray-900">
+                  Uploading banner directly to ImageKit.io...
+                </p>
+                <p className="text-[10px] text-gray-500 font-mono">
+                  Target Cloud: ImageKit /banners folder
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center gap-1.5 py-1">
+                <div className="w-10 h-10 rounded-full bg-yellow-100/90 flex items-center justify-center text-yellow-800">
+                  <UploadCloud className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-gray-900">
+                    Click to browse or drag &amp; drop banner image
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">
+                    JPG, PNG, WebP up to 10MB · Automatically uploaded to ImageKit.io
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Tab 2: Import Web URL */}
+      {tab === "url" && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="url"
+              placeholder="https://images.unsplash.com/... or any image link"
+              value={inputUrl}
+              onChange={(e) => setInputUrl(e.target.value)}
+              className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+            />
+            <button
+              type="button"
+              disabled={isUploading || !inputUrl}
+              onClick={handleImportUrl}
+              className="px-3 py-2 bg-yellow-400 hover:bg-yellow-300 disabled:opacity-50 text-gray-950 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 shrink-0 shadow-xs"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Cloud className="w-3.5 h-3.5" />
+                  <span>Save to ImageKit</span>
+                </>
+              )}
+            </button>
+          </div>
+          <p className="text-[10px] text-gray-500">
+            Image will be mirrored and saved at ImageKit.io with high-speed CDN delivery.
+          </p>
+        </div>
+      )}
+
+      {/* Tab 3: Presets */}
+      {tab === "presets" && (
+        <div>
+          <p className="text-[11px] font-medium text-gray-600 mb-2">
+            Click to use pre-hosted Bangladeshi collection photos on ImageKit.io:
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {CURATED_BANNER_PRESETS.map((preset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => {
+                  onChange(preset.url);
+                  if (onTagSuggest) onTagSuggest(preset.tag);
+                  setStatusMessage(`Selected ${preset.name} (ImageKit.io Hosted)`);
+                }}
+                className={`text-left p-1.5 rounded-lg border transition-all flex items-center gap-2 ${
+                  currentUrl === preset.url
+                    ? "border-yellow-500 bg-yellow-50/80 ring-2 ring-yellow-400/40"
+                    : "border-gray-200 hover:border-yellow-300 bg-white"
+                }`}
+              >
+                <img
+                  src={preset.url}
+                  alt={preset.name}
+                  className="w-9 h-9 rounded-md object-cover shrink-0"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-bold text-gray-800 truncate">
+                    {preset.name}
+                  </p>
+                  <p className="text-[9px] text-yellow-700 font-medium truncate">
+                    {preset.tag}
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Status & Error Alerts */}
+      {statusMessage && (
+        <div className="flex items-center gap-1.5 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1.5 rounded-lg">
+          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+          <span className="font-medium">{statusMessage}</span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="flex items-center gap-1.5 text-xs text-rose-800 bg-rose-50 border border-rose-200 px-2.5 py-1.5 rounded-lg">
+          <AlertTriangle className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+          <span>{errorMessage}</span>
+        </div>
+      )}
+
+      {/* Live Preview Box with ImageKit Badge */}
+      {currentUrl && (
+        <div className="relative rounded-xl overflow-hidden border border-gray-300 bg-gray-950 group">
+          <img
+            src={currentUrl}
+            alt="Banner Preview"
+            className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
+          <div className="absolute top-2 left-2 flex items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded-full bg-black/70 backdrop-blur-xs text-[10px] font-mono text-yellow-400 font-bold border border-yellow-400/30">
+              Active Preview
+            </span>
+            {isImageKit ? (
+              <span className="px-2 py-0.5 rounded-full bg-emerald-950/80 backdrop-blur-xs text-[10px] font-bold text-emerald-300 border border-emerald-500/40 flex items-center gap-1">
+                <Check className="w-3 h-3 text-emerald-400" />
+                ImageKit.io
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-full bg-amber-950/80 backdrop-blur-xs text-[10px] font-bold text-amber-300 border border-amber-500/40 flex items-center gap-1">
+                <Cloud className="w-3 h-3 text-amber-400" />
+                Will save to ImageKit
+              </span>
+            )}
+          </div>
+          <div className="absolute bottom-2 left-3 right-3 text-white">
+            <p className="text-[10px] text-gray-300 font-mono truncate">
+              {currentUrl}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const AdminBanners: React.FC = () => {
   const {
@@ -729,48 +1068,14 @@ export const AdminBanners: React.FC = () => {
                 </div>
               </div>
 
-              {/* Image URL & Preset Selection */}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Background Image URL <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="url"
-                  required
-                  placeholder="https://ik.imagekit.io/... or your CDN banner image"
-                  value={bgImage}
-                  onChange={(e) => setBgImage(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-900 focus:outline-none focus:ring-2 focus:ring-yellow-400"
-                />
-
-                {/* Preset Chips */}
-                <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[10px] font-bold text-gray-400">Sample Presets:</span>
-                  {CURATED_BANNER_PRESETS.map((preset) => (
-                    <button
-                      key={preset.name}
-                      type="button"
-                      onClick={() => {
-                        setBgImage(preset.url);
-                        if (!tag || tag === "Featured Collection") setTag(preset.tag);
-                      }}
-                      className="text-[10px] bg-gray-100 hover:bg-yellow-200 text-gray-700 hover:text-gray-950 px-2 py-0.5 rounded-md font-medium transition-colors"
-                    >
-                      {preset.name}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Real-time preview */}
-                {bgImage && (
-                  <div className="mt-2.5 relative h-24 rounded-xl overflow-hidden border border-gray-300">
-                    <img src={bgImage} alt="Preview" className="w-full h-full object-cover" />
-                    <span className="absolute bottom-1 right-2 bg-black/70 text-white text-[9px] px-1.5 py-0.5 rounded">
-                      Image Loaded
-                    </span>
-                  </div>
-                )}
-              </div>
+              {/* ImageKit.io Cloud Upload & Preview */}
+              <ImageKitBannerUploader
+                currentUrl={bgImage}
+                onChange={(url) => setBgImage(url)}
+                onTagSuggest={(suggestedTag) => {
+                  if (!tag || tag === "Featured Collection") setTag(suggestedTag);
+                }}
+              />
 
               {/* Call-to-Action Buttons */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -972,23 +1277,14 @@ export const AdminBanners: React.FC = () => {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                  Background Image URL
-                </label>
-                <input
-                  type="url"
-                  required
-                  value={editBgImage}
-                  onChange={(e) => setEditBgImage(e.target.value)}
-                  className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-900"
-                />
-                {editBgImage && (
-                  <div className="mt-2 relative h-24 rounded-xl overflow-hidden border border-gray-300">
-                    <img src={editBgImage} alt="Preview" className="w-full h-full object-cover" />
-                  </div>
-                )}
-              </div>
+              {/* ImageKit.io Cloud Upload & Preview */}
+              <ImageKitBannerUploader
+                currentUrl={editBgImage}
+                onChange={(url) => setEditBgImage(url)}
+                onTagSuggest={(suggestedTag) => {
+                  if (!editTag || editTag === "Featured Collection") setEditTag(suggestedTag);
+                }}
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

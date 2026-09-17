@@ -21,10 +21,11 @@ export interface UploadResponse {
 
 export const uploadService = {
   /**
-   * Upload an image file to the free backend storage
+   * Upload an image file to ImageKit or free backend storage
    * @param file File object from file input or drag-and-drop
+   * @param folder Folder destination on ImageKit (e.g. "/products" or "/banners")
    */
-  async uploadProductImage(file: File): Promise<UploadResponse> {
+  async uploadImage(file: File, folder: string = "/products"): Promise<UploadResponse> {
     // Basic file validation
     if (!file.type.startsWith("image/")) {
       throw new Error("Please select a valid image file (JPG, PNG, WebP, etc.)");
@@ -37,6 +38,7 @@ export const uploadService = {
     try {
       const formData = new FormData();
       formData.append("image", file);
+      formData.append("folder", folder);
 
       const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
       const headers: Record<string, string> = {};
@@ -56,7 +58,7 @@ export const uploadService = {
           return {
             success: true,
             url: data.url,
-            storage: data.storage || "LOCAL_SERVER_STORAGE",
+            storage: data.storage || "IMAGEKIT_FREE_CDN",
           };
         }
       }
@@ -76,9 +78,23 @@ export const uploadService = {
   },
 
   /**
+   * Upload product image file
+   */
+  async uploadProductImage(file: File): Promise<UploadResponse> {
+    return this.uploadImage(file, "/products");
+  },
+
+  /**
+   * Upload banner hero image file to ImageKit.io /banners folder
+   */
+  async uploadBannerImage(file: File): Promise<UploadResponse> {
+    return this.uploadImage(file, "/banners");
+  },
+
+  /**
    * Import an image from a web URL and save it directly to ImageKit.io
    */
-  async uploadProductImageUrl(url: string): Promise<UploadResponse> {
+  async uploadImageUrl(url: string, folder: string = "/products"): Promise<UploadResponse> {
     const cleanUrl = url.trim();
     if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
       throw new Error("Please enter a valid image URL starting with http:// or https://");
@@ -96,7 +112,7 @@ export const uploadService = {
       const response = await fetch(`${API_BASE_URL}/upload`, {
         method: "POST",
         headers,
-        body: JSON.stringify({ url: cleanUrl }),
+        body: JSON.stringify({ url: cleanUrl, folder }),
       });
 
       if (response.ok) {
@@ -118,6 +134,20 @@ export const uploadService = {
       url: cleanUrl,
       storage: "LOCAL_SERVER_STORAGE",
     };
+  },
+
+  /**
+   * Import product image URL to ImageKit
+   */
+  async uploadProductImageUrl(url: string): Promise<UploadResponse> {
+    return this.uploadImageUrl(url, "/products");
+  },
+
+  /**
+   * Import banner image URL and save directly to ImageKit.io /banners folder
+   */
+  async uploadBannerImageUrl(url: string): Promise<UploadResponse> {
+    return this.uploadImageUrl(url, "/banners");
   },
 };
 

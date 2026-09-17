@@ -17,6 +17,8 @@ export const uploadController = {
         return;
       }
 
+      const targetFolder = (req.body?.folder && String(req.body.folder).trim()) || "/products";
+
       // ─── 1. ImageKit.io Free Cloud CDN (User Preferred: 20GB Free Tier) ───
       if (ENV.IMAGEKIT.PRIVATE_KEY) {
         try {
@@ -30,17 +32,17 @@ export const uploadController = {
             formData.append("fileName", req.file.originalname);
           } else if (urlInput) {
             formData.append("file", urlInput);
-            let cleanFileName = "url_product.jpg";
+            let cleanFileName = targetFolder.includes("banner") ? `banner_${Date.now()}.jpg` : "url_product.jpg";
             try {
               const urlPath = new URL(urlInput).pathname;
-              cleanFileName = path.basename(urlPath) || "url_product.jpg";
+              cleanFileName = path.basename(urlPath) || cleanFileName;
             } catch {
-              cleanFileName = `url_product_${Date.now()}.jpg`;
+              cleanFileName = `image_${Date.now()}.jpg`;
             }
             formData.append("fileName", cleanFileName);
           }
 
-          formData.append("folder", "/products");
+          formData.append("folder", targetFolder);
           formData.append("useUniqueFileName", "true");
 
           const ikRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
@@ -187,3 +189,40 @@ export const uploadController = {
     }
   },
 };
+
+/**
+ * Direct ImageKit.io Cloud Upload helper for server-side operations
+ */
+export async function uploadToImageKitDirect(
+  fileOrUrl: string,
+  fileName: string = `banner_${Date.now()}.jpg`,
+  folder: string = "/banners"
+): Promise<{ success: boolean; url: string; fileId?: string } | null> {
+  if (!ENV.IMAGEKIT.PRIVATE_KEY) return null;
+  try {
+    const formData = new FormData();
+    const authHeader = `Basic ${Buffer.from(`${ENV.IMAGEKIT.PRIVATE_KEY}:`).toString("base64")}`;
+    formData.append("file", fileOrUrl);
+    formData.append("fileName", fileName);
+    formData.append("folder", folder);
+    formData.append("useUniqueFileName", "true");
+
+    const res = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
+      method: "POST",
+      headers: { Authorization: authHeader },
+      body: formData,
+    });
+
+    if (res.ok) {
+      const data = (await res.json()) as any;
+      console.log(`✅ [ImageKit Direct] Banner saved to ImageKit -> ${data.url}`);
+      return { success: true, url: data.url, fileId: data.fileId };
+    } else {
+      const errText = await res.text();
+      console.warn("[ImageKit Direct] Failed:", res.status, errText);
+    }
+  } catch (err: any) {
+    console.warn("[ImageKit Direct] Upload error:", err.message);
+  }
+  return null;
+}

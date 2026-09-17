@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { BannerModel } from "../models/Banner";
 import { dbStore, StoredBanner, INITIAL_BANNERS } from "../config/inMemoryStore";
 import { isDatabaseConnected } from "../config/db";
+import { uploadToImageKitDirect } from "./uploadController";
 
 export const bannerController = {
   // Get all banners (public: can filter activeOnly=true)
@@ -121,6 +122,27 @@ export const bannerController = {
         return;
       }
 
+      // Auto-save external images or base64 uploads directly to ImageKit.io
+      let finalBgImage = String(bgImage).trim();
+      if (
+        !finalBgImage.includes("ik.imagekit.io") &&
+        (finalBgImage.startsWith("http") || finalBgImage.startsWith("data:image/"))
+      ) {
+        try {
+          const ikRes = await uploadToImageKitDirect(
+            finalBgImage,
+            `banner_${Date.now()}.jpg`,
+            "/banners"
+          );
+          if (ikRes && ikRes.url) {
+            finalBgImage = ikRes.url;
+            console.log(`✅ [Banner] Background image saved to ImageKit CDN: ${finalBgImage}`);
+          }
+        } catch (ikErr: any) {
+          console.warn("[Banner] ImageKit auto-upload warning:", ikErr?.message);
+        }
+      }
+
       const calculatedSortOrder = typeof sortOrder === "number" ? sortOrder : dbStore.banners.length + 1;
       let savedDbBanner: any = null;
 
@@ -137,7 +159,7 @@ export const bannerController = {
             secondaryCtaEn: secondaryCtaEn ? String(secondaryCtaEn).trim() : "Browse All",
             secondaryCtaBn: secondaryCtaBn ? String(secondaryCtaBn).trim() : "সব দেখুন",
             secondaryLink: secondaryLink ? String(secondaryLink).trim() : "/shop",
-            bgImage: String(bgImage).trim(),
+            bgImage: finalBgImage,
             tag: tag ? String(tag).trim() : "Featured Collection",
             isActive: isActive !== false,
             sortOrder: calculatedSortOrder,
@@ -161,7 +183,7 @@ export const bannerController = {
         secondaryCtaEn: secondaryCtaEn ? String(secondaryCtaEn).trim() : "Browse All",
         secondaryCtaBn: secondaryCtaBn ? String(secondaryCtaBn).trim() : "সব দেখুন",
         secondaryLink: secondaryLink ? String(secondaryLink).trim() : "/shop",
-        bgImage: String(bgImage).trim(),
+        bgImage: finalBgImage,
         tag: tag ? String(tag).trim() : "Featured Collection",
         isActive: isActive !== false,
         sortOrder: calculatedSortOrder,
@@ -172,7 +194,7 @@ export const bannerController = {
 
       res.status(201).json({
         success: true,
-        message: "Home banner created successfully!",
+        message: "Home banner created and saved successfully!",
         data: newStoredBanner,
       });
     } catch (error: any) {
@@ -185,11 +207,32 @@ export const bannerController = {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const updateData = req.body;
+      const updateData = { ...req.body };
 
       if (!id) {
         res.status(400).json({ success: false, message: "Banner ID is required" });
         return;
+      }
+
+      // Auto-save external images or base64 uploads directly to ImageKit.io
+      if (
+        updateData.bgImage &&
+        !updateData.bgImage.includes("ik.imagekit.io") &&
+        (updateData.bgImage.startsWith("http") || updateData.bgImage.startsWith("data:image/"))
+      ) {
+        try {
+          const ikRes = await uploadToImageKitDirect(
+            updateData.bgImage,
+            `banner_${Date.now()}.jpg`,
+            "/banners"
+          );
+          if (ikRes && ikRes.url) {
+            updateData.bgImage = ikRes.url;
+            console.log(`✅ [Banner Update] Background image saved to ImageKit CDN: ${updateData.bgImage}`);
+          }
+        } catch (ikErr: any) {
+          console.warn("[Banner Update] ImageKit auto-upload warning:", ikErr?.message);
+        }
       }
 
       if (isDatabaseConnected()) {
@@ -214,6 +257,7 @@ export const bannerController = {
       res.json({
         success: true,
         message: "Banner updated successfully!",
+        data: updateData,
       });
     } catch (error: any) {
       console.error("Update Banner Error:", error);
