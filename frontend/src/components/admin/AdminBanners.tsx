@@ -63,12 +63,14 @@ interface ImageKitBannerUploaderProps {
   currentUrl: string;
   onChange: (url: string) => void;
   onTagSuggest?: (tag: string) => void;
+  compact?: boolean;
 }
 
 const ImageKitBannerUploader: React.FC<ImageKitBannerUploaderProps> = ({
   currentUrl,
   onChange,
   onTagSuggest,
+  compact = false,
 }) => {
   const [tab, setTab] = useState<"file" | "url" | "presets">("file");
   const [isUploading, setIsUploading] = useState(false);
@@ -144,7 +146,11 @@ const ImageKitBannerUploader: React.FC<ImageKitBannerUploaderProps> = ({
   };
 
   return (
-    <div className="space-y-3 bg-gray-50/90 p-4 rounded-xl border border-gray-200 shadow-xs">
+    <div
+      className={`bg-gray-50/90 rounded-xl border border-gray-200 shadow-xs ${
+        compact ? "p-2.5 space-y-2" : "p-4 space-y-3"
+      }`}
+    >
       <div className="flex items-center justify-between">
         <label className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
           <ImageIcon className="w-3.5 h-3.5 text-yellow-500" />
@@ -230,7 +236,9 @@ const ImageKitBannerUploader: React.FC<ImageKitBannerUploaderProps> = ({
             onDragOver={handleDrag}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+            className={`border-2 border-dashed rounded-xl text-center cursor-pointer transition-all ${
+              compact ? "p-2.5" : "p-4"
+            } ${
               dragActive
                 ? "border-yellow-500 bg-yellow-50/70 scale-[0.99]"
                 : "border-gray-300 hover:border-yellow-400 bg-white"
@@ -363,7 +371,9 @@ const ImageKitBannerUploader: React.FC<ImageKitBannerUploaderProps> = ({
           <img
             src={currentUrl}
             alt="Banner Preview"
-            className="w-full h-28 object-cover group-hover:scale-105 transition-transform duration-500"
+            className={`w-full object-cover group-hover:scale-105 transition-transform duration-500 ${
+              compact ? "h-16 sm:h-20" : "h-28"
+            }`}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
           <div className="absolute top-2 left-2 flex items-center gap-1.5">
@@ -1170,101 +1180,102 @@ export const AdminBanners: React.FC = () => {
       {/* EDIT BANNER MODAL */}
       {/* ======================================================== */}
       {editingBanner && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white border border-gray-200 rounded-3xl max-w-2xl w-full p-6 sm:p-8 shadow-2xl relative my-8 animate-in fade-in zoom-in duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-xs">
+          <div className="bg-white border border-gray-200 rounded-2xl max-w-xl w-full p-4 sm:p-5 shadow-2xl relative animate-in fade-in zoom-in duration-150 flex flex-col max-h-[88vh]">
             <button
               onClick={() => setEditingBanner(null)}
-              className="absolute right-5 top-5 p-2 rounded-xl text-gray-400 hover:text-gray-600 hover:bg-gray-100"
+              className="absolute right-3.5 top-3.5 p-1.5 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
 
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-2xl bg-yellow-400 text-gray-950 flex items-center justify-center">
-                <Edit className="w-6 h-6" />
+            <div className="flex items-center gap-2.5 mb-2.5 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-yellow-400 text-gray-950 flex items-center justify-center shrink-0">
+                <Edit className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-lg sm:text-xl font-bold text-gray-900">Edit Banner Details</h2>
-                <p className="text-xs text-gray-500">
+                <h2 className="text-sm font-bold text-gray-900">Edit Banner Details</h2>
+                <p className="text-[11px] text-gray-500 leading-tight">
                   Update content, destination links, or background imagery
                 </p>
               </div>
             </div>
 
             {editError && (
-              <div className="mb-5 p-3.5 bg-rose-50 border border-rose-200 rounded-xl text-xs text-rose-700 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+              <div className="mb-2 p-2 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 flex items-center gap-2 shrink-0">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
                 <span>{editError}</span>
               </div>
             )}
 
-            <form onSubmit={handleSaveEdit} className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="overflow-y-auto flex-1 pr-1 -mr-1">
+            <form onSubmit={handleSaveEdit} className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Headline (English)
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Headline (EN)
                   </label>
                   <input
                     type="text"
                     required
                     value={editTitleEn}
                     onChange={(e) => setEditTitleEn(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900"
+                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-yellow-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Headline (Bangla)
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Headline (বাংলা)
                   </label>
                   <input
                     type="text"
                     value={editTitleBn}
                     onChange={(e) => setEditTitleBn(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900"
+                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-yellow-400"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Subtitle (English)
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Subtitle (EN)
                   </label>
                   <textarea
-                    rows={2}
+                    rows={1}
                     required
                     value={editSubtitleEn}
                     onChange={(e) => setEditSubtitleEn(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 resize-none"
+                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Subtitle (Bangla)
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Subtitle (বাংলা)
                   </label>
                   <textarea
-                    rows={2}
+                    rows={1}
                     value={editSubtitleBn}
                     onChange={(e) => setEditSubtitleBn(e.target.value)}
-                    className="w-full px-3.5 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900 resize-none"
+                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 resize-none focus:outline-none focus:ring-1 focus:ring-yellow-400"
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Tag / Badge Label
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Tag / Badge
                   </label>
                   <input
                     type="text"
                     value={editTag}
                     onChange={(e) => setEditTag(e.target.value)}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-900"
+                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs text-gray-900 focus:outline-none focus:ring-1 focus:ring-yellow-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
                     Sort Order
                   </label>
                   <input
@@ -1272,13 +1283,14 @@ export const AdminBanners: React.FC = () => {
                     min={1}
                     value={editSortOrder}
                     onChange={(e) => setEditSortOrder(Number(e.target.value))}
-                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-900"
+                    className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono text-gray-900 focus:outline-none focus:ring-1 focus:ring-yellow-400"
                   />
                 </div>
               </div>
 
               {/* ImageKit.io Cloud Upload & Preview */}
               <ImageKitBannerUploader
+                compact
                 currentUrl={editBgImage}
                 onChange={(url) => setEditBgImage(url)}
                 onTagSuggest={(suggestedTag) => {
@@ -1286,59 +1298,63 @@ export const AdminBanners: React.FC = () => {
                 }}
               />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2.5">
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Primary CTA (Text &amp; Link)
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Primary CTA
                   </label>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <input
                       type="text"
+                      placeholder="Button text"
                       value={editCtaEn}
                       onChange={(e) => setEditCtaEn(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
                     />
                     <input
                       type="text"
+                      placeholder="/shop or URL"
                       value={editLink}
                       onChange={(e) => setEditLink(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-yellow-400"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                    Secondary CTA (Text &amp; Link)
+                  <label className="block text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-0.5">
+                    Secondary CTA
                   </label>
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     <input
                       type="text"
+                      placeholder="Button text"
                       value={editSecondaryCtaEn}
                       onChange={(e) => setEditSecondaryCtaEn(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-yellow-400"
                     />
                     <input
                       type="text"
+                      placeholder="/shop or URL"
                       value={editSecondaryLink}
                       onChange={(e) => setEditSecondaryLink(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono"
+                      className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg text-xs font-mono focus:outline-none focus:ring-1 focus:ring-yellow-400"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between p-3.5 bg-gray-50 rounded-2xl border border-gray-200">
+              <div className="flex items-center justify-between px-3 py-2 bg-gray-50 rounded-xl border border-gray-200">
                 <div>
-                  <div className="text-xs font-bold text-gray-800">Carousel Active State</div>
-                  <div className="text-[11px] text-gray-500">
-                    {editIsActive ? "Currently rotating on storefront Home page" : "Hidden from storefront Home page"}
+                  <div className="text-[11px] font-bold text-gray-800">Carousel Status</div>
+                  <div className="text-[10px] text-gray-500">
+                    {editIsActive ? "Live on storefront" : "Hidden from storefront"}
                   </div>
                 </div>
                 <button
                   type="button"
                   onClick={() => setEditIsActive(!editIsActive)}
-                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                  className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-colors ${
                     editIsActive ? "bg-emerald-500 text-white" : "bg-gray-200 text-gray-700"
                   }`}
                 >
@@ -1346,24 +1362,25 @@ export const AdminBanners: React.FC = () => {
                 </button>
               </div>
 
-              <div className="pt-4 flex items-center justify-end gap-3 border-t border-gray-100">
+              <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setEditingBanner(null)}
-                  className="px-4 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-100"
+                  className="px-3.5 py-2 rounded-xl border border-gray-200 text-gray-700 text-xs font-semibold hover:bg-gray-100"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingEdit}
-                  className="px-5 py-2.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold rounded-xl text-xs transition-all shadow-md flex items-center gap-2"
+                  className="px-4 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold rounded-xl text-xs transition-all shadow-md flex items-center gap-2"
                 >
                   {isSavingEdit && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{isSavingEdit ? "Saving..." : "Save Banner Changes"}</span>
+                  <span>{isSavingEdit ? "Saving..." : "Save Changes"}</span>
                 </button>
               </div>
             </form>
+            </div>
           </div>
         </div>
       )}
