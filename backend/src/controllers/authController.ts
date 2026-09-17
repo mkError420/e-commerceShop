@@ -5,6 +5,7 @@ import { ENV } from "../config/env";
 import { dbStore, StoredUser } from "../config/inMemoryStore";
 import { AuthenticatedRequest } from "../middleware/authMiddleware";
 import { UserModel } from "../models/User";
+import { CustomerModel } from "../models/Customer";
 
 export const authController = {
   // Login with phone or email and password
@@ -78,6 +79,17 @@ export const authController = {
               passwordHash: hash,
               role: "CUSTOMER",
             });
+            // Also initialize rich customer profile in Customers collection
+            await CustomerModel.findOneAndUpdate(
+              { phone: cleanId },
+              {
+                name,
+                phone: cleanId,
+                passwordHash: hash || "mock_hash",
+                role: "CUSTOMER",
+              },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
           } catch (createErr) {
             console.warn("[MongoDB] Rapid customer creation fallback to memory:", createErr);
           }
@@ -228,6 +240,26 @@ export const authController = {
           role: targetRole,
         });
         console.log(`✅ [MongoDB] New ${targetRole} registered in database: ${savedUser.name} (${savedUser.phone})`);
+
+        // If registered role is CUSTOMER, also save/sync to Customers collection
+        if (targetRole === "CUSTOMER") {
+          try {
+            await CustomerModel.findOneAndUpdate(
+              { phone: cleanPhone },
+              {
+                name: cleanName,
+                phone: cleanPhone,
+                email: cleanEmail,
+                passwordHash: passwordHash || "mock_hash",
+                role: "CUSTOMER",
+              },
+              { upsert: true, new: true, setDefaultsOnInsert: true }
+            );
+            console.log(`✅ [MongoDB Customers] Customer profile stored for: ${cleanPhone}`);
+          } catch (custErr: any) {
+            console.warn("[MongoDB Customers] Profile sync warning:", custErr?.message || custErr);
+          }
+        }
       } catch (dbSaveErr: any) {
         console.error("⚠️ [MongoDB] User creation error:", dbSaveErr.message);
         if (dbSaveErr.code === 11000) {
