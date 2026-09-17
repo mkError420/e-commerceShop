@@ -251,6 +251,7 @@ export const AdminOrders: React.FC = () => {
       quantity: item.quantity,
       unitPriceBDT: item.unitPrice,
       totalPriceBDT: item.unitPrice * item.quantity,
+      image: item.product.images[0] || "",
       imageUrl: item.product.images[0] || "",
     }));
 

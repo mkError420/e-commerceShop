@@ -94,6 +94,7 @@ export interface OrderItem {
   quantity: number;
   totalPriceBDT: number;
   image: string;
+  imageUrl?: string;
 }
 
 export interface Order {
@@ -120,6 +121,7 @@ export interface Order {
   courierName?: string;
   trackingId?: string;
   items: OrderItem[];
+  notes?: string;
   createdAt: string;
 }
 
