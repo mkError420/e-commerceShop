@@ -71,6 +71,17 @@ export const authService = {
     return apiClient<{ success: boolean; count: number; users: any[] }>("/auth/users");
   },
 
+  // Admin: Update user / customer in database
+  async updateUser(
+    id: string,
+    data: { name?: string; phone?: string; email?: string; role?: string; isBlocked?: boolean }
+  ): Promise<{ success: boolean; message: string }> {
+    return apiClient<{ success: boolean; message: string }>(`/auth/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
   // Admin: Delete user from database
   async deleteUser(id: string): Promise<{ success: boolean; message: string }> {
     return apiClient<{ success: boolean; message: string }>(`/auth/users/${id}`, {

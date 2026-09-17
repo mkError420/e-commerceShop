@@ -448,7 +448,7 @@ export const authController = {
     }
   },
 
-  // Delete a user from database
+  // Delete a customer or user from database
   async deleteUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
@@ -457,17 +457,122 @@ export const authController = {
         return;
       }
 
+      let phone: string | undefined;
+
+      // 1. Check UserModel
       try {
-        await UserModel.findByIdAndDelete(id);
+        const u = await UserModel.findById(id);
+        if (u) {
+          phone = u.phone;
+          await UserModel.findByIdAndDelete(id);
+        }
       } catch (dbErr) {
-        console.warn("[MongoDB] Delete user DB error:", dbErr);
+        console.warn("[MongoDB] Delete user from UserModel error:", dbErr);
       }
 
-      dbStore.users = dbStore.users.filter((u) => u.id !== id);
+      // 2. Check CustomerModel
+      try {
+        const c = await CustomerModel.findById(id);
+        if (c) {
+          phone = phone || c.phone;
+          await CustomerModel.findByIdAndDelete(id);
+        }
+      } catch (custErr) {
+        console.warn("[MongoDB] Delete user from CustomerModel error:", custErr);
+      }
+
+      // 3. If phone is identified or id is a phone number, delete matches in both collections
+      const cleanId = id.trim();
+      const targetPhone = phone || (cleanId.startsWith("01") && cleanId.length === 11 ? cleanId : undefined);
+
+      if (targetPhone) {
+        try { await UserModel.deleteMany({ phone: targetPhone }); } catch {}
+        try { await CustomerModel.deleteMany({ phone: targetPhone }); } catch {}
+        dbStore.users = dbStore.users.filter((u) => u.phone !== targetPhone && u.id !== id);
+      } else {
+        dbStore.users = dbStore.users.filter((u) => u.id !== id);
+      }
 
       res.json({
         success: true,
-        message: "User removed successfully from database",
+        message: "Customer account removed successfully from database",
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Update a customer or user in database
+  async updateUser(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { name, phone, email, role, isBlocked } = req.body;
+      if (!id) {
+        res.status(400).json({ success: false, message: "User ID is required" });
+        return;
+      }
+
+      let existingPhone: string | undefined;
+
+      // Look up existing user to get phone
+      try {
+        const u = await UserModel.findById(id);
+        if (u) existingPhone = u.phone;
+      } catch {}
+      if (!existingPhone) {
+        try {
+          const c = await CustomerModel.findById(id);
+          if (c) existingPhone = c.phone;
+        } catch {}
+      }
+
+      const updateData: Record<string, any> = {};
+      if (name) updateData.name = String(name).trim();
+      if (phone) updateData.phone = String(phone).trim();
+      if (email !== undefined) updateData.email = email ? String(email).trim().toLowerCase() : undefined;
+      if (role) updateData.role = role;
+
+      const customerUpdateData = { ...updateData };
+      if (isBlocked !== undefined) {
+        customerUpdateData.isBlocked = Boolean(isBlocked);
+      }
+
+      // Update UserModel
+      try {
+        if (existingPhone) {
+          await UserModel.updateMany({ phone: existingPhone }, { $set: updateData });
+        } else {
+          await UserModel.findByIdAndUpdate(id, { $set: updateData });
+        }
+      } catch (uErr) {
+        console.warn("[MongoDB] updateUser UserModel error:", uErr);
+      }
+
+      // Update CustomerModel
+      try {
+        if (existingPhone) {
+          await CustomerModel.updateMany({ phone: existingPhone }, { $set: customerUpdateData });
+        } else {
+          await CustomerModel.findByIdAndUpdate(id, { $set: customerUpdateData });
+        }
+      } catch (cErr) {
+        console.warn("[MongoDB] updateUser CustomerModel error:", cErr);
+      }
+
+      // Update in-memory store
+      dbStore.users = dbStore.users.map((u) => {
+        if (u.id === id || (existingPhone && u.phone === existingPhone)) {
+          return {
+            ...u,
+            ...updateData,
+          };
+        }
+        return u;
+      });
+
+      res.json({
+        success: true,
+        message: "Customer updated successfully",
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });

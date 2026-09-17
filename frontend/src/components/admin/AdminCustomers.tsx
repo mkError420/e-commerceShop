@@ -19,10 +19,24 @@ import {
   RefreshCw,
   UserPlus,
   Database,
+  Trash2,
+  Edit,
+  AlertTriangle,
 } from "lucide-react";
 
 export const AdminCustomers: React.FC = () => {
-  const { customers, toggleBlockCustomer, formatPrice, orders, showToast, refreshCustomers, registerAdminUser, registerCustomer } = useStore();
+  const {
+    customers,
+    toggleBlockCustomer,
+    deleteCustomer,
+    updateCustomer,
+    formatPrice,
+    orders,
+    showToast,
+    refreshCustomers,
+    registerAdminUser,
+    registerCustomer,
+  } = useStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "BLOCKED">("ALL");
@@ -30,6 +44,19 @@ export const AdminCustomers: React.FC = () => {
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Delete Customer state
+  const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Edit Customer state
+  const [customerToEdit, setCustomerToEdit] = useState<Customer | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editEmail, setEditEmail] = useState("");
+  const [editIsBlocked, setEditIsBlocked] = useState(false);
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+  const [editError, setEditError] = useState("");
 
   // Add User / Admin Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -106,6 +133,77 @@ export const AdminCustomers: React.FC = () => {
       setAddError(err?.message || "Failed to register user to database.");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleOpenEdit = (cust: Customer) => {
+    setCustomerToEdit(cust);
+    setEditName(cust.name);
+    setEditPhone(cust.phoneNumber);
+    setEditEmail(cust.email === "N/A" ? "" : cust.email || "");
+    setEditIsBlocked(cust.isBlocked);
+    setEditError("");
+  };
+
+  const handleSaveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerToEdit) return;
+    setEditError("");
+
+    if (!editName.trim()) {
+      setEditError("Full name is required.");
+      return;
+    }
+
+    const cleanPhone = editPhone.trim();
+    if (!cleanPhone.startsWith("01") || cleanPhone.length !== 11) {
+      setEditError("Phone must be a valid 11-digit Bangladeshi mobile number (e.g. 01711223344).");
+      return;
+    }
+
+    setIsSavingEdit(true);
+    try {
+      const res = await updateCustomer(customerToEdit.id, {
+        name: editName.trim(),
+        phoneNumber: cleanPhone,
+        email: editEmail.trim() || undefined,
+        isBlocked: editIsBlocked,
+      });
+      if (!res.success) {
+        setEditError(res.message);
+        setIsSavingEdit(false);
+        return;
+      }
+      setCustomerToEdit(null);
+      if (selectedCustomer && selectedCustomer.id === customerToEdit.id) {
+        setSelectedCustomer({
+          ...selectedCustomer,
+          name: editName.trim(),
+          phoneNumber: cleanPhone,
+          email: editEmail.trim() || "N/A",
+          isBlocked: editIsBlocked,
+        });
+      }
+    } catch (err: any) {
+      setEditError(err?.message || "Failed to update customer.");
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!customerToDelete) return;
+    setIsDeleting(true);
+    try {
+      await deleteCustomer(customerToDelete.id);
+      if (selectedCustomer && selectedCustomer.id === customerToDelete.id) {
+        setSelectedCustomer(null);
+      }
+      setCustomerToDelete(null);
+    } catch (err: any) {
+      showToast(err?.message || "Error deleting customer", "error");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -420,37 +518,60 @@ export const AdminCustomers: React.FC = () => {
                       <td className="py-3.5 px-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           <button
+                            type="button"
                             onClick={() => setSelectedCustomer(cust)}
-                            className="text-xs font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-yellow-400 px-2.5 py-1.5 rounded-lg transition-colors"
+                            className="text-xs font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-yellow-400 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
+                            title="View Customer Details & Orders"
                           >
                             Details
                           </button>
 
                           <button
+                            type="button"
+                            onClick={() => handleOpenEdit(cust)}
+                            className="text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Edit Customer Details"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span>Edit</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => {
                               toggleBlockCustomer(cust.id);
                               showToast(
                                 `Customer ${cust.name} is now ${cust.isBlocked ? "Active" : "Blocked"}`
                               );
                             }}
-                            className={`text-xs font-semibold px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 ${
+                            className={`text-xs font-semibold px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer ${
                               cust.isBlocked
                                 ? "bg-emerald-100 hover:bg-emerald-200 text-emerald-800"
-                                : "bg-rose-50 hover:bg-rose-100 text-rose-700"
+                                : "bg-gray-100 hover:bg-gray-200 text-gray-700"
                             }`}
                             title={cust.isBlocked ? "Unblock Customer" : "Block Customer"}
                           >
                             {cust.isBlocked ? (
                               <>
-                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
                                 <span>Unblock</span>
                               </>
                             ) : (
                               <>
-                                <Ban className="w-3.5 h-3.5" />
+                                <Ban className="w-3.5 h-3.5 text-gray-500" />
                                 <span>Block</span>
                               </>
                             )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setCustomerToDelete(cust)}
+                            className="text-xs font-semibold text-rose-700 hover:text-rose-900 bg-rose-50 hover:bg-rose-100 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Delete Customer Account from database"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Delete</span>
                           </button>
                         </div>
                       </td>
@@ -570,29 +691,53 @@ export const AdminCustomers: React.FC = () => {
             </div>
 
             {/* Modal Actions */}
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-between">
-              <button
-                type="button"
-                onClick={() => {
-                  toggleBlockCustomer(selectedCustomer.id);
-                  setSelectedCustomer({
-                    ...selectedCustomer,
-                    isBlocked: !selectedCustomer.isBlocked,
-                  });
-                }}
-                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all ${
-                  selectedCustomer.isBlocked
-                    ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                    : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
-                }`}
-              >
-                {selectedCustomer.isBlocked ? "Unblock Customer Account" : "Block Customer Account"}
-              </button>
+            <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenEdit(selectedCustomer);
+                  }}
+                  className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit Details</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    toggleBlockCustomer(selectedCustomer.id);
+                    setSelectedCustomer({
+                      ...selectedCustomer,
+                      isBlocked: !selectedCustomer.isBlocked,
+                    });
+                  }}
+                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedCustomer.isBlocked
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  }`}
+                >
+                  {selectedCustomer.isBlocked ? "Unblock Account" : "Block Account"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomerToDelete(selectedCustomer);
+                  }}
+                  className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Delete</span>
+                </button>
+              </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedCustomer(null)}
-                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-semibold transition-all"
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-xl text-xs font-semibold transition-all cursor-pointer"
               >
                 Close
               </button>
@@ -730,6 +875,186 @@ export const AdminCustomers: React.FC = () => {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Customer Modal */}
+      {customerToEdit && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-gray-100 animate-scaleUp">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <Edit className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Edit Customer Profile</h3>
+                  <p className="text-[11px] text-gray-500 font-mono">ID: {customerToEdit.id}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomerToEdit(null)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveEdit} className="mt-4 space-y-4">
+              {editError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                  {editError}
+                </div>
+              )}
+
+              {/* Full Name */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  placeholder="e.g. Golam Rabbani"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              {/* Mobile Number */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Mobile Number (11 digits) *</label>
+                <input
+                  type="text"
+                  required
+                  value={editPhone}
+                  onChange={(e) => setEditPhone(e.target.value)}
+                  placeholder="e.g. 01711223344"
+                  className="w-full px-3 py-2 text-xs font-mono border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              {/* Email */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={editEmail}
+                  onChange={(e) => setEditEmail(e.target.value)}
+                  placeholder="e.g. user@example.com"
+                  className="w-full px-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                />
+              </div>
+
+              {/* Account Status */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Account Status</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditIsBlocked(false)}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      !editIsBlocked
+                        ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Active Account
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditIsBlocked(true)}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all ${
+                      editIsBlocked
+                        ? "bg-rose-600 text-white border-rose-600 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Blocked Account
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomerToEdit(null)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingEdit}
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                >
+                  {isSavingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Customer Confirmation Modal */}
+      {customerToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-100 animate-scaleUp">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h3 className="font-bold text-gray-900 text-lg">Delete Customer Account</h3>
+                <p className="text-xs text-gray-500">This action will remove the account from database</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3.5 border border-gray-200 space-y-1.5 text-xs mb-4">
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Customer:</span>
+                <span className="font-bold text-gray-900">{customerToDelete.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Mobile:</span>
+                <span className="font-mono font-semibold text-gray-900">{customerToDelete.phoneNumber}</span>
+              </div>
+              {customerToDelete.email && customerToDelete.email !== "N/A" && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 font-medium">Email:</span>
+                  <span className="text-gray-700">{customerToDelete.email}</span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500 font-medium">Total Orders:</span>
+                <span className="font-mono font-bold text-gray-900">{customerToDelete.totalOrders || 0}</span>
+              </div>
+            </div>
+
+            <p className="text-xs text-rose-600 font-medium bg-rose-50 border border-rose-200 p-3 rounded-xl mb-4">
+              ⚠️ Warning: This will permanently delete this customer profile, saved data, and authentication credentials from MongoDB Atlas. This action cannot be reversed.
+            </p>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={() => setCustomerToDelete(null)}
+                className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isDeleting}
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{isDeleting ? "Deleting..." : "Permanently Delete"}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

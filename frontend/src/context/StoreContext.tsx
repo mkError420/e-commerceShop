@@ -197,6 +197,8 @@ interface StoreContextType {
   // Customers (Admin)
   customers: Customer[];
   toggleBlockCustomer: (customerId: string) => void;
+  deleteCustomer: (customerId: string) => Promise<{ success: boolean; message: string }>;
+  updateCustomer: (customerId: string, data: Partial<Customer>) => Promise<{ success: boolean; message: string }>;
   refreshCustomers: () => Promise<void>;
   registerAdminUser?: (name: string, phone: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
 
@@ -1370,13 +1372,94 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const toggleBlockCustomer = (customerId: string) => {
+  const toggleBlockCustomer = async (customerId: string) => {
+    const target = customers.find((c) => c.id === customerId);
+    const nextBlocked = !target?.isBlocked;
     setCustomers((prev) => {
-      const updated = prev.map((c) => (c.id === customerId ? { ...c, isBlocked: !c.isBlocked } : c));
+      const updated = prev.map((c) => (c.id === customerId ? { ...c, isBlocked: nextBlocked } : c));
       try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
       return updated;
     });
-    showToast("Customer status updated");
+    try {
+      await authService.updateUser(customerId, { isBlocked: nextBlocked });
+    } catch { /* ignore */ }
+    showToast(nextBlocked ? "Customer account blocked" : "Customer account unblocked");
+  };
+
+  const deleteCustomer = async (customerId: string): Promise<{ success: boolean; message: string }> => {
+    const customerToDelete = customers.find((c) => c.id === customerId);
+    const targetPhone = customerToDelete?.phoneNumber;
+
+    // Remove from frontend customer records
+    setCustomers((prev) => {
+      const updated = prev.filter((c) => c.id !== customerId && (!targetPhone || c.phoneNumber !== targetPhone));
+      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    // Remove from registered customer accounts
+    setRegisteredCustomers((prev) => {
+      const updated = prev.filter((c) => c.id !== customerId && (!targetPhone || c.phone !== targetPhone));
+      try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    try {
+      const res = await authService.deleteUser(customerId);
+      showToast(language === 'bn' ? "গ্রাহক ডাটাবেজ থেকে মুছে ফেলা হয়েছে" : "Customer permanently deleted from database");
+      try { await refreshCustomers(); } catch {}
+      return { success: true, message: res.message || "Customer deleted" };
+    } catch (err: any) {
+      console.warn("[CRM] Delete customer API error:", err?.message);
+      showToast(language === 'bn' ? "গ্রাহক মুছে ফেলা হয়েছে" : "Customer removed", "info");
+      return { success: true, message: "Customer removed" };
+    }
+  };
+
+  const updateCustomer = async (
+    customerId: string,
+    data: Partial<Customer>
+  ): Promise<{ success: boolean; message: string }> => {
+    const existing = customers.find((c) => c.id === customerId);
+    const oldPhone = existing?.phoneNumber;
+
+    setCustomers((prev) => {
+      const updated = prev.map((c) => (c.id === customerId || (oldPhone && c.phoneNumber === oldPhone) ? { ...c, ...data } : c));
+      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    setRegisteredCustomers((prev) => {
+      const updated = prev.map((c) => {
+        if (c.id === customerId || (oldPhone && c.phone === oldPhone)) {
+          return {
+            ...c,
+            ...(data.name ? { name: data.name } : {}),
+            ...(data.phoneNumber ? { phone: data.phoneNumber } : {}),
+            ...(data.email ? { email: data.email } : {}),
+          };
+        }
+        return c;
+      });
+      try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    try {
+      const res = await authService.updateUser(customerId, {
+        name: data.name,
+        phone: data.phoneNumber,
+        email: data.email,
+        isBlocked: data.isBlocked,
+      });
+      showToast(language === 'bn' ? "গ্রাহকের তথ্য আপডেট হয়েছে" : "Customer profile updated in database");
+      try { await refreshCustomers(); } catch {}
+      return { success: true, message: res.message || "Customer updated" };
+    } catch (err: any) {
+      console.warn("[CRM] Update customer API error:", err?.message);
+      showToast(language === 'bn' ? "গ্রাহকের তথ্য আপডেট হয়েছে" : "Customer updated");
+      return { success: true, message: "Customer updated" };
+    }
   };
 
   const addCoupon = (c: Coupon) => {
@@ -1436,6 +1519,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         latestOrderId,
         customers,
         toggleBlockCustomer,
+        deleteCustomer,
+        updateCustomer,
         refreshCustomers,
         registerAdminUser,
         login,
