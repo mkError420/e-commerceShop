@@ -7,10 +7,12 @@ import { ENV } from "../config/env";
 export const uploadController = {
   async handleUpload(req: Request, res: Response): Promise<void> {
     try {
-      if (!req.file) {
+      const urlInput = req.body?.url ? String(req.body.url).trim() : null;
+
+      if (!req.file && !urlInput) {
         res.status(400).json({
           success: false,
-          message: "No image file provided. Please attach an image.",
+          message: "No image file or URL provided. Please attach an image file or provide a valid image URL.",
         });
         return;
       }
@@ -18,16 +20,28 @@ export const uploadController = {
       // ─── 1. ImageKit.io Free Cloud CDN (User Preferred: 20GB Free Tier) ───
       if (ENV.IMAGEKIT.PRIVATE_KEY) {
         try {
-          const fileBuffer = fs.readFileSync(req.file.path);
-          const base64File = fileBuffer.toString("base64");
-
           const formData = new FormData();
-          formData.append("file", base64File);
-          formData.append("fileName", req.file.originalname);
+          const authHeader = `Basic ${Buffer.from(`${ENV.IMAGEKIT.PRIVATE_KEY}:`).toString("base64")}`;
+
+          if (req.file) {
+            const fileBuffer = fs.readFileSync(req.file.path);
+            const base64File = fileBuffer.toString("base64");
+            formData.append("file", base64File);
+            formData.append("fileName", req.file.originalname);
+          } else if (urlInput) {
+            formData.append("file", urlInput);
+            let cleanFileName = "url_product.jpg";
+            try {
+              const urlPath = new URL(urlInput).pathname;
+              cleanFileName = path.basename(urlPath) || "url_product.jpg";
+            } catch {
+              cleanFileName = `url_product_${Date.now()}.jpg`;
+            }
+            formData.append("fileName", cleanFileName);
+          }
+
           formData.append("folder", "/products");
           formData.append("useUniqueFileName", "true");
-
-          const authHeader = `Basic ${Buffer.from(`${ENV.IMAGEKIT.PRIVATE_KEY}:`).toString("base64")}`;
 
           const ikRes = await fetch("https://upload.imagekit.io/api/v1/files/upload", {
             method: "POST",
@@ -46,26 +60,30 @@ export const uploadController = {
               size: number;
             };
 
-            // Remove local temporary file
-            try {
-              fs.unlinkSync(req.file.path);
-            } catch {
-              // ignore
+            // Clean up temporary local file if any
+            if (req.file?.path) {
+              try {
+                fs.unlinkSync(req.file.path);
+              } catch {
+                // ignore
+              }
             }
+
+            console.log(`✅ [ImageKit] Upload successful -> ${ikData.url}`);
 
             res.json({
               success: true,
               url: ikData.url,
               thumbnailUrl: ikData.thumbnailUrl,
               storage: "IMAGEKIT_FREE_CDN",
-              filename: ikData.name || req.file.filename,
-              size: ikData.size || req.file.size,
-              mimetype: req.file.mimetype,
+              filename: ikData.name || (req.file ? req.file.filename : "url_image"),
+              size: ikData.size || (req.file ? req.file.size : 0),
+              mimetype: req.file ? req.file.mimetype : "image/jpeg",
             });
             return;
           } else {
             const errText = await ikRes.text();
-            console.warn("[ImageKit] Upload failed with status", ikRes.status, errText, "falling back...");
+            console.warn("[ImageKit] Upload rejected by API:", ikRes.status, errText);
           }
         } catch (ikErr: any) {
           console.warn("[ImageKit] Upload error, falling back:", ikErr.message);
@@ -85,9 +103,13 @@ export const uploadController = {
           const signature = crypto.createHash("sha1").update(signaturePayload).digest("hex");
 
           const formData = new FormData();
-          const fileBuffer = fs.readFileSync(req.file.path);
-          const blob = new Blob([fileBuffer], { type: req.file.mimetype });
-          formData.append("file", blob, req.file.originalname);
+          if (req.file) {
+            const fileBuffer = fs.readFileSync(req.file.path);
+            const blob = new Blob([fileBuffer], { type: req.file.mimetype });
+            formData.append("file", blob, req.file.originalname);
+          } else if (urlInput) {
+            formData.append("file", urlInput);
+          }
           formData.append("api_key", ENV.CLOUDINARY.API_KEY);
           formData.append("timestamp", String(timestamp));
           formData.append("signature", signature);
@@ -103,19 +125,21 @@ export const uploadController = {
 
           if (cdnRes.ok) {
             const cdnData = (await cdnRes.json()) as { secure_url: string; public_id: string };
-            try {
-              fs.unlinkSync(req.file.path);
-            } catch {
-              // ignore
+            if (req.file?.path) {
+              try {
+                fs.unlinkSync(req.file.path);
+              } catch {
+                // ignore
+              }
             }
 
             res.json({
               success: true,
               url: cdnData.secure_url,
               storage: "CLOUDINARY_FREE_CDN",
-              filename: req.file.filename,
-              size: req.file.size,
-              mimetype: req.file.mimetype,
+              filename: req.file ? req.file.filename : "url_image",
+              size: req.file ? req.file.size : 0,
+              mimetype: req.file ? req.file.mimetype : "image/jpeg",
             });
             return;
           }
@@ -125,19 +149,35 @@ export const uploadController = {
       }
 
       // ─── 3. Local Free Storage (Zero config, served from Express static) ───
-      const host = req.get("host") || `localhost:${ENV.PORT}`;
-      const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-      const localUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+      if (req.file) {
+        const host = req.get("host") || `localhost:${ENV.PORT}`;
+        const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
+        const localUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
 
-      res.json({
-        success: true,
-        url: localUrl,
-        storage: "LOCAL_SERVER_STORAGE",
-        filename: req.file.filename,
-        originalName: req.file.originalname,
-        size: req.file.size,
-        mimetype: req.file.mimetype,
-      });
+        res.json({
+          success: true,
+          url: localUrl,
+          storage: "LOCAL_SERVER_STORAGE",
+          filename: req.file.filename,
+          originalName: req.file.originalname,
+          size: req.file.size,
+          mimetype: req.file.mimetype,
+        });
+        return;
+      }
+
+      // If only URL was given and cloud failed
+      if (urlInput) {
+        res.json({
+          success: true,
+          url: urlInput,
+          storage: "LOCAL_SERVER_STORAGE",
+          filename: "external_url",
+          size: 0,
+          mimetype: "image/jpeg",
+        });
+        return;
+      }
     } catch (error: any) {
       console.error("[Upload] Error processing image upload:", error);
       res.status(500).json({

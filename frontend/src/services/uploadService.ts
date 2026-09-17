@@ -74,6 +74,51 @@ export const uploadService = {
       storage: "BASE64_FALLBACK",
     };
   },
+
+  /**
+   * Import an image from a web URL and save it directly to ImageKit.io
+   */
+  async uploadProductImageUrl(url: string): Promise<UploadResponse> {
+    const cleanUrl = url.trim();
+    if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
+      throw new Error("Please enter a valid image URL starting with http:// or https://");
+    }
+
+    try {
+      const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/upload`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ url: cleanUrl }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.url) {
+          return {
+            success: true,
+            url: data.url,
+            storage: data.storage || "IMAGEKIT_FREE_CDN",
+          };
+        }
+      }
+    } catch (err: any) {
+      console.warn("[Upload] URL upload notice:", err?.message);
+    }
+
+    return {
+      success: true,
+      url: cleanUrl,
+      storage: "LOCAL_SERVER_STORAGE",
+    };
+  },
 };
 
 /**

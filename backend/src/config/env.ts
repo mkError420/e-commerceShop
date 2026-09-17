@@ -15,9 +15,9 @@ export const ENV = {
 
   // Free Cloud Image CDN (ImageKit.io - 20GB Free Tier)
   IMAGEKIT: {
-    PUBLIC_KEY: process.env.IMAGEKIT_PUBLIC_KEY || "",
-    PRIVATE_KEY: process.env.IMAGEKIT_PRIVATE_KEY || "",
-    URL_ENDPOINT: process.env.IMAGEKIT_URL_ENDPOINT || "",
+    PUBLIC_KEY: process.env.IMAGEKIT_PUBLIC_KEY || "public_112wWNO7wzKDPxH/KSrRxN9ZPxs=",
+    PRIVATE_KEY: process.env.IMAGEKIT_PRIVATE_KEY || "private_obTdlg7gNhOfjcLJ5SFveRBg+hs=",
+    URL_ENDPOINT: process.env.IMAGEKIT_URL_ENDPOINT || "https://ik.imagekit.io/mha5hytnj",
   },
 
   // Free Cloud Image CDN (Cloudinary - Optional)

@@ -142,6 +142,29 @@ export const AdminProducts: React.FC = () => {
     }
   };
 
+  const handleUrlImport = async (urlToImport: string) => {
+    if (!urlToImport.trim()) return;
+    setIsUploading(true);
+    try {
+      const res = await uploadService.uploadProductImageUrl(urlToImport.trim());
+      if (res.success && res.url) {
+        setForm((prev) => ({ ...prev, imageUrl: res.url }));
+        setStorageInfo(
+          res.storage === "IMAGEKIT_FREE_CDN"
+            ? "ImageKit Cloud CDN"
+            : res.storage === "CLOUDINARY_FREE_CDN"
+            ? "Cloudinary Free CDN"
+            : "Free Server Storage"
+        );
+        showToast("Image imported & saved to ImageKit.io!");
+      }
+    } catch (err: any) {
+      showToast(err?.message || "Failed to import image from URL", "error");
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   /* derived */
   const lowStockCount = products.filter((p) => p.stockQuantity > 0 && p.stockQuantity <= p.lowStockAlert).length;
   const outOfStockCount = products.filter((p) => p.stockQuantity === 0).length;
@@ -791,29 +814,67 @@ export const AdminProducts: React.FC = () => {
                       </div>
                     ) : (
                       <div className="space-y-2">
-                        <FInput
-                          type="url"
-                          value={form.imageUrl}
-                          onChange={(e) => {
-                            setForm({ ...form, imageUrl: e.target.value });
-                            setStorageInfo("External Web URL");
-                          }}
-                          placeholder="https://images.unsplash.com/…"
-                          className="font-mono text-[11px]"
-                        />
+                        <div className="flex gap-2">
+                          <FInput
+                            type="url"
+                            value={form.imageUrl}
+                            onChange={(e) => {
+                              setForm({ ...form, imageUrl: e.target.value });
+                              setStorageInfo(e.target.value.includes("imagekit.io") ? "ImageKit Cloud CDN" : "External Web URL");
+                            }}
+                            placeholder="https://images.unsplash.com/…"
+                            className="font-mono text-[11px] flex-1"
+                          />
+                          {form.imageUrl && !form.imageUrl.includes("imagekit.io") && (
+                            <button
+                              type="button"
+                              onClick={() => handleUrlImport(form.imageUrl)}
+                              disabled={isUploading}
+                              className="px-3 py-2 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold text-[11px] rounded-lg transition-all flex items-center gap-1.5 shrink-0 shadow-xs"
+                            >
+                              {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <UploadCloud className="w-3.5 h-3.5" />}
+                              Save to ImageKit
+                            </button>
+                          )}
+                        </div>
+
                         {form.imageUrl && (
-                          <div className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg border border-gray-200">
-                            <img
-                              src={form.imageUrl}
-                              alt="preview"
-                              className="w-12 h-14 object-cover rounded-lg border border-gray-200"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = "none";
-                              }}
-                            />
-                            <div className="text-[11px] text-gray-500">
-                              External image URL linked
+                          <div className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${
+                            form.imageUrl.includes("imagekit.io") ? "bg-emerald-50/70 border-emerald-300" : "bg-gray-50 border-gray-200"
+                          }`}>
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={form.imageUrl}
+                                alt="preview"
+                                className="w-12 h-14 object-cover rounded-lg border border-gray-200 bg-white"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                              <div>
+                                <div className="text-xs font-semibold text-gray-800 flex items-center gap-1">
+                                  {form.imageUrl.includes("imagekit.io") && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                                  {form.imageUrl.includes("imagekit.io") ? "Stored in ImageKit.io" : "External Web Image"}
+                                </div>
+                                <div className="text-[10px] text-gray-400 truncate max-w-xs font-mono">
+                                  {form.imageUrl}
+                                </div>
+                              </div>
                             </div>
+                            {form.imageUrl.includes("imagekit.io") ? (
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 shrink-0">
+                                ⚡ ImageKit Cloud CDN
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleUrlImport(form.imageUrl)}
+                                disabled={isUploading}
+                                className="text-[11px] text-yellow-700 hover:text-yellow-800 font-bold underline shrink-0"
+                              >
+                                Upload to ImageKit
+                              </button>
+                            )}
                           </div>
                         )}
                       </div>

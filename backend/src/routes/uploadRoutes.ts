@@ -73,6 +73,10 @@ const handleMulterError = (err: any, _req: Request, res: Response, next: NextFun
 router.post(
   "/",
   (req, res, next) => {
+    const contentType = req.headers["content-type"] || "";
+    if (contentType.includes("application/json")) {
+      return next();
+    }
     upload.single("image")(req, res, (err) => {
       if (err) return handleMulterError(err, req, res, next);
       next();
