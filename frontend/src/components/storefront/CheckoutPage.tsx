@@ -27,18 +27,19 @@ export const CheckoutPage: React.FC = () => {
     formatPrice,
     t,
     showToast,
+    currentUser,
   } = useStore();
 
-  // Form State
-  const [customerName, setCustomerName] = useState("Md. Tanvir Hossain");
-  const [customerPhone, setCustomerPhone] = useState("01711223344");
-  const [customerEmail, setCustomerEmail] = useState("tanvir.h@gmail.com");
+  // Form State — pre-fill from logged-in customer if available
+  const [customerName, setCustomerName] = useState(currentUser?.name || "");
+  const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || "");
+  const [customerEmail, setCustomerEmail] = useState(currentUser?.email || "");
   
   // Localized BD Cascade Geography State
   const [selectedDivision, setSelectedDivision] = useState("Dhaka");
   const [selectedDistrict, setSelectedDistrict] = useState("Dhaka City");
-  const [selectedThana, setSelectedThana] = useState("Dhanmondi");
-  const [streetLine, setStreetLine] = useState("House 42, Road 9A, Dhanmondi R/A");
+  const [selectedThana, setSelectedThana] = useState("");
+  const [streetLine, setStreetLine] = useState("");
   
   // Payment Gateway
   const [paymentGateway, setPaymentGateway] = useState<PaymentMethod>("BKASH");

@@ -67,45 +67,6 @@ export const authController = {
           (u.email && u.email.toLowerCase() === cleanId.toLowerCase())
       );
 
-      // If neither exists and identifier is a valid 11-digit BD phone, auto-register customer (rapid phone checkout)
-      if (!dbUser && !memUser) {
-        if (cleanId.startsWith("01") && cleanId.length === 11) {
-          const name = `Customer ${cleanId.slice(-4)}`;
-          const hash = cleanPass ? await bcrypt.hash(cleanPass, 10) : undefined;
-          try {
-            dbUser = await UserModel.create({
-              name,
-              phone: cleanId,
-              passwordHash: hash,
-              role: "CUSTOMER",
-            });
-            // Also initialize rich customer profile in Customers collection
-            await CustomerModel.findOneAndUpdate(
-              { phone: cleanId },
-              {
-                name,
-                phone: cleanId,
-                passwordHash: hash || "mock_hash",
-                role: "CUSTOMER",
-              },
-              { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
-          } catch (createErr) {
-            console.warn("[MongoDB] Rapid customer creation fallback to memory:", createErr);
-          }
-
-          memUser = {
-            id: dbUser?._id?.toString() || `usr-${Date.now()}`,
-            name,
-            phone: cleanId,
-            passwordHash: hash || "mock_hash",
-            role: "CUSTOMER",
-            createdAt: new Date().toISOString(),
-          };
-          dbStore.users.push(memUser);
-        }
-      }
-
       // Evaluate found user
       const userRecord = dbUser
         ? {
@@ -357,39 +318,61 @@ export const authController = {
   async getAllCustomers(req: Request, res: Response): Promise<void> {
     try {
       let dbUsers: any[] = [];
+      let dbCustomers: any[] = [];
       try {
-        dbUsers = await UserModel.find({ role: "CUSTOMER" }).sort({ createdAt: -1 });
+        dbCustomers = await CustomerModel.find({}).sort({ createdAt: -1 }).lean();
+      } catch (custErr) {
+        console.warn("[MongoDB] getAllCustomers CustomerModel fetch error:", custErr);
+      }
+      try {
+        dbUsers = await UserModel.find({ role: "CUSTOMER" }).sort({ createdAt: -1 }).lean();
       } catch (dbErr) {
-        console.warn("[MongoDB] getAllCustomers fetch error, using memory store:", dbErr);
+        console.warn("[MongoDB] getAllCustomers UserModel fetch error:", dbErr);
       }
 
-      // Merge memory users with DB users, avoiding duplicates
-      const seenPhones = new Set<string>();
-      const combinedCustomers: any[] = [];
+      // Merge CustomerModel, UserModel, and in-memory customers by phone number
+      const customerMap = new Map<string, any>();
 
-      // Add DB customers first
-      dbUsers.forEach((u) => {
-        seenPhones.add(u.phone);
-        combinedCustomers.push({
-          id: u._id.toString(),
-          name: u.name,
-          phoneNumber: u.phone,
-          email: u.email || "N/A",
-          role: u.role,
-          totalOrders: 0,
-          totalSpentBDT: 0,
-          isBlocked: false,
-          registeredDate: u.createdAt ? new Date(u.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-        });
+      // 1. Add from CustomerModel (rich profiles with orders, spent, status)
+      dbCustomers.forEach((c: any) => {
+        if (c.phone) {
+          customerMap.set(c.phone, {
+            id: c._id ? c._id.toString() : `cust-${Date.now()}`,
+            name: c.name || "Customer",
+            phoneNumber: c.phone,
+            email: c.email || "N/A",
+            role: "CUSTOMER",
+            totalOrders: c.totalOrdersCount || 0,
+            totalSpentBDT: c.totalSpentBDT || 0,
+            isBlocked: !!c.isBlocked,
+            registeredDate: c.createdAt ? new Date(c.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+          });
+        }
       });
 
-      // Add memory customers if not already present
+      // 2. Add/merge UserModel customers if not already present
+      dbUsers.forEach((u: any) => {
+        if (u.phone && !customerMap.has(u.phone)) {
+          customerMap.set(u.phone, {
+            id: u._id ? u._id.toString() : `usr-${Date.now()}`,
+            name: u.name || "Customer",
+            phoneNumber: u.phone,
+            email: u.email || "N/A",
+            role: u.role || "CUSTOMER",
+            totalOrders: 0,
+            totalSpentBDT: 0,
+            isBlocked: false,
+            registeredDate: u.createdAt ? new Date(u.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+          });
+        }
+      });
+
+      // 3. Add memory customers if not already present
       dbStore.users
         .filter((u) => u.role === "CUSTOMER")
         .forEach((u) => {
-          if (!seenPhones.has(u.phone)) {
-            seenPhones.add(u.phone);
-            combinedCustomers.push({
+          if (u.phone && !customerMap.has(u.phone)) {
+            customerMap.set(u.phone, {
               id: u.id,
               name: u.name,
               phoneNumber: u.phone,
@@ -402,6 +385,8 @@ export const authController = {
             });
           }
         });
+
+      const combinedCustomers = Array.from(customerMap.values());
 
       res.json({
         success: true,

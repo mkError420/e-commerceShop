@@ -19,92 +19,7 @@ import { authService } from "../services/authService";
 import { categoryService } from "../services/categoryService";
 import { productService } from "../services/productService";
 
-// Pre-seeded Bangladeshi demo customer profiles
-const DEMO_CUSTOMERS: CustomerUser[] = [
-  {
-    id: "cust-1",
-    name: "Md. Tanvir Hossain",
-    phone: "01711223344",
-    email: "tanvir.h@gmail.com",
-    role: "CUSTOMER",
-    loyaltyTier: "Gold",
-    loyaltyPoints: 1840,
-    joinedDate: "2026-01-15",
-    notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: true },
-    savedAddresses: [
-      {
-        id: "addr-1",
-        label: "Home",
-        fullName: "Md. Tanvir Hossain",
-        phone: "01711223344",
-        division: "Dhaka",
-        district: "Dhaka City",
-        thana: "Dhanmondi",
-        streetLine: "House 42, Road 9A, Dhanmondi R/A",
-        isDefault: true,
-      },
-      {
-        id: "addr-2",
-        label: "Office",
-        fullName: "Tanvir Hossain",
-        phone: "01711223344",
-        division: "Dhaka",
-        district: "Dhaka City",
-        thana: "Motijheel",
-        streetLine: "Level 8, Rupayan Trade Center, Dhaka",
-        isDefault: false,
-      },
-    ],
-  },
-  {
-    id: "cust-2",
-    name: "Arafat Rahman",
-    phone: "01819876543",
-    email: "arafat.ctg@yahoo.com",
-    role: "CUSTOMER",
-    loyaltyTier: "Silver",
-    loyaltyPoints: 680,
-    joinedDate: "2026-03-22",
-    notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
-    savedAddresses: [
-      {
-        id: "addr-3",
-        label: "Home",
-        fullName: "Arafat Rahman",
-        phone: "01819876543",
-        division: "Chattogram",
-        district: "Chattogram City",
-        thana: "Panchlaish",
-        streetLine: "Plot 12, GEC Circle",
-        isDefault: true,
-      },
-    ],
-  },
-  {
-    id: "cust-3",
-    name: "Farzana Yasmin",
-    phone: "01912345678",
-    email: "farzana.y@outlook.com",
-    role: "CUSTOMER",
-    loyaltyTier: "Bronze",
-    loyaltyPoints: 310,
-    joinedDate: "2026-08-10",
-    notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: true },
-    savedAddresses: [
-      {
-        id: "addr-4",
-        label: "Home",
-        fullName: "Farzana Yasmin",
-        phone: "01912345678",
-        division: "Dhaka",
-        district: "Dhaka City",
-        thana: "Gulshan",
-        streetLine: "Apt 5B, Road 113, Gulshan 2",
-        isDefault: true,
-      },
-    ],
-  },
-];
+
 
 const USD_TO_BDT_RATE = 122.50; // 1 USD = ৳122.50 BDT
 
@@ -215,38 +130,7 @@ const INITIAL_ORDERS: Order[] = [
   },
 ];
 
-const INITIAL_CUSTOMERS: Customer[] = [
-  {
-    id: "cust-1",
-    name: "Md. Tanvir Hossain",
-    phoneNumber: "01711223344",
-    email: "tanvir.h@gmail.com",
-    totalOrders: 3,
-    totalSpentBDT: 28400,
-    isBlocked: false,
-    registeredDate: "2026-01-15",
-  },
-  {
-    id: "cust-2",
-    name: "Arafat Rahman",
-    phoneNumber: "01819876543",
-    email: "arafat.ctg@yahoo.com",
-    totalOrders: 2,
-    totalSpentBDT: 8500,
-    isBlocked: false,
-    registeredDate: "2026-03-22",
-  },
-  {
-    id: "cust-3",
-    name: "Farzana Yasmin",
-    phoneNumber: "01912345678",
-    email: "farzana.y@outlook.com",
-    totalOrders: 1,
-    totalSpentBDT: 9260,
-    isBlocked: false,
-    registeredDate: "2026-08-10",
-  },
-];
+const INITIAL_CUSTOMERS: Customer[] = [];
 
 interface NavigationState {
   path: string;
@@ -327,11 +211,9 @@ interface StoreContextType {
 
   // Current Customer Auth
   currentUser: CustomerUser | null;
-  demoCustomers: CustomerUser[];
-  loginCustomer: (identifier: string, password?: string) => { success: boolean; message: string };
+  loginCustomer: (identifier: string, password?: string) => Promise<{ success: boolean; message: string }>;
   registerCustomer: (name: string, phone: string, email?: string, password?: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
   logoutCustomer: () => void;
-  switchDemoCustomer: (customerId: string) => void;
   updateCustomerProfile: (data: Partial<CustomerUser>) => void;
   addCustomerAddress: (address: Omit<CustomerAddress, 'id'>) => void;
   updateCustomerAddress: (id: string, data: Partial<CustomerAddress>) => void;
@@ -901,7 +783,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   // ─── Customer Auth ───────────────────────────────────────────────────────────
-  const loginCustomer = (identifier: string, password?: string): { success: boolean; message: string } => {
+  const loginCustomer = async (identifier: string, password?: string): Promise<{ success: boolean; message: string }> => {
     const cleanId = identifier.trim().toLowerCase();
 
     // Check if user entered Admin credentials
@@ -917,23 +799,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: true, message: "Redirecting to Admin Portal" };
     }
 
-    // 1. Check demo customer accounts
-    const demo = DEMO_CUSTOMERS.find(
-      (c) => c.phone.toLowerCase() === cleanId || (c.email && c.email.toLowerCase() === cleanId)
-    );
-    if (demo) {
-      setIsAdminAuthenticated(false);
-      setCurrentUser(demo);
-      try {
-        localStorage.setItem("be_current_user", JSON.stringify(demo));
-        localStorage.removeItem("be_admin_authenticated");
-      } catch { /* ignore */ }
-      showToast(language === 'bn' ? `স্বাগতম, ${demo.name}!` : `Welcome back, ${demo.name}!`);
-      setNavigation({ path: "/customer" });
-      return { success: true, message: `Welcome, ${demo.name}` };
-    }
-
-    // 2. Check registered customer accounts
+    // 1. Check locally registered customer accounts (localStorage-backed)
     const registered = registeredCustomers.find(
       (c) => c.phone.toLowerCase() === cleanId || (c.email && c.email.toLowerCase() === cleanId)
     );
@@ -955,43 +821,69 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return { success: true, message: `Welcome, ${registered.name}` };
     }
 
-    // 3. Fallback for valid 11-digit Bangladeshi mobile numbers
-    if (identifier.trim().startsWith("01") && identifier.trim().length === 11) {
-      const newUser: CustomerUser = {
-        id: `cust-${Date.now()}`,
-        name: `Customer ${identifier.trim().slice(-4)}`,
-        phone: identifier.trim(),
-        password: password || undefined,
-        role: "CUSTOMER",
-        loyaltyTier: "Bronze",
-        loyaltyPoints: 50,
-        joinedDate: new Date().toISOString().split("T")[0],
-        notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
-        savedAddresses: [],
+    // 2. Try backend API login (handles DB-registered users from MongoDB Atlas)
+    try {
+      const apiRes = await authService.login(identifier.trim(), password);
+      if (apiRes.success && apiRes.user) {
+        const dbUser = apiRes.user;
+        const sessionUser: CustomerUser = {
+          id: dbUser.id,
+          name: dbUser.name,
+          phone: dbUser.phone,
+          email: dbUser.email || undefined,
+          password: password || undefined,
+          role: "CUSTOMER",
+          loyaltyTier: "Bronze",
+          loyaltyPoints: 100,
+          joinedDate: dbUser.createdAt?.split("T")[0] || new Date().toISOString().split("T")[0],
+          notificationPrefs: { smsOrderAlerts: true, whatsappTracking: false, promotionalEmails: false },
+          savedAddresses: [],
+        };
+        setRegisteredCustomers((prev) => {
+          const updated = [sessionUser, ...prev.filter((c) => c.phone !== sessionUser.phone)];
+          try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+          return updated;
+        });
+        setCustomers((prev) => {
+          const adminCust: Customer = {
+            id: sessionUser.id,
+            name: sessionUser.name,
+            phoneNumber: sessionUser.phone,
+            email: sessionUser.email || "N/A",
+            totalOrders: 0,
+            totalSpentBDT: 0,
+            isBlocked: false,
+            registeredDate: sessionUser.joinedDate,
+          };
+          const updated = [adminCust, ...prev.filter((c) => c.phoneNumber !== adminCust.phoneNumber)];
+          try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+          return updated;
+        });
+        setIsAdminAuthenticated(false);
+        setCurrentUser(sessionUser);
+        try {
+          localStorage.setItem("be_current_user", JSON.stringify(sessionUser));
+          localStorage.removeItem("be_admin_authenticated");
+        } catch { /* ignore */ }
+        showToast(language === 'bn' ? `স্বাগতম, ${dbUser.name}!` : `Welcome back, ${dbUser.name}!`);
+        setNavigation({ path: "/customer" });
+        return { success: true, message: `Welcome, ${dbUser.name}` };
+      }
+      return {
+        success: false,
+        message: apiRes.message || (language === 'bn' ? "লগইন ব্যর্থ হয়েছে" : "Login failed")
       };
-      setRegisteredCustomers((prev) => {
-        const updated = [newUser, ...prev];
-        try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
-        return updated;
-      });
-      setIsAdminAuthenticated(false);
-      setCurrentUser(newUser);
-      try {
-        localStorage.setItem("be_current_user", JSON.stringify(newUser));
-        localStorage.removeItem("be_admin_authenticated");
-      } catch { /* ignore */ }
-      showToast(`Welcome! Account created successfully.`);
-      setNavigation({ path: "/customer" });
-      return { success: true, message: "Account created" };
+    } catch (apiErr: any) {
+      const errMsg = apiErr?.message || (language === 'bn'
+        ? "অ্যাকাউন্ট পাওয়া যাচ্ছে না অথবা পাসওয়ার্ড ভুল হয়েছে।"
+        : "No account found or password incorrect.");
+      return {
+        success: false,
+        message: errMsg
+      };
     }
-
-    return {
-      success: false,
-      message: language === 'bn'
-        ? "কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে রেজিস্ট্রেশন করুন।"
-        : "No account found with this phone or email. Please register below."
-    };
   };
+
 
   const registerCustomer = async (
     name: string,
@@ -1080,6 +972,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         : `Welcome to Bengal Edition, ${newUser.name}! Saved in database with +100 bonus loyalty points!`
     );
     setNavigation({ path: "/customer" });
+    // Sync new customer to admin Customers panel from database
+    try { await refreshCustomers(); } catch { /* ignore */ }
     return { success: true, message: "Registered" };
   };
 
@@ -1150,13 +1044,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  const switchDemoCustomer = (customerId: string) => {
-    const demo = DEMO_CUSTOMERS.find((c) => c.id === customerId);
-    if (demo) {
-      setCurrentUser(demo);
-      showToast(`Switched to ${demo.name}'s account`);
-    }
-  };
+
 
   const updateCustomerProfile = (data: Partial<CustomerUser>) => {
     if (!currentUser) return;
@@ -1556,11 +1444,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         loginAdmin,
         logoutAdmin,
         currentUser,
-        demoCustomers: DEMO_CUSTOMERS,
         loginCustomer,
         registerCustomer,
         logoutCustomer,
-        switchDemoCustomer,
         updateCustomerProfile,
         addCustomerAddress,
         updateCustomerAddress,

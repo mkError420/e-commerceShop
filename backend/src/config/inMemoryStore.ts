@@ -334,15 +334,6 @@ class StoreDatabase {
       role: "ADMIN",
       createdAt: new Date().toISOString(),
     },
-    {
-      id: "usr-cust-1",
-      name: "Nusrat Jahan",
-      phone: "01822334455",
-      email: "nusrat@example.com",
-      passwordHash: "$2a$10$w8.25o64yLdZg21c0e35u.98sH/sFfQ06G.Xf409kI0Yg2n",
-      role: "CUSTOMER",
-      createdAt: new Date().toISOString(),
-    },
   ];
 }
 

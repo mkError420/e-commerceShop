@@ -106,7 +106,7 @@ const CustomerSchema = new Schema<ICustomer>(
       index: true,
       trim: true,
       validate: {
-        validator: (v: string) => /^01[3-9]\d{8}$/.test(v),
+        validator: (v: string) => /^01\d{9}$/.test(v),
         message: "Phone must be a valid 11-digit Bangladeshi mobile number (01XXXXXXXXX)",
       },
     },

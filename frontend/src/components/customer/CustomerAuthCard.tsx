@@ -1,10 +1,10 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
 import { authService } from "../../services/authService";
-import { Smartphone, Mail, Eye, EyeOff, ArrowRight, Sparkles, UserPlus, Lock } from "lucide-react";
+import { Smartphone, Mail, Eye, EyeOff, ArrowRight, UserPlus, Lock } from "lucide-react";
 
 export const CustomerAuthCard: React.FC = () => {
-  const { loginCustomer, registerCustomer, switchDemoCustomer, demoCustomers, t, navigate } = useStore();
+  const { loginCustomer, registerCustomer, t, navigate } = useStore();
 
   const [mode, setMode] = useState<"login" | "register">("login");
   const [identifier, setIdentifier] = useState("");
@@ -22,7 +22,7 @@ export const CustomerAuthCard: React.FC = () => {
     if (!identifier.trim()) { setError("Please enter your mobile number or email."); return; }
     setLoading(true);
     await new Promise((r) => setTimeout(r, 400));
-    const result = loginCustomer(identifier.trim(), password.trim() || undefined);
+    const result = await loginCustomer(identifier.trim(), password.trim() || undefined);
     setLoading(false);
     if (!result.success) setError(result.message);
   };
@@ -226,34 +226,6 @@ export const CustomerAuthCard: React.FC = () => {
                 </button>
               </form>
             )}
-          </div>
-
-          {/* Quick Demo Login */}
-          <div className="border-t border-[#E0E0E0] bg-[#F9F9F7] p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-yellow-500" />
-              <span className="text-xs font-semibold text-[#555555] uppercase tracking-wider">
-                {t("Quick Demo Access", "ডেমো অ্যাকাউন্ট")}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              {demoCustomers.map((demo) => (
-                <button
-                  key={demo.id}
-                  onClick={() => switchDemoCustomer(demo.id)}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white border border-[#E0E0E0] hover:border-[#1A1A1A] hover:shadow-sm transition-all text-left group"
-                >
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-yellow-300 to-amber-400 flex items-center justify-center text-gray-900 font-bold text-sm flex-shrink-0">
-                    {demo.name.charAt(0)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-[#1A1A1A] truncate">{demo.name}</div>
-                    <div className="text-[10px] text-[#777777] font-mono">{demo.phone} · {demo.loyaltyTier}</div>
-                  </div>
-                  <ArrowRight className="w-3.5 h-3.5 text-[#AAAAAA] group-hover:text-[#1A1A1A] transition-colors flex-shrink-0" />
-                </button>
-              ))}
-            </div>
           </div>
         </div>
 
