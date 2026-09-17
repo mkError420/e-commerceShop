@@ -72,7 +72,7 @@ export const SeoModal: React.FC = () => {
 <meta property="og:title" content="Traditional Dhakai Jamdani Saree" />
 <meta property="og:description" content="Hand-woven in Rupganj, Narayanganj. Cash on Delivery across all 64 districts in Bangladesh." />
 <meta property="og:url" content="https://bengalarchive.com.bd/product/traditional-dhakai-jamdani-saree" />
-<meta property="og:image" content="https://images.unsplash.com/photo-1610030469983-98e550d6193c" />
+<meta property="og:image" content="https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg" />
 <meta property="product:price:amount" content="14500" />
 <meta property="product:price:currency" content="BDT" />
 

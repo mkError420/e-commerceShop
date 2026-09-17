@@ -31,7 +31,7 @@ function slugify(text: string): string {
 }
 
 const DEFAULT_CATEGORY_IMG =
-  "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=600&auto=format&fit=crop";
+  "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg";
 
 export const AdminCategories: React.FC = () => {
   const {

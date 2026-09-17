@@ -24,7 +24,7 @@ export const HomePage: React.FC = () => {
       ctaEn: "Explore Jamdani Sarees",
       ctaBn: "জামদানি কালেকশন দেখুন",
       link: "/category/jamdani-silk-sarees",
-      bgImage: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1600&auto=format&fit=crop",
+      bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
       tag: "Heritage Craft",
     },
     {
@@ -35,7 +35,7 @@ export const HomePage: React.FC = () => {
       ctaEn: "Shop Panjabi Collection",
       ctaBn: "পাঞ্জাবি কালেকশন দেখুন",
       link: "/category/panjabi",
-      bgImage: "https://images.unsplash.com/photo-1621786030685-2e8f11f9e65d?q=80&w=1600&auto=format&fit=crop",
+      bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
       tag: "Eid 2026 Edition",
     },
     {
@@ -46,7 +46,7 @@ export const HomePage: React.FC = () => {
       ctaEn: "Shop Polos",
       ctaBn: "পোলো শার্ট দেখুন",
       link: "/category/polo-shirt",
-      bgImage: "https://images.unsplash.com/photo-1581655353564-df123a1eb820?q=80&w=1600&auto=format&fit=crop",
+      bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_7_W2RWoB8Tz.jpg",
       tag: "Wardrobe Essentials",
     },
   ];
@@ -289,7 +289,7 @@ export const HomePage: React.FC = () => {
 
           <div className="relative aspect-[4/3] rounded-lg overflow-hidden border border-[#333333]">
             <img
-              src="https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=1000&auto=format&fit=crop"
+              src="https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg"
               alt="Jamdani Weaving Loom"
               className="w-full h-full object-cover"
             />

@@ -308,7 +308,7 @@ export const AdminProducts: React.FC = () => {
         craftsmanship: form.craftsmanship || "Handcrafted in Bangladesh",
         images: [
           form.imageUrl ||
-          "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop",
+          "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
         ],
         isFeatured: form.isFeatured,
         isFlashDeal: form.isFlashDeal,
@@ -737,7 +737,7 @@ export const AdminProducts: React.FC = () => {
                               className="w-20 h-24 object-cover rounded-lg border border-emerald-300 shadow-xs bg-white shrink-0"
                               onError={(e) => {
                                 (e.target as HTMLImageElement).src =
-                                  "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=800&auto=format&fit=crop";
+                                  "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg";
                               }}
                             />
                             <div className="flex-1 min-w-0 space-y-1.5">

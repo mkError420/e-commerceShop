@@ -108,7 +108,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
     slug: "womens-fashion",
     descriptionEn: "Exquisite Bangladeshi handloom sarees, heritage Jamdani, and contemporary festive wear.",
     descriptionBn: "ঐতিহ্যবাহী ঢাকাই জামদানি, রেশমি সিল্ক এবং আধুনিক উৎসবের পোশাক।",
-    image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=900&auto=format&fit=crop",
+    image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
     isFeatured: true,
     subcategories: [
       {
@@ -118,7 +118,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
         slug: "jamdani-silk-sarees",
         descriptionEn: "Authentic Dhakai Jamdani and Rajshahi Mulberry Silk woven by master artisans.",
         descriptionBn: "দক্ষ তাঁতিদের হাতে বোনা খাঁটি জামদানি ও সিল্ক শাড়ি।",
-        image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=900&auto=format&fit=crop",
+        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_2_00U4iyWPC.jpg",
         isFeatured: true,
         parentSlug: "womens-fashion",
       },
@@ -129,7 +129,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
         slug: "cotton-tant-sarees",
         descriptionEn: "Tangail and Sirajganj lightweight pure cotton handloom sarees for daily comfort.",
         descriptionBn: "টাঙ্গাইল ও সিরাজগঞ্জের নরম সুতি তাঁতের শাড়ি।",
-        image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=900&auto=format&fit=crop",
+        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_3_bquyVOKV5.jpg",
         isFeatured: false,
         parentSlug: "womens-fashion",
       },
@@ -142,7 +142,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
     slug: "mens-fashion",
     descriptionEn: "Heritage Panjabis, tailored Kabli sets, and everyday premium Supima polo shirts.",
     descriptionBn: "উৎসবের প্রিমিয়াম পাঞ্জাবি, কাবলি সেট ও এক্সিকিউটিভ পোলো শার্ট।",
-    image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=900&auto=format&fit=crop",
+    image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
     isFeatured: true,
     subcategories: [
       {
@@ -152,7 +152,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
         slug: "panjabi",
         descriptionEn: "Jacquard cotton, silk blends with tailored collar embroidery.",
         descriptionBn: "আভিজাত্যময় কলার নকশার প্রিমিয়াম সুতি ও সিল্ক পাঞ্জাবি।",
-        image: "https://images.unsplash.com/photo-1596783074918-c84cb06531ca?q=80&w=900&auto=format&fit=crop",
+        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_3_bquyVOKV5.jpg",
         isFeatured: true,
         parentSlug: "mens-fashion",
       },
@@ -165,7 +165,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
     slug: "artisan-crafts-home",
     descriptionEn: "Nakshi Kantha, Terracotta pottery, and brass decor from rural master crafters.",
     descriptionBn: "নকশী কাঁথা, পোড়ামাটির সামগ্রী ও পিতলের ঐতিহ্যবাহী গৃহসজ্জা।",
-    image: "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=900&auto=format&fit=crop",
+    image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_8_ZxSLoSOnJ.jpg",
     isFeatured: true,
     subcategories: [
       {
@@ -175,7 +175,7 @@ export const INITIAL_CATEGORIES: StoredCategory[] = [
         slug: "nakshi-kantha",
         descriptionEn: "Hand-embroidered heritage quilts from Jessore and Jamalpur.",
         descriptionBn: "যশোর ও জামালপুরের খাঁটি হাতের কাজের নকশী কাঁথা।",
-        image: "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=900&auto=format&fit=crop",
+        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_8_ZxSLoSOnJ.jpg",
         isFeatured: true,
         parentSlug: "artisan-crafts-home",
       },
@@ -200,8 +200,8 @@ export const INITIAL_PRODUCTS: StoredProduct[] = [
     dhakaHubStock: 5,
     chittagongHubStock: 3,
     images: [
-      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=900&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?q=80&w=900&auto=format&fit=crop",
+      "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
+      "https://ik.imagekit.io/mha5hytnj/products/catalog_product_2_00U4iyWPC.jpg",
     ],
     sizes: ["Standard 12 Haat"],
     colors: [
@@ -230,8 +230,8 @@ export const INITIAL_PRODUCTS: StoredProduct[] = [
     dhakaHubStock: 16,
     chittagongHubStock: 8,
     images: [
-      "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=900&auto=format&fit=crop",
-      "https://images.unsplash.com/photo-1596783074918-c84cb06531ca?q=80&w=900&auto=format&fit=crop",
+      "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
+      "https://ik.imagekit.io/mha5hytnj/products/catalog_product_3_bquyVOKV5.jpg",
     ],
     sizes: ["38 (S)", "40 (M)", "42 (L)", "44 (XL)"],
     colors: [
@@ -260,7 +260,7 @@ export const INITIAL_PRODUCTS: StoredProduct[] = [
     dhakaHubStock: 8,
     chittagongHubStock: 4,
     images: [
-      "https://images.unsplash.com/photo-1578749556568-bc2c40e68b61?q=80&w=900&auto=format&fit=crop",
+      "https://ik.imagekit.io/mha5hytnj/products/catalog_product_8_ZxSLoSOnJ.jpg",
     ],
     sizes: ["King (7.5 x 8.5 ft)"],
     colors: [
@@ -300,7 +300,7 @@ export const INITIAL_ORDERS: StoredOrder[] = [
         quantity: 1,
         size: "42 (L)",
         color: "Emerald Green",
-        image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=900&auto=format&fit=crop",
+        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
       },
     ],
     subtotal: 4200,

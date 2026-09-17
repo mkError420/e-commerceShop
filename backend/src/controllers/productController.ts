@@ -102,7 +102,7 @@ export const productController = {
       stock,
       dhakaHubStock: Number(body.dhakaHubStock || Math.floor(stock * 0.6)),
       chittagongHubStock: Number(body.chittagongHubStock || Math.floor(stock * 0.4)),
-      images: body.images && body.images.length ? body.images : ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?q=80&w=900&auto=format&fit=crop"],
+      images: body.images && body.images.length ? body.images : ["https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg"],
       sizes: body.sizes || ["Standard"],
       colors: body.colors || [{ name: "Standard", hex: "#1A1A1A" }],
       isFeatured: Boolean(body.isFeatured),
