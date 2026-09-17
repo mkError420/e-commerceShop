@@ -133,60 +133,90 @@ export const AdminDashboard: React.FC = () => {
   const totalOrdersCount = orders.length || 1;
   const insideDhakaPct = Math.round((insideDhakaOrders / totalOrdersCount) * 100);
 
-  const navItems = [
+  const navSections = [
     {
-      id: "overview" as const,
-      label: "Dashboard Overview",
-      icon: LayoutDashboard,
-      badge: null,
+      groupKey: "core",
+      title: "Core Overview",
+      items: [
+        {
+          id: "overview" as const,
+          label: "Dashboard Overview",
+          icon: LayoutDashboard,
+          badge: null,
+        },
+      ],
     },
     {
-      id: "products" as const,
-      label: "Products & Catalog",
-      icon: Package,
-      badge: lowStockProducts.length > 0 ? { count: lowStockProducts.length, alert: true } : null,
+      groupKey: "catalog",
+      title: "Catalog & Products",
+      items: [
+        {
+          id: "products" as const,
+          label: "Products & Stock",
+          icon: Package,
+          badge: lowStockProducts.length > 0 ? { count: lowStockProducts.length, alert: true } : null,
+        },
+        {
+          id: "categories" as const,
+          label: "Categories & Taxonomy",
+          icon: FolderTree,
+          badge: { count: categories.length, alert: false },
+        },
+      ],
     },
     {
-      id: "categories" as const,
-      label: "Categories & Taxonomy",
-      icon: FolderTree,
-      badge: { count: categories.length, alert: false },
+      groupKey: "storefront",
+      title: "Storefront & Marketing",
+      items: [
+        {
+          id: "banners" as const,
+          label: "Home Hero Banners",
+          icon: ImageIcon,
+          badge: { count: banners.filter((b) => b.isActive).length, alert: false },
+        },
+        {
+          id: "coupons" as const,
+          label: "Vouchers & Discounts",
+          icon: Tag,
+          badge: { count: coupons.filter((c) => c.isActive).length, alert: false },
+        },
+      ],
     },
     {
-      id: "orders" as const,
-      label: "Orders & Fulfillment",
-      icon: ShoppingCart,
-      badge: pendingOrdersCount > 0 ? { count: pendingOrdersCount, alert: false } : null,
+      groupKey: "sales",
+      title: "Sales & Operations",
+      items: [
+        {
+          id: "orders" as const,
+          label: "Orders & Logistics",
+          icon: ShoppingCart,
+          badge: pendingOrdersCount > 0 ? { count: pendingOrdersCount, alert: false } : null,
+        },
+        {
+          id: "customers" as const,
+          label: "Customer Directory",
+          icon: Users,
+          badge: { count: customers.length, alert: false },
+        },
+      ],
     },
     {
-      id: "customers" as const,
-      label: "Customer Accounts",
-      icon: Users,
-      badge: { count: customers.length, alert: false },
-    },
-    {
-      id: "shop-admins" as const,
-      label: "Shop Admins & Staff",
-      icon: ShieldCheck,
-      badge: { count: shopAdmins.length, alert: false },
-    },
-    {
-      id: "banners" as const,
-      label: "Home Hero Banners",
-      icon: ImageIcon,
-      badge: { count: banners.filter(b => b.isActive).length, alert: false },
-    },
-    {
-      id: "coupons" as const,
-      label: "Vouchers & Marketing",
-      icon: Tag,
-      badge: { count: coupons.filter(c => c.isActive).length, alert: false },
-    },
-    {
-      id: "settings" as const,
-      label: "Logistics & Gateways",
-      icon: Settings,
-      badge: null,
+      groupKey: "administration",
+      title: "Access & Gateways",
+      items: [
+        {
+          id: "shop-admins" as const,
+          label: "Shop Admins & Staff",
+          icon: ShieldCheck,
+          badge: { count: shopAdmins.length, alert: false },
+        },
+        {
+          id: "settings" as const,
+          label: "Logistics & Gateways",
+          icon: Settings,
+          badge: null,
+        },
+      ],
     },
   ];
 
@@ -257,73 +287,92 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </div>
 
-        {/* Sidebar Navigation Links */}
-        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-          <div className="px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-            Management
-          </div>
+        {/* Sidebar Navigation Links - Separated into Logical Categories */}
+        <nav className="flex-1 px-3 py-3 overflow-y-auto space-y-3.5 scrollbar-thin scrollbar-thumb-gray-800">
+          {navSections.map((section, idx) => (
+            <div key={section.groupKey} className={idx > 0 ? "pt-2.5 border-t border-gray-800/80" : ""}>
+              <div className="px-3 pb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                <span>{section.title}</span>
+                <span className="w-1 h-1 rounded-full bg-gray-700" />
+              </div>
 
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
+              <div className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        setIsSidebarOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs font-medium transition-all group ${
+                        isActive
+                          ? "bg-yellow-400 text-gray-950 font-bold shadow-sm"
+                          : "text-gray-300 hover:bg-gray-800/90 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon
+                          className={`w-4 h-4 transition-colors ${
+                            isActive ? "text-gray-950" : "text-gray-400 group-hover:text-yellow-400"
+                          }`}
+                        />
+                        <span>{item.label}</span>
+                      </div>
+
+                      {item.badge && (
+                        <span
+                          className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
+                            isActive
+                              ? "bg-gray-950 text-yellow-300"
+                              : item.badge.alert
+                                ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/30"
+                                : "bg-gray-800 text-gray-300 border border-gray-700"
+                          }`}
+                        >
+                          {item.badge.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+
+          {/* Dev & Architecture Spec Section */}
+          <div className="pt-2.5 border-t border-gray-800/80">
+            <div className="px-3 pb-1.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-wider text-gray-400">
+              <span>Developer &amp; Tech Spec</span>
+              <span className="w-1 h-1 rounded-full bg-gray-700" />
+            </div>
+
+            <div className="space-y-1">
               <button
-                key={item.id}
-                onClick={() => {
-                  setActiveTab(item.id);
-                  setIsSidebarOpen(false);
-                }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${isActive
-                  ? "bg-yellow-400 text-gray-950 font-bold shadow-sm"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                  }`}
+                onClick={() => setIsArchitectureModalOpen(true)}
+                className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800/90 transition-colors"
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-gray-950" : "text-gray-400 group-hover:text-yellow-400"
-                    }`} />
-                  <span>{item.label}</span>
+                  <Code className="w-4 h-4 text-yellow-400" />
+                  <span>Prisma / Next.js Spec</span>
                 </div>
-
-                {item.badge && (
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${isActive
-                    ? "bg-gray-950 text-yellow-300"
-                    : item.badge.alert
-                      ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/30"
-                      : "bg-gray-800 text-gray-300 border border-gray-700"
-                    }`}>
-                    {item.badge.count}
-                  </span>
-                )}
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
               </button>
-            );
-          })}
 
-          {/* Dev & Architecture Section */}
-          <div className="pt-6 px-3 pb-2 text-[11px] font-bold uppercase tracking-wider text-gray-400">
-            Developer Spec
+              <button
+                onClick={() => setIsSeoModalOpen(true)}
+                className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800/90 transition-colors"
+              >
+                <div className="flex items-center gap-3">
+                  <Globe className="w-4 h-4 text-yellow-400" />
+                  <span>SEO &amp; Rich Snippets</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
+              </button>
+            </div>
           </div>
-
-          <button
-            onClick={() => setIsArchitectureModalOpen(true)}
-            className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Code className="w-4 h-4 text-yellow-400" />
-              <span>Prisma / Next.js Spec</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-          </button>
-
-          <button
-            onClick={() => setIsSeoModalOpen(true)}
-            className="w-full flex items-center justify-between px-3.5 py-2 rounded-lg text-xs text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <Globe className="w-4 h-4 text-yellow-400" />
-              <span>SEO & Rich Snippets</span>
-            </div>
-            <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-          </button>
         </nav>
 
         {/* Sidebar Footer: Storefront Link & Admin Profile */}
