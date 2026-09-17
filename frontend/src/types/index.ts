@@ -191,3 +191,28 @@ export interface FilterOptions {
   sortBy: 'price-low-high' | 'price-high-low' | 'newest' | 'rating';
   searchQuery: string;
 }
+
+export type AdminRole = 'ADMIN' | 'MANAGER';
+
+export type AdminPermission =
+  | 'dashboard'
+  | 'products'
+  | 'categories'
+  | 'orders'
+  | 'customers'
+  | 'coupons'
+  | 'settings'
+  | 'admins';
+
+export interface ShopAdminUser {
+  id: string;
+  name: string;
+  phone: string;
+  email?: string;
+  role: AdminRole;
+  isBlocked: boolean;
+  permissions: AdminPermission[];
+  createdAt: string;
+  lastLogin?: string;
+}
+

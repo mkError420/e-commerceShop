@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { 
-  LayoutDashboard, 
-  Package, 
-  ShoppingCart, 
-  Tag, 
-  Settings, 
-  TrendingUp, 
-  AlertTriangle, 
-  Truck, 
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingCart,
+  Tag,
+  Settings,
+  TrendingUp,
+  AlertTriangle,
+  Truck,
   ArrowUpRight,
   ExternalLink,
   Code,
@@ -29,19 +29,21 @@ import { AdminProducts } from "./AdminProducts";
 import { AdminCategories } from "./AdminCategories";
 import { AdminOrders } from "./AdminOrders";
 import { AdminCustomers } from "./AdminCustomers";
+import { AdminShopAdmins } from "./AdminShopAdmins";
 import { AdminCoupons } from "./AdminCoupons";
 import { AdminSettings } from "./AdminSettings";
 
 export const AdminDashboard: React.FC = () => {
-  const { 
-    orders, 
-    products, 
+  const {
+    orders,
+    products,
     categories,
-    coupons, 
+    coupons,
     customers,
-    formatPrice, 
-    navigate, 
-    setIsArchitectureModalOpen, 
+    shopAdmins,
+    formatPrice,
+    navigate,
+    setIsArchitectureModalOpen,
     setIsSeoModalOpen,
     isAdminAuthenticated,
     logoutAdmin,
@@ -49,7 +51,7 @@ export const AdminDashboard: React.FC = () => {
     logoutCustomer,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "categories" | "orders" | "customers" | "coupons" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "categories" | "orders" | "customers" | "shop-admins" | "coupons" | "settings">("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // If not authenticated as Admin, prompt to login or redirect customer
@@ -160,6 +162,12 @@ export const AdminDashboard: React.FC = () => {
       badge: { count: customers.length, alert: false },
     },
     {
+      id: "shop-admins" as const,
+      label: "Shop Admins & Staff",
+      icon: ShieldCheck,
+      badge: { count: shopAdmins.length, alert: false },
+    },
+    {
       id: "coupons" as const,
       label: "Vouchers & Marketing",
       icon: Tag,
@@ -180,6 +188,7 @@ export const AdminDashboard: React.FC = () => {
       case "categories": return "Category & Sub-Category Catalog";
       case "orders": return "Orders & Courier Logistics";
       case "customers": return "Customer Directory & Accounts";
+      case "shop-admins": return "Shop Administrator & Staff Management";
       case "coupons": return "Marketing Vouchers";
       case "settings": return "Logistics & Gateway Settings";
       default: return "Admin Portal";
@@ -190,24 +199,20 @@ export const AdminDashboard: React.FC = () => {
     <div className="min-h-screen bg-gray-100 text-gray-900 flex font-sans antialiased selection:bg-yellow-300 selection:text-gray-950">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-xs transition-opacity"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Modern Sidebar (Charcoal Gray with Simple Yellow Accents) */}
-      <aside 
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-gray-900 text-gray-200 border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
+      <aside
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-gray-900 text-gray-200 border-r border-gray-800 flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
       >
         {/* Sidebar Brand Header */}
         <div className="p-5 border-b border-gray-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-300 to-yellow-500 flex items-center justify-center text-gray-950 font-bold shadow-md shadow-yellow-500/20">
-              <Sparkles className="w-5 h-5 text-gray-950" />
-            </div>
             <div>
               <h1 className="font-editorial text-base font-bold text-white tracking-wide flex items-center gap-1.5">
                 BENGAL ARCHIVE
@@ -221,7 +226,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={() => setIsSidebarOpen(false)}
             className="lg:hidden p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
           >
@@ -258,27 +263,24 @@ export const AdminDashboard: React.FC = () => {
                   setActiveTab(item.id);
                   setIsSidebarOpen(false);
                 }}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${
-                  isActive
-                    ? "bg-yellow-400 text-gray-950 font-bold shadow-sm"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                }`}
+                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-lg text-xs font-medium transition-all group ${isActive
+                  ? "bg-yellow-400 text-gray-950 font-bold shadow-sm"
+                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  }`}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 transition-colors ${
-                    isActive ? "text-gray-950" : "text-gray-400 group-hover:text-yellow-400"
-                  }`} />
+                  <Icon className={`w-4 h-4 transition-colors ${isActive ? "text-gray-950" : "text-gray-400 group-hover:text-yellow-400"
+                    }`} />
                   <span>{item.label}</span>
                 </div>
 
                 {item.badge && (
-                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${
-                    isActive
-                      ? "bg-gray-950 text-yellow-300"
-                      : item.badge.alert
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full font-bold ${isActive
+                    ? "bg-gray-950 text-yellow-300"
+                    : item.badge.alert
                       ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/30"
                       : "bg-gray-800 text-gray-300 border border-gray-700"
-                  }`}>
+                    }`}>
                     {item.badge.count}
                   </span>
                 )}
@@ -538,13 +540,13 @@ export const AdminDashboard: React.FC = () => {
                   {/* Progress bar split */}
                   <div className="mt-2 space-y-1.5">
                     <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden flex">
-                      <div 
-                        className="bg-yellow-400 h-full transition-all duration-500" 
+                      <div
+                        className="bg-yellow-400 h-full transition-all duration-500"
                         style={{ width: `${insideDhakaPct}%` }}
                         title={`Dhaka: ${insideDhakaPct}%`}
                       />
-                      <div 
-                        className="bg-gray-800 h-full transition-all duration-500" 
+                      <div
+                        className="bg-gray-800 h-full transition-all duration-500"
                         style={{ width: `${100 - insideDhakaPct}%` }}
                         title={`Districts: ${100 - insideDhakaPct}%`}
                       />
@@ -679,16 +681,14 @@ export const AdminDashboard: React.FC = () => {
                             {formatPrice(order.totalBDT)}
                           </td>
                           <td className="py-3.5 px-4">
-                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${
-                              order.status === "DELIVERED"
-                                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                                : order.status === "SHIPPED"
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold inline-flex items-center gap-1 ${order.status === "DELIVERED"
+                              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                              : order.status === "SHIPPED"
                                 ? "bg-blue-50 text-blue-800 border border-blue-200"
                                 : "bg-yellow-100 text-yellow-800 border border-yellow-300"
-                            }`}>
-                              <span className={`w-1.5 h-1.5 rounded-full ${
-                                order.status === "DELIVERED" ? "bg-emerald-500" : order.status === "SHIPPED" ? "bg-blue-500" : "bg-yellow-500"
-                              }`} />
+                              }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${order.status === "DELIVERED" ? "bg-emerald-500" : order.status === "SHIPPED" ? "bg-blue-500" : "bg-yellow-500"
+                                }`} />
                               {order.status}
                             </span>
                           </td>
@@ -756,11 +756,10 @@ export const AdminDashboard: React.FC = () => {
                             {cust.registeredDate || "2026"}
                           </td>
                           <td className="py-3.5 px-4 text-center">
-                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              cust.isBlocked
-                                ? "bg-rose-100 text-rose-800"
-                                : "bg-emerald-50 text-emerald-800"
-                            }`}>
+                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${cust.isBlocked
+                              ? "bg-rose-100 text-rose-800"
+                              : "bg-emerald-50 text-emerald-800"
+                              }`}>
                               {cust.isBlocked ? "BLOCKED" : "ACTIVE"}
                             </span>
                           </td>
@@ -778,6 +777,89 @@ export const AdminDashboard: React.FC = () => {
                   </table>
                 </div>
               </div>
+
+              {/* Shop Administrators & Access Control Preview */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 gap-2">
+                  <div>
+                    <h3 className="font-editorial text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-yellow-500" />
+                      <span>Shop Administrators &amp; Staff Directory</span>
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      Authorized administrators, managers, and operational role assignments synced with MongoDB Atlas
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("shop-admins")}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-900 hover:text-yellow-600 transition-colors"
+                  >
+                    <span>Manage All Shop Admins ({shopAdmins.length})</span>
+                    <ChevronRight className="w-4 h-4 text-yellow-500" />
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs text-gray-600">
+                    <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 font-medium">
+                      <tr>
+                        <th className="py-3 px-4">Administrator</th>
+                        <th className="py-3 px-4">Phone Number</th>
+                        <th className="py-3 px-4">Email</th>
+                        <th className="py-3 px-4">Role</th>
+                        <th className="py-3 px-4 text-center">Status</th>
+                        <th className="py-3 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {shopAdmins.slice(0, 5).map((admin) => (
+                        <tr key={admin.id} className="hover:bg-gray-50/60 transition-colors">
+                          <td className="py-3.5 px-4 font-semibold text-gray-900">
+                            <div>{admin.name}</div>
+                            <div className="text-[10px] text-gray-400 font-mono">{admin.id}</div>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono font-bold text-gray-800">
+                            {admin.phone}
+                          </td>
+                          <td className="py-3.5 px-4 text-gray-500">
+                            {admin.email || "—"}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                admin.role === "ADMIN"
+                                  ? "bg-gray-950 text-yellow-400"
+                                  : "bg-sky-100 text-sky-800"
+                              }`}
+                            >
+                              {admin.role === "ADMIN" ? "Super Admin" : "Store Manager"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                admin.isBlocked
+                                  ? "bg-rose-100 text-rose-800"
+                                  : "bg-emerald-50 text-emerald-800"
+                              }`}
+                            >
+                              {admin.isBlocked ? "SUSPENDED" : "ACTIVE"}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => setActiveTab("shop-admins")}
+                              className="text-xs font-semibold text-gray-700 hover:text-gray-950 bg-gray-100 hover:bg-yellow-400 px-2.5 py-1 rounded transition-colors"
+                            >
+                              Manage
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
 
@@ -785,6 +867,7 @@ export const AdminDashboard: React.FC = () => {
           {activeTab === "categories" && <AdminCategories />}
           {activeTab === "orders" && <AdminOrders />}
           {activeTab === "customers" && <AdminCustomers />}
+          {activeTab === "shop-admins" && <AdminShopAdmins />}
           {activeTab === "coupons" && <AdminCoupons />}
           {activeTab === "settings" && <AdminSettings />}
         </main>

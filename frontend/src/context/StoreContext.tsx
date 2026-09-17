@@ -12,7 +12,10 @@ import {
   Language, 
   ProductVariant, 
   OrderStatus,
-  PaymentStatus 
+  PaymentStatus,
+  ShopAdminUser,
+  AdminPermission,
+  AdminRole
 } from "../types";
 import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
@@ -134,6 +137,40 @@ const INITIAL_ORDERS: Order[] = [
 
 const INITIAL_CUSTOMERS: Customer[] = [];
 
+const INITIAL_SHOP_ADMINS: ShopAdminUser[] = [
+  {
+    id: "usr-admin-1",
+    name: "Super Administrator",
+    phone: "01700000000",
+    email: "admin@shorobor.com.bd",
+    role: "ADMIN",
+    isBlocked: false,
+    permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+    createdAt: "2026-01-01T00:00:00.000Z",
+  },
+  {
+    id: "usr-admin-2",
+    name: "Shop Admin (Golam Rabbani)",
+    phone: "01800000001",
+    email: "mk.rabbani.cse@gmail.com",
+    role: "ADMIN",
+    isBlocked: false,
+    permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+    createdAt: "2026-02-15T00:00:00.000Z",
+  },
+  {
+    id: "usr-manager-1",
+    name: "Store Operations Manager",
+    phone: "01911223344",
+    email: "manager@shorobor.com.bd",
+    role: "MANAGER",
+    isBlocked: false,
+    permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons"],
+    createdAt: "2026-03-01T00:00:00.000Z",
+  },
+];
+
+
 interface NavigationState {
   path: string;
   params?: Record<string, string>;
@@ -206,6 +243,25 @@ interface StoreContextType {
   updateCustomer: (customerId: string, data: Partial<Customer>) => Promise<{ success: boolean; message: string }>;
   refreshCustomers: () => Promise<void>;
   registerAdminUser?: (name: string, phone: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
+
+  // Shop Admins & Staff (Admin Management)
+  shopAdmins: ShopAdminUser[];
+  refreshShopAdmins: () => Promise<void>;
+  createShopAdmin: (data: {
+    name: string;
+    phone: string;
+    email?: string;
+    password?: string;
+    role: AdminRole;
+    permissions?: AdminPermission[];
+  }) => Promise<{ success: boolean; message: string }>;
+  updateShopAdmin: (
+    id: string,
+    data: Partial<ShopAdminUser> & { password?: string }
+  ) => Promise<{ success: boolean; message: string }>;
+  deleteShopAdmin: (id: string) => Promise<{ success: boolean; message: string }>;
+  toggleShopAdminStatus: (id: string) => Promise<{ success: boolean; message: string }>;
+
 
   // Auth & Unified Login
   login: (identifier: string, password: string) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }> | { success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string };
@@ -293,6 +349,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (stored) return JSON.parse(stored) as Customer[];
     } catch { /* ignore */ }
     return INITIAL_CUSTOMERS;
+  });
+  const [shopAdmins, setShopAdmins] = useState<ShopAdminUser[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_shop_admins");
+      if (stored) {
+        const parsed = JSON.parse(stored) as ShopAdminUser[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return INITIAL_SHOP_ADMINS;
   });
   const [coupons, setCoupons] = useState<Coupon[]>(MOCK_COUPONS);
   
@@ -1062,11 +1128,126 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (res.success) {
         showToast(language === 'bn' ? "নতুন অ্যাডমিন অ্যাকাউন্ট ডেটাবেজে যুক্ত হয়েছে!" : "New Admin user successfully saved to MongoDB!");
         await refreshCustomers();
+        await refreshShopAdmins();
         return { success: true, message: "Admin user created" };
       }
       return { success: false, message: res.message || "Failed to create admin" };
     } catch (err: any) {
       return { success: false, message: err?.message || "Error creating admin account" };
+    }
+  };
+
+  const refreshShopAdmins = async (): Promise<void> => {
+    try {
+      const res = await authService.getShopAdmins();
+      if (res.success && Array.isArray(res.admins) && res.admins.length > 0) {
+        setShopAdmins(res.admins);
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(res.admins)); } catch {}
+      }
+    } catch (err: any) {
+      console.warn("[Admin] Shop Admin database sync error:", err?.message);
+    }
+  };
+
+  const createShopAdmin = async (data: {
+    name: string;
+    phone: string;
+    email?: string;
+    password?: string;
+    role: AdminRole;
+    permissions?: AdminPermission[];
+  }): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authService.createShopAdmin(data);
+      if (res.success) {
+        showToast(
+          language === "bn"
+            ? "নতুন শপ অ্যাডমিন সফলভাবে ডেটাবেজে সংরক্ষিত হয়েছে!"
+            : "Shop Admin successfully saved to MongoDB database!",
+          "success"
+        );
+        await refreshShopAdmins();
+        return { success: true, message: res.message || "Admin created" };
+      }
+      return { success: false, message: res.message || "Failed to create shop admin" };
+    } catch (err: any) {
+      const newAdmin: ShopAdminUser = {
+        id: `usr-admin-${Date.now()}`,
+        name: data.name.trim(),
+        phone: data.phone.trim(),
+        email: data.email?.trim() || "",
+        role: data.role,
+        isBlocked: false,
+        permissions: data.permissions || ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+        createdAt: new Date().toISOString(),
+      };
+      setShopAdmins((prev) => {
+        const updated = [newAdmin, ...prev];
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Shop Admin saved locally.", "info");
+      return { success: true, message: "Admin created (local)" };
+    }
+  };
+
+  const updateShopAdmin = async (
+    id: string,
+    data: Partial<ShopAdminUser> & { password?: string }
+  ): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authService.updateShopAdmin(id, data);
+      await refreshShopAdmins();
+      showToast(language === "bn" ? "অ্যাডমিন তথ্য আপডেট হয়েছে" : "Shop Admin details updated successfully", "success");
+      return { success: true, message: res.message || "Admin updated" };
+    } catch (err: any) {
+      setShopAdmins((prev) => {
+        const updated = prev.map((a) => (a.id === id ? { ...a, ...data } : a));
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Shop Admin updated locally", "info");
+      return { success: true, message: "Admin updated" };
+    }
+  };
+
+  const deleteShopAdmin = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authService.deleteShopAdmin(id);
+      if (res.success) {
+        await refreshShopAdmins();
+        showToast(language === "bn" ? "অ্যাডমিন সফলভাবে ডিলিট হয়েছে" : "Shop Admin removed successfully", "info");
+        return { success: true, message: res.message };
+      }
+      return { success: false, message: res.message || "Cannot delete admin" };
+    } catch (err: any) {
+      if (shopAdmins.filter(a => a.role === "ADMIN").length <= 1) {
+        return { success: false, message: "Cannot delete the only remaining Administrator." };
+      }
+      setShopAdmins((prev) => {
+        const updated = prev.filter((a) => a.id !== id);
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Shop Admin removed", "info");
+      return { success: true, message: "Admin deleted locally" };
+    }
+  };
+
+  const toggleShopAdminStatus = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await authService.toggleShopAdminStatus(id);
+      await refreshShopAdmins();
+      showToast(res.isBlocked ? "Shop Admin suspended" : "Shop Admin activated", "info");
+      return { success: true, message: res.message };
+    } catch (err: any) {
+      setShopAdmins((prev) => {
+        const updated = prev.map((a) => (a.id === id ? { ...a, isBlocked: !a.isBlocked } : a));
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Shop Admin status updated", "info");
+      return { success: true, message: "Status updated locally" };
     }
   };
 
@@ -1082,12 +1263,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Synchronize products, categories, orders, and customers from Backend / MongoDB Atlas on application startup
+  // Synchronize products, categories, orders, customers, and shop admins from Backend / MongoDB Atlas on application startup
   useEffect(() => {
     refreshProducts();
     refreshCategories();
     refreshOrders();
     refreshCustomers();
+    refreshShopAdmins();
   }, []);
 
   const logoutCustomer = () => {
@@ -1582,6 +1764,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateCustomer,
         refreshCustomers,
         registerAdminUser,
+        shopAdmins,
+        refreshShopAdmins,
+        createShopAdmin,
+        updateShopAdmin,
+        deleteShopAdmin,
+        toggleShopAdminStatus,
         login,
         isAdminAuthenticated,
         adminUser: isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null,

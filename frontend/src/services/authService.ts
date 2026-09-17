@@ -89,9 +89,67 @@ export const authService = {
     });
   },
 
+  // ==========================================
+  // SHOP ADMIN MANAGEMENT API
+  // ==========================================
+
+  // Get all shop administrators and managers
+  async getShopAdmins(): Promise<{ success: boolean; count: number; admins: any[] }> {
+    return apiClient<{ success: boolean; count: number; admins: any[] }>("/auth/admins");
+  },
+
+  // Create new shop administrator or manager
+  async createShopAdmin(data: {
+    name: string;
+    phone: string;
+    email?: string;
+    password?: string;
+    role: "ADMIN" | "MANAGER";
+    permissions?: string[];
+  }): Promise<{ success: boolean; message: string; admin?: any }> {
+    return apiClient<{ success: boolean; message: string; admin?: any }>("/auth/admins", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Update existing shop administrator or manager
+  async updateShopAdmin(
+    id: string,
+    data: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      password?: string;
+      role?: "ADMIN" | "MANAGER";
+      permissions?: string[];
+      isBlocked?: boolean;
+    }
+  ): Promise<{ success: boolean; message: string }> {
+    return apiClient<{ success: boolean; message: string }>(`/auth/admins/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  },
+
+  // Delete shop administrator
+  async deleteShopAdmin(id: string): Promise<{ success: boolean; message: string }> {
+    return apiClient<{ success: boolean; message: string }>(`/auth/admins/${id}`, {
+      method: "DELETE",
+    });
+  },
+
+  // Toggle active / blocked status
+  async toggleShopAdminStatus(id: string): Promise<{ success: boolean; isBlocked: boolean; message: string }> {
+    return apiClient<{ success: boolean; isBlocked: boolean; message: string }>(`/auth/admins/${id}/toggle-status`, {
+      method: "PATCH",
+    });
+  },
+
   // Logout
   logout(): void {
     localStorage.removeItem("auth_token");
     localStorage.removeItem("user_profile");
   },
 };
+

@@ -6,6 +6,8 @@ export interface IUser extends Document {
   email?: string;
   passwordHash?: string;
   role: "ADMIN" | "CUSTOMER" | "MANAGER";
+  isBlocked?: boolean;
+  permissions?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -17,8 +19,11 @@ const UserSchema = new Schema<IUser>(
     email: { type: String, trim: true, lowercase: true },
     passwordHash: { type: String },
     role: { type: String, enum: ["ADMIN", "CUSTOMER", "MANAGER"], default: "CUSTOMER" },
+    isBlocked: { type: Boolean, default: false },
+    permissions: { type: [String], default: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"] },
   },
   { timestamps: true }
 );
 
 export const UserModel = mongoose.models.User || mongoose.model<IUser>("User", UserSchema);
+

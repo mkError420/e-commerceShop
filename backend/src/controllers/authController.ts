@@ -578,4 +578,317 @@ export const authController = {
       res.status(500).json({ success: false, message: error.message });
     }
   },
+
+  // ==========================================
+  // SHOP ADMIN MANAGEMENT (Admins & Managers)
+  // ==========================================
+
+  // Get all shop administrators and managers
+  async getShopAdmins(req: Request, res: Response): Promise<void> {
+    try {
+      let dbAdmins: any[] = [];
+      try {
+        dbAdmins = await UserModel.find({ role: { $in: ["ADMIN", "MANAGER"] } }).sort({ createdAt: -1 }).lean();
+      } catch (dbErr) {
+        console.warn("[MongoDB] getShopAdmins fetch warning:", dbErr);
+      }
+
+      const adminMap = new Map<string, any>();
+
+      // 1. Add from MongoDB
+      dbAdmins.forEach((u: any) => {
+        const phone = u.phone || u._id.toString();
+        adminMap.set(phone, {
+          id: u._id.toString(),
+          name: u.name,
+          phone: u.phone,
+          email: u.email || "",
+          role: u.role || "ADMIN",
+          isBlocked: !!u.isBlocked,
+          permissions: u.permissions || ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+          createdAt: u.createdAt ? new Date(u.createdAt).toISOString() : new Date().toISOString(),
+        });
+      });
+
+      // 2. Add from in-memory store
+      dbStore.users
+        .filter((u) => u.role === "ADMIN" || u.role === "MANAGER")
+        .forEach((u) => {
+          if (!adminMap.has(u.phone)) {
+            adminMap.set(u.phone, {
+              id: u.id,
+              name: u.name,
+              phone: u.phone,
+              email: u.email || "",
+              role: u.role,
+              isBlocked: !!u.isBlocked,
+              permissions: u.permissions || ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+              createdAt: u.createdAt || new Date().toISOString(),
+            });
+          }
+        });
+
+      const admins = Array.from(adminMap.values());
+
+      res.json({
+        success: true,
+        count: admins.length,
+        admins,
+      });
+    } catch (error: any) {
+      console.error("Get Shop Admins Error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Create a new Shop Admin or Manager
+  async createShopAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const { name, phone, email, password, role, permissions } = req.body;
+      if (!name || !phone) {
+        res.status(400).json({ success: false, message: "Admin Name and Bangladeshi Phone number are required." });
+        return;
+      }
+
+      const cleanPhone = String(phone).trim();
+      const cleanName = String(name).trim();
+      const cleanEmail = email ? String(email).trim().toLowerCase() : "";
+      const targetRole: "ADMIN" | "MANAGER" = role === "MANAGER" ? "MANAGER" : "ADMIN";
+      const defaultPermissions = targetRole === "ADMIN"
+        ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+        : ["dashboard", "products", "categories", "orders", "customers", "coupons"];
+      const finalPermissions = Array.isArray(permissions) && permissions.length > 0 ? permissions : defaultPermissions;
+
+      // Check if user with this phone or email already exists
+      let existingInDb: any = null;
+      try {
+        existingInDb = await UserModel.findOne({
+          $or: [
+            { phone: cleanPhone },
+            ...(cleanEmail ? [{ email: cleanEmail }] : []),
+          ],
+        });
+      } catch (dbErr) {
+        console.warn("[MongoDB] Check admin exists error:", dbErr);
+      }
+
+      const existingInMem = dbStore.users.find(
+        (u) => u.phone === cleanPhone || (cleanEmail && u.email?.toLowerCase() === cleanEmail)
+      );
+
+      if (existingInDb || existingInMem) {
+        res.status(409).json({
+          success: false,
+          message: "An account with this phone number or email already exists.",
+        });
+        return;
+      }
+
+      // Hash password
+      const rawPass = password ? String(password).trim() : "admin123";
+      const passwordHash = await bcrypt.hash(rawPass, 10);
+
+      // Save to MongoDB
+      let savedDbAdmin: any = null;
+      try {
+        savedDbAdmin = await UserModel.create({
+          name: cleanName,
+          phone: cleanPhone,
+          email: cleanEmail,
+          passwordHash,
+          role: targetRole,
+          isBlocked: false,
+          permissions: finalPermissions,
+        });
+        console.log(`✅ [MongoDB] New Shop Admin saved to database: ${cleanName} (${cleanPhone})`);
+      } catch (dbSaveErr: any) {
+        console.warn("[MongoDB] Shop admin create warning:", dbSaveErr.message);
+      }
+
+      const adminId = savedDbAdmin?._id?.toString() || `usr-admin-${Date.now()}`;
+      const createdAt = savedDbAdmin?.createdAt ? new Date(savedDbAdmin.createdAt).toISOString() : new Date().toISOString();
+
+      // Save to in-memory store
+      const memAdmin: StoredUser = {
+        id: adminId,
+        name: cleanName,
+        phone: cleanPhone,
+        email: cleanEmail,
+        passwordHash,
+        role: targetRole,
+        isBlocked: false,
+        permissions: finalPermissions,
+        createdAt,
+      };
+      dbStore.users.push(memAdmin);
+
+      res.status(201).json({
+        success: true,
+        message: `Shop ${targetRole === "ADMIN" ? "Admin" : "Manager"} created successfully!`,
+        admin: {
+          id: adminId,
+          name: cleanName,
+          phone: cleanPhone,
+          email: cleanEmail,
+          role: targetRole,
+          isBlocked: false,
+          permissions: finalPermissions,
+          createdAt,
+        },
+      });
+    } catch (error: any) {
+      console.error("Create Shop Admin Error:", error);
+      res.status(500).json({ success: false, message: error.message || "Failed to create shop admin." });
+    }
+  },
+
+  // Update existing Shop Admin / Manager
+  async updateShopAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { name, phone, email, password, role, permissions, isBlocked } = req.body;
+
+      if (!id) {
+        res.status(400).json({ success: false, message: "Admin ID is required" });
+        return;
+      }
+
+      const updateData: Record<string, any> = {};
+      if (name) updateData.name = String(name).trim();
+      if (phone) updateData.phone = String(phone).trim();
+      if (email !== undefined) updateData.email = email ? String(email).trim().toLowerCase() : "";
+      if (role) updateData.role = role === "MANAGER" ? "MANAGER" : "ADMIN";
+      if (Array.isArray(permissions)) updateData.permissions = permissions;
+      if (isBlocked !== undefined) updateData.isBlocked = Boolean(isBlocked);
+
+      if (password && String(password).trim().length >= 6) {
+        updateData.passwordHash = await bcrypt.hash(String(password).trim(), 10);
+      }
+
+      // Update in MongoDB
+      try {
+        await UserModel.findByIdAndUpdate(id, { $set: updateData });
+        if (updateData.phone) {
+          await UserModel.updateOne({ phone: updateData.phone }, { $set: updateData });
+        }
+      } catch (dbErr) {
+        console.warn("[MongoDB] Update shop admin error:", dbErr);
+      }
+
+      // Update in dbStore
+      let foundInMem = false;
+      dbStore.users = dbStore.users.map((u) => {
+        if (u.id === id || (updateData.phone && u.phone === updateData.phone)) {
+          foundInMem = true;
+          return {
+            ...u,
+            ...updateData,
+          };
+        }
+        return u;
+      });
+
+      if (!foundInMem && updateData.name) {
+        dbStore.users.push({
+          id,
+          name: updateData.name || "Admin User",
+          phone: updateData.phone || "01700000000",
+          email: updateData.email || "",
+          passwordHash: updateData.passwordHash || "mock_hash",
+          role: updateData.role || "ADMIN",
+          isBlocked: !!updateData.isBlocked,
+          permissions: updateData.permissions || ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+          createdAt: new Date().toISOString(),
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Shop Admin profile updated successfully.",
+      });
+    } catch (error: any) {
+      console.error("Update Shop Admin Error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Delete a Shop Admin / Manager
+  async deleteShopAdmin(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      if (!id) {
+        res.status(400).json({ success: false, message: "Admin ID is required" });
+        return;
+      }
+
+      // Safeguard: Check total admins
+      const activeAdminsMem = dbStore.users.filter((u) => u.role === "ADMIN");
+      let activeAdminsDbCount = 0;
+      try {
+        activeAdminsDbCount = await UserModel.countDocuments({ role: "ADMIN" });
+      } catch {}
+
+      if (activeAdminsDbCount <= 1 && activeAdminsMem.length <= 1) {
+        res.status(400).json({
+          success: false,
+          message: "Cannot delete the only remaining Administrator account in the system.",
+        });
+        return;
+      }
+
+      // Delete from MongoDB
+      try {
+        await UserModel.findByIdAndDelete(id);
+      } catch (dbErr) {
+        console.warn("[MongoDB] Delete shop admin error:", dbErr);
+      }
+
+      // Delete from dbStore
+      dbStore.users = dbStore.users.filter((u) => u.id !== id);
+
+      res.json({
+        success: true,
+        message: "Shop Admin removed successfully.",
+      });
+    } catch (error: any) {
+      console.error("Delete Shop Admin Error:", error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
+  // Toggle active / blocked status of Shop Admin
+  async toggleShopAdminStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      let newBlockedState = false;
+
+      // Check DB first
+      try {
+        const u = await UserModel.findById(id);
+        if (u) {
+          u.isBlocked = !u.isBlocked;
+          await u.save();
+          newBlockedState = !!u.isBlocked;
+        }
+      } catch (dbErr) {
+        console.warn("[MongoDB] Toggle status error:", dbErr);
+      }
+
+      // Check / update memory store
+      const memUser = dbStore.users.find((u) => u.id === id);
+      if (memUser) {
+        memUser.isBlocked = !memUser.isBlocked;
+        newBlockedState = !!memUser.isBlocked;
+      }
+
+      res.json({
+        success: true,
+        isBlocked: newBlockedState,
+        message: newBlockedState ? "Admin account suspended" : "Admin account activated",
+      });
+    } catch (error: any) {
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
 };
+

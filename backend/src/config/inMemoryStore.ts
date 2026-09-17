@@ -97,6 +97,8 @@ export interface StoredUser {
   email?: string;
   passwordHash: string;
   role: "ADMIN" | "CUSTOMER" | "MANAGER";
+  isBlocked?: boolean;
+  permissions?: string[];
   createdAt: string;
 }
 
@@ -332,9 +334,34 @@ class StoreDatabase {
       email: "admin@shorobor.com.bd",
       passwordHash: "$2a$10$w8.25o64yLdZg21c0e35u.98sH/sFfQ06G.Xf409kI0Yg2n", // admin123
       role: "ADMIN",
+      isBlocked: false,
+      permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
       createdAt: new Date().toISOString(),
+    },
+    {
+      id: "usr-admin-2",
+      name: "Shop Admin (Golam Rabbani)",
+      phone: "01800000001",
+      email: "mk.rabbani.cse@gmail.com",
+      passwordHash: "$2a$10$w8.25o64yLdZg21c0e35u.98sH/sFfQ06G.Xf409kI0Yg2n", // admin123
+      role: "ADMIN",
+      isBlocked: false,
+      permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+      createdAt: new Date(Date.now() - 86400000 * 10).toISOString(),
+    },
+    {
+      id: "usr-manager-1",
+      name: "Store Operations Manager",
+      phone: "01911223344",
+      email: "manager@shorobor.com.bd",
+      passwordHash: "$2a$10$w8.25o64yLdZg21c0e35u.98sH/sFfQ06G.Xf409kI0Yg2n", // admin123
+      role: "MANAGER",
+      isBlocked: false,
+      permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons"],
+      createdAt: new Date(Date.now() - 86400000 * 5).toISOString(),
     },
   ];
 }
 
 export const dbStore = new StoreDatabase();
+
