@@ -36,12 +36,13 @@ export const orderService = {
   // Admin: Update order status (PENDING, PROCESSING, SHIPPED, DELIVERED, CANCELLED)
   async updateOrderStatus(
     orderId: string,
-    status: Order["status"],
-    trackingNumber?: string
+    status?: Order["status"],
+    trackingNumber?: string,
+    paymentStatus?: Order["paymentStatus"]
   ): Promise<{ success: boolean; data: Order }> {
     return apiClient<{ success: boolean; data: Order }>(`/orders/${orderId}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ status, trackingNumber }),
+      body: JSON.stringify({ status, trackingNumber, paymentStatus }),
     });
   },
 };

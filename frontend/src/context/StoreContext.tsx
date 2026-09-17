@@ -11,13 +11,15 @@ import {
   Currency, 
   Language, 
   ProductVariant, 
-  OrderStatus 
+  OrderStatus,
+  PaymentStatus 
 } from "../types";
 import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
 import { authService } from "../services/authService";
 import { categoryService } from "../services/categoryService";
 import { productService } from "../services/productService";
+import { orderService } from "../services/orderService";
 
 
 
@@ -162,6 +164,7 @@ interface StoreContextType {
   addProduct: (product: Product) => void;
   updateProduct: (product: Product) => void;
   deleteProduct: (id: string) => void;
+  refreshProducts: () => Promise<void>;
   refreshCategories: () => Promise<void>;
   addCategory: (category: Category) => Promise<void>;
   updateCategory: (category: Category) => Promise<void>;
@@ -188,8 +191,10 @@ interface StoreContextType {
 
   // Orders
   orders: Order[];
+  refreshOrders: () => Promise<void>;
   createOrder: (orderData: Omit<Order, "id" | "orderNumber" | "createdAt">) => Order;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
+  updateOrderPaymentStatus: (orderId: string, paymentStatus: PaymentStatus) => void;
   cancelCustomerOrder: (orderId: string, reason?: string) => void;
   reorderItems: (orderId: string) => void;
   latestOrderId: string | null;
@@ -493,6 +498,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   // Order creation & management
+  const refreshOrders = async (): Promise<void> => {
+    try {
+      const res = await orderService.getAllOrders();
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setOrders(res.data);
+        try { localStorage.setItem("be_orders", JSON.stringify(res.data)); } catch { /* ignore */ }
+      }
+    } catch (err: any) {
+      console.warn("[Orders] Backend database sync warning:", err?.message);
+    }
+  };
+
   const createOrder = (orderData: Omit<Order, "id" | "orderNumber" | "createdAt">): Order => {
     const randomNum = Math.floor(1000 + Math.random() * 9000);
     const newOrder: Order = {
@@ -505,6 +522,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOrders((prev) => [newOrder, ...prev]);
     setLatestOrderId(newOrder.id);
     clearCart();
+
+    // Asynchronously synchronize with Backend API & MongoDB
+    orderService
+      .createOrder(newOrder)
+      .then((res) => {
+        if (res.success && res.data) {
+          setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? res.data : o)));
+        }
+      })
+      .catch((err) => {
+        console.warn("[Orders] Backend database save notice:", err?.message);
+      });
 
     // Update customer spend & order count in Admin Customers database
     setCustomers((prev) => {
@@ -532,7 +561,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setOrders((prev) => 
       prev.map((ord) => ord.id === orderId ? { ...ord, status } : ord)
     );
+    orderService.updateOrderStatus(orderId, status).catch((err) => {
+      console.warn("[Orders] Backend update status notice:", err?.message);
+    });
     showToast(`Order status updated to ${status}`);
+  };
+
+  const updateOrderPaymentStatus = (orderId: string, paymentStatus: PaymentStatus) => {
+    setOrders((prev) =>
+      prev.map((ord) => ord.id === orderId ? { ...ord, paymentStatus } : ord)
+    );
+    orderService.updateOrderStatus(orderId, undefined, undefined, paymentStatus).catch((err) => {
+      console.warn("[Orders] Backend payment status update notice:", err?.message);
+    });
+    showToast(`Payment status updated to ${paymentStatus}`);
   };
 
   const cancelCustomerOrder = (orderId: string, _reason?: string) => {
@@ -1028,10 +1070,24 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Synchronize customers and categories from MongoDB Atlas on application startup
+  const refreshProducts = async (): Promise<void> => {
+    try {
+      const res = await productService.getProducts();
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setProducts(res.data);
+        try { localStorage.setItem("be_products", JSON.stringify(res.data)); } catch { /* ignore */ }
+      }
+    } catch (err: any) {
+      console.warn("[Products] Backend database sync warning:", err?.message);
+    }
+  };
+
+  // Synchronize products, categories, orders, and customers from Backend / MongoDB Atlas on application startup
   useEffect(() => {
-    refreshCustomers();
+    refreshProducts();
     refreshCategories();
+    refreshOrders();
+    refreshCustomers();
   }, []);
 
   const logoutCustomer = () => {
@@ -1492,6 +1548,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         addProduct,
         updateProduct,
         deleteProduct,
+        refreshProducts,
         refreshCategories,
         addCategory,
         updateCategory,
@@ -1512,8 +1569,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         applyCoupon,
         removeCoupon,
         orders,
+        refreshOrders,
         createOrder,
         updateOrderStatus,
+        updateOrderPaymentStatus,
         cancelCustomerOrder,
         reorderItems,
         latestOrderId,

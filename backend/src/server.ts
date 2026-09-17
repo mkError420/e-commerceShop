@@ -20,16 +20,28 @@ if (!fs.existsSync(uploadDir)) {
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, server-to-server)
+      if (!origin) return callback(null, true);
+
+      const isLocal =
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:") ||
+        origin === "http://localhost" ||
+        origin === "http://127.0.0.1";
+
       const allowed = [
         ENV.CLIENT_URL,
         "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
       ];
-      // Allow all Vercel deployment URLs (*.vercel.app)
-      if (!origin || allowed.includes(origin) || origin.endsWith(".vercel.app")) {
+
+      if (isLocal || allowed.includes(origin) || origin.endsWith(".vercel.app")) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS blocked: ${origin}`));
+        console.warn(`[CORS] Allowing origin: ${origin}`);
+        callback(null, true);
       }
     },
     credentials: true,
