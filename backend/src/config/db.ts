@@ -6,6 +6,7 @@ import { ProductModel } from "../models/Product";
 import { CategoryModel } from "../models/Category";
 import { UserModel } from "../models/User";
 import { CouponModel } from "../models/Coupon";
+import { BannerModel } from "../models/Banner";
 
 // Configure reliable DNS servers for SRV resolution on Windows/local networks
 try {
@@ -128,6 +129,31 @@ async function syncAndSeedDatabase() {
         });
       }
       console.log("✅ [MongoDB] Coupons successfully seeded.");
+    }
+
+    // 5. Seed Banners if empty
+    const bannerCount = await BannerModel.countDocuments();
+    if (bannerCount === 0 && dbStore.banners.length > 0) {
+      console.log(`🌱 [MongoDB] Seeding ${dbStore.banners.length} home banners...`);
+      for (const b of dbStore.banners) {
+        await BannerModel.create({
+          titleEn: b.titleEn,
+          titleBn: b.titleBn || "",
+          subtitleEn: b.subtitleEn,
+          subtitleBn: b.subtitleBn || "",
+          ctaEn: b.ctaEn,
+          ctaBn: b.ctaBn || "",
+          link: b.link,
+          secondaryCtaEn: b.secondaryCtaEn || "Browse All",
+          secondaryCtaBn: b.secondaryCtaBn || "সব দেখুন",
+          secondaryLink: b.secondaryLink || "/shop",
+          bgImage: b.bgImage,
+          tag: b.tag,
+          isActive: b.isActive,
+          sortOrder: b.sortOrder,
+        });
+      }
+      console.log("✅ [MongoDB] Home banners successfully seeded.");
     }
   } catch (err: any) {
     console.warn("⚠️ [MongoDB] Sync/Seed notice:", err.message);

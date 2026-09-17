@@ -9,6 +9,7 @@ import locationRoutes from "./locationRoutes";
 import analyticsRoutes from "./analyticsRoutes";
 import uploadRoutes from "./uploadRoutes";
 import customerRoutes from "./customerRoutes";
+import bannerRoutes from "./bannerRoutes";
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use("/locations", locationRoutes);
 router.use("/analytics", analyticsRoutes);
 router.use("/upload", uploadRoutes);
 router.use("/customers", customerRoutes);
+router.use("/banners", bannerRoutes);
 
 export default router;

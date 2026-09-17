@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useStore } from "../../context/StoreContext";
 import { ProductCard } from "./ProductCard";
 import { 
@@ -12,63 +12,41 @@ import {
 } from "lucide-react";
 
 export const HomePage: React.FC = () => {
-  const { products, categories, navigate, t, formatPrice } = useStore();
+  const { products, categories, banners, navigate, t, formatPrice } = useStore();
   const [currentSlide, setCurrentSlide] = useState(0);
 
-  const heroSlides = [
-    {
-      titleEn: "Dhakai Jamdani Revival",
-      titleBn: "ঢাকাই জামদানির পুনর্জাগরণ",
-      subtitleEn: "84-Count Pure Khadi Handloom Woven in Rupganj, Narayanganj",
-      subtitleBn: "রূপগঞ্জের দক্ষ তাঁতিদের হাতে বোনা ৮৪-কাউন্ট খাঁটি খাদি জামদানি",
-      ctaEn: "Explore Jamdani Sarees",
-      ctaBn: "জামদানি কালেকশন দেখুন",
-      link: "/category/jamdani-silk-sarees",
-      bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
-      tag: "Heritage Craft",
-    },
-    {
-      titleEn: "Monochrome Festive Panjabi",
-      titleBn: "মনোক্রোম উৎসবের পাঞ্জাবি",
-      subtitleEn: "Hand-Embroidered Mandarin Collars & Tailored Cotton-Silk",
-      subtitleBn: "কটন-সিল্ক ফ্যাব্রিক ও সূক্ষ্ম হাতের কাজ সংবলিত পাঞ্জাবি",
-      ctaEn: "Shop Panjabi Collection",
-      ctaBn: "পাঞ্জাবি কালেকশন দেখুন",
-      link: "/category/panjabi",
-      bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
-      tag: "Eid 2026 Edition",
-    },
-    {
-      titleEn: "Supima Cotton Piqué Polos",
-      titleBn: "সুপিমা কটন পোলো শার্ট",
-      subtitleEn: "220 GSM Mercerized Combed Yarn for Everyday Understated Luxury",
-      subtitleBn: "প্রতিদিনের পরিধানের জন্য প্রিমিয়াম সুপিমা কটন",
-      ctaEn: "Shop Polos",
-      ctaBn: "পোলো শার্ট দেখুন",
-      link: "/category/polo-shirt",
-      bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_7_W2RWoB8Tz.jpg",
-      tag: "Wardrobe Essentials",
-    },
-  ];
+  // Dynamically maintain banners from Admin Dashboard
+  const activeBanners = useMemo(() => {
+    const active = banners.filter((b) => b.isActive).sort((a, b) => a.sortOrder - b.sortOrder);
+    return active.length > 0 ? active : banners;
+  }, [banners]);
 
-  // Auto carousel slide
+  // Ensure currentSlide is within bounds
   useEffect(() => {
+    if (currentSlide >= activeBanners.length) {
+      setCurrentSlide(0);
+    }
+  }, [activeBanners.length, currentSlide]);
+
+  // Auto carousel slide interval (6 seconds)
+  useEffect(() => {
+    if (activeBanners.length <= 1) return;
     const timer = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
+      setCurrentSlide((prev) => (prev + 1) % activeBanners.length);
     }, 6000);
     return () => clearInterval(timer);
-  }, [heroSlides.length]);
+  }, [activeBanners.length]);
 
   const featuredProducts = products.filter((p) => p.isFeatured);
   const flashDeals = products.filter((p) => p.isFlashDeal);
 
   return (
     <div className="space-y-16 pb-20">
-      {/* 1. Editorial Hero Carousel */}
+      {/* 1. Dynamic Editorial Hero Carousel (Managed from Admin Dashboard) */}
       <section className="relative w-full h-[520px] sm:h-[620px] bg-[#1A1A1A] overflow-hidden">
-        {heroSlides.map((slide, index) => (
+        {activeBanners.map((slide, index) => (
           <div
-            key={index}
+            key={slide.id || index}
             className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${
               index === currentSlide ? "opacity-100 z-10" : "opacity-0 z-0 pointer-events-none"
             }`}
@@ -84,7 +62,7 @@ export const HomePage: React.FC = () => {
             {/* Slide Content */}
             <div className="absolute inset-0 max-w-7xl mx-auto px-6 sm:px-12 flex flex-col justify-center items-start text-white">
               <span className="inline-flex items-center gap-1.5 text-xs font-mono tracking-widest uppercase bg-white/10 backdrop-blur-md border border-white/20 px-3 py-1 rounded-full mb-4">
-                <Sparkles className="w-3 h-3 text-white" />
+                <Sparkles className="w-3 h-3 text-yellow-400" />
                 {slide.tag}
               </span>
 
@@ -96,43 +74,61 @@ export const HomePage: React.FC = () => {
                 {t(slide.subtitleEn, slide.subtitleBn)}
               </p>
 
-              <div className="mt-8 flex items-center gap-4">
+              <div className="mt-8 flex items-center gap-4 flex-wrap">
                 <button
                   onClick={() => navigate(slide.link)}
-                  className="bg-white text-[#1A1A1A] font-semibold text-sm px-6 py-3.5 rounded hover:bg-[#F5F5F5] transition-all flex items-center gap-2 shadow-lg"
+                  className="bg-white text-[#1A1A1A] font-semibold text-sm px-6 py-3.5 rounded hover:bg-[#F5F5F5] transition-all flex items-center gap-2 shadow-lg active:scale-95"
                 >
                   <span>{t(slide.ctaEn, slide.ctaBn)}</span>
                   <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <button
-                  onClick={() => navigate("/shop")}
+                  onClick={() => navigate(slide.secondaryLink || "/shop")}
                   className="bg-transparent text-white border border-white/40 hover:border-white font-medium text-sm px-6 py-3.5 rounded transition-all"
                 >
-                  {t("Browse All", "সব কালেকশন")}
+                  {t(slide.secondaryCtaEn || "Browse All", slide.secondaryCtaBn || "সব কালেকশন")}
                 </button>
               </div>
             </div>
           </div>
         ))}
 
+        {/* Carousel Navigation Indicators */}
+        {activeBanners.length > 1 && (
+          <div className="absolute bottom-6 left-6 sm:left-12 z-20 flex items-center gap-2">
+            {activeBanners.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setCurrentSlide(i)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === currentSlide ? "w-8 bg-yellow-400" : "w-2 bg-white/40 hover:bg-white/70"
+                }`}
+                aria-label={`Go to slide ${i + 1}`}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Carousel Controls */}
-        <div className="absolute bottom-6 right-6 sm:right-12 z-20 flex items-center gap-2">
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev - 1 + heroSlides.length) % heroSlides.length)}
-            className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center transition-colors"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => setCurrentSlide((prev) => (prev + 1) % heroSlides.length)}
-            className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center transition-colors"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        </div>
+        {activeBanners.length > 1 && (
+          <div className="absolute bottom-6 right-6 sm:right-12 z-20 flex items-center gap-2">
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev - 1 + activeBanners.length) % activeBanners.length)}
+              className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center transition-colors"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setCurrentSlide((prev) => (prev + 1) % activeBanners.length)}
+              className="w-10 h-10 rounded-full bg-black/40 hover:bg-black/80 border border-white/20 text-white flex items-center justify-center transition-colors"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
+          </div>
+        )}
       </section>
 
       {/* 2. Category Showcase Grid */}

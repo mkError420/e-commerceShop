@@ -90,6 +90,25 @@ export interface StoredCoupon {
   isActive: boolean;
 }
 
+export interface StoredBanner {
+  id: string;
+  titleEn: string;
+  titleBn?: string;
+  subtitleEn: string;
+  subtitleBn?: string;
+  ctaEn: string;
+  ctaBn?: string;
+  link: string;
+  secondaryCtaEn?: string;
+  secondaryCtaBn?: string;
+  secondaryLink?: string;
+  bgImage: string;
+  tag: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
 export interface StoredUser {
   id: string;
   name: string;
@@ -320,12 +339,70 @@ export const INITIAL_ORDERS: StoredOrder[] = [
   },
 ];
 
+export const INITIAL_BANNERS: StoredBanner[] = [
+  {
+    id: "banner-1",
+    titleEn: "Dhakai Jamdani Revival",
+    titleBn: "ঢাকাই জামদানির পুনর্জাগরণ",
+    subtitleEn: "84-Count Pure Khadi Handloom Woven in Rupganj, Narayanganj",
+    subtitleBn: "রূপগঞ্জের দক্ষ তাঁতিদের হাতে বোনা ৮৪-কাউন্ট খাঁটি খাদি জামদানি",
+    ctaEn: "Explore Jamdani Sarees",
+    ctaBn: "জামদানি কালেকশন দেখুন",
+    link: "/category/jamdani-silk-sarees",
+    secondaryCtaEn: "Browse All",
+    secondaryCtaBn: "সব দেখুন",
+    secondaryLink: "/shop",
+    bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
+    tag: "Heritage Craft",
+    isActive: true,
+    sortOrder: 1,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "banner-2",
+    titleEn: "Monochrome Festive Panjabi",
+    titleBn: "মনোক্রোম উৎসবের পাঞ্জাবি",
+    subtitleEn: "Hand-Embroidered Mandarin Collars & Tailored Cotton-Silk",
+    subtitleBn: "কটন-সিল্ক ফ্যাব্রিক ও সূক্ষ্ম হাতের কাজ সংবলিত পাঞ্জাবি",
+    ctaEn: "Shop Panjabi Collection",
+    ctaBn: "পাঞ্জাবি কালেকশন দেখুন",
+    link: "/category/panjabi",
+    secondaryCtaEn: "Browse All",
+    secondaryCtaBn: "সব দেখুন",
+    secondaryLink: "/shop",
+    bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
+    tag: "Eid 2026 Edition",
+    isActive: true,
+    sortOrder: 2,
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "banner-3",
+    titleEn: "Supima Cotton Piqué Polos",
+    titleBn: "সুপিমা কটন পোলো শার্ট",
+    subtitleEn: "220 GSM Mercerized Combed Yarn for Everyday Understated Luxury",
+    subtitleBn: "প্রতিদিনের পরিধানের জন্য প্রিমিয়াম সুপিমা কটন",
+    ctaEn: "Shop Polos",
+    ctaBn: "পোলো শার্ট দেখুন",
+    link: "/category/polo-shirt",
+    secondaryCtaEn: "Browse All",
+    secondaryCtaBn: "সব দেখুন",
+    secondaryLink: "/shop",
+    bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_7_W2RWoB8Tz.jpg",
+    tag: "Wardrobe Essentials",
+    isActive: true,
+    sortOrder: 3,
+    createdAt: new Date().toISOString(),
+  },
+];
+
 // Singleton in-memory store
 class StoreDatabase {
   public categories = [...INITIAL_CATEGORIES];
   public products = [...INITIAL_PRODUCTS];
   public coupons = [...INITIAL_COUPONS];
   public orders = [...INITIAL_ORDERS];
+  public banners = [...INITIAL_BANNERS];
   public users: StoredUser[] = [
     {
       id: "usr-admin-1",
@@ -364,4 +441,5 @@ class StoreDatabase {
 }
 
 export const dbStore = new StoreDatabase();
+
 

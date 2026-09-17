@@ -23,13 +23,15 @@ import {
   CircleDot,
   LogOut,
   Users,
-  FolderTree
+  FolderTree,
+  Image as ImageIcon
 } from "lucide-react";
 import { AdminProducts } from "./AdminProducts";
 import { AdminCategories } from "./AdminCategories";
 import { AdminOrders } from "./AdminOrders";
 import { AdminCustomers } from "./AdminCustomers";
 import { AdminShopAdmins } from "./AdminShopAdmins";
+import { AdminBanners } from "./AdminBanners";
 import { AdminCoupons } from "./AdminCoupons";
 import { AdminSettings } from "./AdminSettings";
 
@@ -41,6 +43,7 @@ export const AdminDashboard: React.FC = () => {
     coupons,
     customers,
     shopAdmins,
+    banners,
     formatPrice,
     navigate,
     setIsArchitectureModalOpen,
@@ -51,7 +54,7 @@ export const AdminDashboard: React.FC = () => {
     logoutCustomer,
   } = useStore();
 
-  const [activeTab, setActiveTab] = useState<"overview" | "products" | "categories" | "orders" | "customers" | "shop-admins" | "coupons" | "settings">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "products" | "categories" | "orders" | "customers" | "shop-admins" | "banners" | "coupons" | "settings">("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // If not authenticated as Admin, prompt to login or redirect customer
@@ -168,6 +171,12 @@ export const AdminDashboard: React.FC = () => {
       badge: { count: shopAdmins.length, alert: false },
     },
     {
+      id: "banners" as const,
+      label: "Home Hero Banners",
+      icon: ImageIcon,
+      badge: { count: banners.filter(b => b.isActive).length, alert: false },
+    },
+    {
       id: "coupons" as const,
       label: "Vouchers & Marketing",
       icon: Tag,
@@ -189,6 +198,7 @@ export const AdminDashboard: React.FC = () => {
       case "orders": return "Orders & Courier Logistics";
       case "customers": return "Customer Directory & Accounts";
       case "shop-admins": return "Shop Administrator & Staff Management";
+      case "banners": return "Home Hero Banner & Carousel Management";
       case "coupons": return "Marketing Vouchers";
       case "settings": return "Logistics & Gateway Settings";
       default: return "Admin Portal";
@@ -860,6 +870,44 @@ export const AdminDashboard: React.FC = () => {
                   </table>
                 </div>
               </div>
+
+              {/* Active Home Hero Banners Preview */}
+              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-xs space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-100 pb-4 gap-2">
+                  <div>
+                    <h3 className="font-editorial text-lg font-bold text-gray-900 flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-yellow-500" />
+                      <span>Active Home Hero Banners ({banners.filter(b => b.isActive).length} Rotating)</span>
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                      High-impact carousel slides dynamically changing on the storefront Home page
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("banners")}
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-900 hover:text-yellow-600 transition-colors"
+                  >
+                    <span>Manage All Banners ({banners.length})</span>
+                    <ChevronRight className="w-4 h-4 text-yellow-500" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {banners.filter(b => b.isActive).slice(0, 3).map((b) => (
+                    <div key={b.id} className="group relative h-36 rounded-xl overflow-hidden border border-gray-200">
+                      <img src={b.bgImage} alt={b.titleEn} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                      <span className="absolute top-2 left-2 px-2 py-0.5 rounded-full bg-black/60 text-yellow-300 text-[10px] font-bold font-mono">
+                        #{b.sortOrder} · {b.tag}
+                      </span>
+                      <div className="absolute bottom-2.5 left-3 right-3 text-white">
+                        <div className="font-bold text-xs truncate">{b.titleEn}</div>
+                        <div className="text-[10px] text-gray-300 truncate">{b.subtitleEn}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 
@@ -868,6 +916,7 @@ export const AdminDashboard: React.FC = () => {
           {activeTab === "orders" && <AdminOrders />}
           {activeTab === "customers" && <AdminCustomers />}
           {activeTab === "shop-admins" && <AdminShopAdmins />}
+          {activeTab === "banners" && <AdminBanners />}
           {activeTab === "coupons" && <AdminCoupons />}
           {activeTab === "settings" && <AdminSettings />}
         </main>

@@ -15,7 +15,8 @@ import {
   PaymentStatus,
   ShopAdminUser,
   AdminPermission,
-  AdminRole
+  AdminRole,
+  HeroBanner
 } from "../types";
 import { MOCK_PRODUCTS, MOCK_COUPONS } from "../data/mockProducts";
 import { CATEGORIES_DATA } from "../data/categories";
@@ -23,6 +24,7 @@ import { authService } from "../services/authService";
 import { categoryService } from "../services/categoryService";
 import { productService } from "../services/productService";
 import { orderService } from "../services/orderService";
+import { bannerService } from "../services/bannerService";
 
 
 
@@ -170,6 +172,61 @@ const INITIAL_SHOP_ADMINS: ShopAdminUser[] = [
   },
 ];
 
+const INITIAL_HERO_BANNERS: HeroBanner[] = [
+  {
+    id: "banner-1",
+    titleEn: "Dhakai Jamdani Revival",
+    titleBn: "ঢাকাই জামদানির পুনর্জাগরণ",
+    subtitleEn: "84-Count Pure Khadi Handloom Woven in Rupganj, Narayanganj",
+    subtitleBn: "রূপগঞ্জের দক্ষ তাঁতিদের হাতে বোনা ৮৪-কাউন্ট খাঁটি খাদি জামদানি",
+    ctaEn: "Explore Jamdani Sarees",
+    ctaBn: "জামদানি কালেকশন দেখুন",
+    link: "/category/jamdani-silk-sarees",
+    secondaryCtaEn: "Browse All",
+    secondaryCtaBn: "সব দেখুন",
+    secondaryLink: "/shop",
+    bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
+    tag: "Heritage Craft",
+    isActive: true,
+    sortOrder: 1,
+  },
+  {
+    id: "banner-2",
+    titleEn: "Monochrome Festive Panjabi",
+    titleBn: "মনোক্রোম উৎসবের পাঞ্জাবি",
+    subtitleEn: "Hand-Embroidered Mandarin Collars & Tailored Cotton-Silk",
+    subtitleBn: "কটন-সিল্ক ফ্যাব্রিক ও সূক্ষ্ম হাতের কাজ সংবলিত পাঞ্জাবি",
+    ctaEn: "Shop Panjabi Collection",
+    ctaBn: "পাঞ্জাবি কালেকশন দেখুন",
+    link: "/category/panjabi",
+    secondaryCtaEn: "Browse All",
+    secondaryCtaBn: "সব দেখুন",
+    secondaryLink: "/shop",
+    bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
+    tag: "Eid 2026 Edition",
+    isActive: true,
+    sortOrder: 2,
+  },
+  {
+    id: "banner-3",
+    titleEn: "Supima Cotton Piqué Polos",
+    titleBn: "সুপিমা কটন পোলো শার্ট",
+    subtitleEn: "220 GSM Mercerized Combed Yarn for Everyday Understated Luxury",
+    subtitleBn: "প্রতিদিনের পরিধানের জন্য প্রিমিয়াম সুপিমা কটন",
+    ctaEn: "Shop Polos",
+    ctaBn: "পোলো শার্ট দেখুন",
+    link: "/category/polo-shirt",
+    secondaryCtaEn: "Browse All",
+    secondaryCtaBn: "সব দেখুন",
+    secondaryLink: "/shop",
+    bgImage: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_7_W2RWoB8Tz.jpg",
+    tag: "Wardrobe Essentials",
+    isActive: true,
+    sortOrder: 3,
+  },
+];
+
+
 
 interface NavigationState {
   path: string;
@@ -261,6 +318,15 @@ interface StoreContextType {
   ) => Promise<{ success: boolean; message: string }>;
   deleteShopAdmin: (id: string) => Promise<{ success: boolean; message: string }>;
   toggleShopAdminStatus: (id: string) => Promise<{ success: boolean; message: string }>;
+
+  // Banners & Sliders (Home Page)
+  banners: HeroBanner[];
+  refreshBanners: () => Promise<void>;
+  addBanner: (banner: Omit<HeroBanner, "id">) => Promise<{ success: boolean; message: string }>;
+  updateBanner: (id: string, data: Partial<HeroBanner>) => Promise<{ success: boolean; message: string }>;
+  deleteBanner: (id: string) => Promise<{ success: boolean; message: string }>;
+  toggleBannerActive: (id: string) => Promise<{ success: boolean; message: string }>;
+
 
 
   // Auth & Unified Login
@@ -359,6 +425,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     } catch { /* ignore */ }
     return INITIAL_SHOP_ADMINS;
+  });
+  const [banners, setBanners] = useState<HeroBanner[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_hero_banners");
+      if (stored) {
+        const parsed = JSON.parse(stored) as HeroBanner[];
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch { /* ignore */ }
+    return INITIAL_HERO_BANNERS;
   });
   const [coupons, setCoupons] = useState<Coupon[]>(MOCK_COUPONS);
   
@@ -1251,6 +1327,112 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const refreshBanners = async (): Promise<void> => {
+    try {
+      const res = await bannerService.getBanners();
+      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
+        setBanners(res.data);
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(res.data)); } catch {}
+      }
+    } catch (err: any) {
+      console.warn("[Banners] Backend database sync notice:", err?.message);
+    }
+  };
+
+  const addBanner = async (bannerData: Omit<HeroBanner, "id">): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await bannerService.createBanner(bannerData);
+      if (res.success) {
+        showToast(
+          language === "bn"
+            ? "নতুন ব্যানার হোমপেজে যুক্ত হয়েছে!"
+            : "New banner published to Home page & MongoDB!",
+          "success"
+        );
+        await refreshBanners();
+        return { success: true, message: res.message || "Banner created" };
+      }
+      return { success: false, message: res.message || "Failed to create banner" };
+    } catch (err: any) {
+      const newBanner: HeroBanner = {
+        ...bannerData,
+        id: `banner-${Date.now()}`,
+      };
+      setBanners((prev) => {
+        const updated = [...prev, newBanner];
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Banner saved locally", "info");
+      return { success: true, message: "Banner created (local)" };
+    }
+  };
+
+  const updateBanner = async (id: string, data: Partial<HeroBanner>): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await bannerService.updateBanner(id, data);
+      await refreshBanners();
+      showToast(
+        language === "bn" ? "ব্যানার সফলভাবে আপডেট হয়েছে!" : "Banner updated successfully on Home page!",
+        "success"
+      );
+      return { success: true, message: res.message || "Banner updated" };
+    } catch (err: any) {
+      setBanners((prev) => {
+        const updated = prev.map((b) => (b.id === id ? { ...b, ...data } : b));
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Banner updated locally", "info");
+      return { success: true, message: "Banner updated" };
+    }
+  };
+
+  const deleteBanner = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await bannerService.deleteBanner(id);
+      if (res.success) {
+        await refreshBanners();
+        showToast(
+          language === "bn" ? "ব্যানার মুছে ফেলা হয়েছে" : "Banner removed from Home page",
+          "info"
+        );
+        return { success: true, message: res.message };
+      }
+      return { success: false, message: res.message || "Cannot delete banner" };
+    } catch (err: any) {
+      setBanners((prev) => {
+        const updated = prev.filter((b) => b.id !== id);
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Banner removed locally", "info");
+      return { success: true, message: "Banner deleted" };
+    }
+  };
+
+  const toggleBannerActive = async (id: string): Promise<{ success: boolean; message: string }> => {
+    try {
+      const res = await bannerService.toggleBannerStatus(id);
+      await refreshBanners();
+      showToast(
+        res.isActive
+          ? (language === "bn" ? "ব্যানার হোমপেজে সক্রিয় করা হয়েছে" : "Banner activated on Home page")
+          : (language === "bn" ? "ব্যানার হোমপেজ থেকে লুকানো হয়েছে" : "Banner hidden from Home page"),
+        "info"
+      );
+      return { success: true, message: res.message };
+    } catch (err: any) {
+      setBanners((prev) => {
+        const updated = prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b));
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      showToast("Banner status updated locally", "info");
+      return { success: true, message: "Status updated" };
+    }
+  };
+
   const refreshProducts = async (): Promise<void> => {
     try {
       const res = await productService.getProducts();
@@ -1263,13 +1445,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
-  // Synchronize products, categories, orders, customers, and shop admins from Backend / MongoDB Atlas on application startup
+  // Synchronize products, categories, orders, customers, shop admins, and home banners from Backend / MongoDB Atlas on application startup
   useEffect(() => {
     refreshProducts();
     refreshCategories();
     refreshOrders();
     refreshCustomers();
     refreshShopAdmins();
+    refreshBanners();
   }, []);
 
   const logoutCustomer = () => {
@@ -1770,6 +1953,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         updateShopAdmin,
         deleteShopAdmin,
         toggleShopAdminStatus,
+        banners,
+        refreshBanners,
+        addBanner,
+        updateBanner,
+        deleteBanner,
+        toggleBannerActive,
         login,
         isAdminAuthenticated,
         adminUser: isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null,

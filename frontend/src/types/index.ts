@@ -216,3 +216,23 @@ export interface ShopAdminUser {
   lastLogin?: string;
 }
 
+export interface HeroBanner {
+  id: string;
+  titleEn: string;
+  titleBn?: string;
+  subtitleEn: string;
+  subtitleBn?: string;
+  ctaEn: string;
+  ctaBn?: string;
+  link: string;
+  secondaryCtaEn?: string;
+  secondaryCtaBn?: string;
+  secondaryLink?: string;
+  bgImage: string;
+  tag: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt?: string;
+}
+
+
