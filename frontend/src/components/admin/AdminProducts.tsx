@@ -109,10 +109,10 @@ export const AdminProducts: React.FC = () => {
           res.storage === "IMAGEKIT_FREE_CDN"
             ? "ImageKit Cloud CDN"
             : res.storage === "CLOUDINARY_FREE_CDN"
-            ? "Cloudinary Free CDN"
-            : res.storage === "LOCAL_SERVER_STORAGE"
-            ? "Free Server Storage (/uploads)"
-            : "Offline Image Store"
+              ? "Cloudinary Free CDN"
+              : res.storage === "LOCAL_SERVER_STORAGE"
+                ? "Free Server Storage (/uploads)"
+                : "Offline Image Store"
         );
         showToast("Image uploaded & saved properly!");
       }
@@ -153,8 +153,8 @@ export const AdminProducts: React.FC = () => {
           res.storage === "IMAGEKIT_FREE_CDN"
             ? "ImageKit Cloud CDN"
             : res.storage === "CLOUDINARY_FREE_CDN"
-            ? "Cloudinary Free CDN"
-            : "Free Server Storage"
+              ? "Cloudinary Free CDN"
+              : "Free Server Storage"
         );
         showToast("Image imported & saved to ImageKit.io!");
       }
@@ -235,12 +235,12 @@ export const AdminProducts: React.FC = () => {
       firstImg.includes("imagekit.io")
         ? "ImageKit Cloud CDN"
         : firstImg.includes("/uploads/")
-        ? "Free Server Storage"
-        : firstImg.includes("cloudinary")
-        ? "Cloudinary Free CDN"
-        : firstImg.startsWith("data:image")
-        ? "Direct Offline Image"
-        : "External Image URL"
+          ? "Free Server Storage"
+          : firstImg.includes("cloudinary")
+            ? "Cloudinary Free CDN"
+            : firstImg.startsWith("data:image")
+              ? "Direct Offline Image"
+              : "External Image URL"
     );
     setIsUploading(false);
     setUploadMode(firstImg.startsWith("http") && !firstImg.includes("/uploads/") && !firstImg.includes("cloudinary") && !firstImg.includes("imagekit.io") ? "url" : "file");
@@ -498,10 +498,10 @@ export const AdminProducts: React.FC = () => {
                           >−</button>
                           <span
                             className={`font-mono font-bold text-xs min-w-[36px] text-center py-1 rounded-md ${isOut
-                                ? "text-rose-900 bg-rose-100 border border-rose-300"
-                                : isLowStock
-                                  ? "text-yellow-900 bg-yellow-100 border border-yellow-300"
-                                  : "text-gray-900 bg-gray-50 border border-gray-200"
+                              ? "text-rose-900 bg-rose-100 border border-rose-300"
+                              : isLowStock
+                                ? "text-yellow-900 bg-yellow-100 border border-yellow-300"
+                                : "text-gray-900 bg-gray-50 border border-gray-200"
                               }`}
                           >{p.stockQuantity}</span>
                           <button
@@ -529,8 +529,8 @@ export const AdminProducts: React.FC = () => {
                           <button
                             onClick={() => updateProduct({ ...p, isFlashDeal: !p.isFlashDeal })}
                             className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-all ${p.isFlashDeal
-                                ? "bg-yellow-100 border-yellow-300 text-yellow-900 font-bold"
-                                : "bg-white border-gray-200 text-gray-400 hover:border-yellow-300"
+                              ? "bg-yellow-100 border-yellow-300 text-yellow-900 font-bold"
+                              : "bg-white border-gray-200 text-gray-400 hover:border-yellow-300"
                               }`}
                           >
                             <Flame className={`w-3 h-3 ${p.isFlashDeal ? "fill-yellow-600 text-yellow-600" : "text-gray-300"}`} />
@@ -539,8 +539,8 @@ export const AdminProducts: React.FC = () => {
                           <button
                             onClick={() => updateProduct({ ...p, isFeatured: !p.isFeatured })}
                             className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-md border transition-all ${p.isFeatured
-                                ? "bg-blue-50 border-blue-200 text-blue-800 font-bold"
-                                : "bg-white border-gray-200 text-gray-400 hover:border-blue-200"
+                              ? "bg-blue-50 border-blue-200 text-blue-800 font-bold"
+                              : "bg-white border-gray-200 text-gray-400 hover:border-blue-200"
                               }`}
                           >
                             <Star className={`w-3 h-3 ${p.isFeatured ? "fill-blue-500 text-blue-500" : "text-gray-300"}`} />
@@ -554,14 +554,14 @@ export const AdminProducts: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
                             onClick={() => openEdit(p)}
-                            className="p-1.5 rounded-md text-gray-500 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                            className="p-1.5 rounded-md text-yellow-500 hover:text-yellow-600 hover:bg-yellow-50 transition-colors"
                             title="Edit Product"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => setDeleteTarget(p)}
-                            className="p-1.5 rounded-md text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                            className="p-1.5 rounded-md text-red-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Delete Product"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -689,11 +689,10 @@ export const AdminProducts: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setUploadMode("file")}
-                          className={`px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1.5 ${
-                            uploadMode === "file"
-                              ? "bg-white text-gray-900 shadow-xs font-semibold"
-                              : "text-gray-500 hover:text-gray-900"
-                          }`}
+                          className={`px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1.5 ${uploadMode === "file"
+                            ? "bg-white text-gray-900 shadow-xs font-semibold"
+                            : "text-gray-500 hover:text-gray-900"
+                            }`}
                         >
                           <UploadCloud className="w-3 h-3 text-yellow-600" />
                           Upload File (Free)
@@ -701,11 +700,10 @@ export const AdminProducts: React.FC = () => {
                         <button
                           type="button"
                           onClick={() => setUploadMode("url")}
-                          className={`px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1.5 ${
-                            uploadMode === "url"
-                              ? "bg-white text-gray-900 shadow-xs font-semibold"
-                              : "text-gray-500 hover:text-gray-900"
-                          }`}
+                          className={`px-2.5 py-1 rounded-md font-medium transition-all flex items-center gap-1.5 ${uploadMode === "url"
+                            ? "bg-white text-gray-900 shadow-xs font-semibold"
+                            : "text-gray-500 hover:text-gray-900"
+                            }`}
                         >
                           <Link2 className="w-3 h-3 text-blue-500" />
                           Paste URL
@@ -784,11 +782,10 @@ export const AdminProducts: React.FC = () => {
                             onDragOver={handleDrag}
                             onDrop={handleDrop}
                             onClick={() => fileInputRef.current?.click()}
-                            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${
-                              dragActive
-                                ? "border-yellow-500 bg-yellow-50/50"
-                                : "border-gray-200 hover:border-yellow-400 bg-gray-50 hover:bg-yellow-50/20"
-                            }`}
+                            className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all ${dragActive
+                              ? "border-yellow-500 bg-yellow-50/50"
+                              : "border-gray-200 hover:border-yellow-400 bg-gray-50 hover:bg-yellow-50/20"
+                              }`}
                           >
                             {isUploading ? (
                               <div className="py-2 flex flex-col items-center justify-center space-y-2">
@@ -839,9 +836,8 @@ export const AdminProducts: React.FC = () => {
                         </div>
 
                         {form.imageUrl && (
-                          <div className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${
-                            form.imageUrl.includes("imagekit.io") ? "bg-emerald-50/70 border-emerald-300" : "bg-gray-50 border-gray-200"
-                          }`}>
+                          <div className={`flex items-center justify-between gap-3 p-2.5 rounded-xl border ${form.imageUrl.includes("imagekit.io") ? "bg-emerald-50/70 border-emerald-300" : "bg-gray-50 border-gray-200"
+                            }`}>
                             <div className="flex items-center gap-3">
                               <img
                                 src={form.imageUrl}
