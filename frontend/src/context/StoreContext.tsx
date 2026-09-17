@@ -30,112 +30,7 @@ import { bannerService } from "../services/bannerService";
 
 const USD_TO_BDT_RATE = 122.50; // 1 USD = ৳122.50 BDT
 
-// Pre-seeded authentic Bangladeshi orders for admin analytics and customer history
-const INITIAL_ORDERS: Order[] = [
-  {
-    id: "ord-1001",
-    orderNumber: "BD-2026-8941",
-    customerName: "Md. Tanvir Hossain",
-    customerPhone: "01711223344",
-    customerEmail: "tanvir.h@gmail.com",
-    division: "Dhaka",
-    district: "Dhaka City",
-    thana: "Dhanmondi",
-    streetLine: "House 42, Road 9A, Dhanmondi R/A",
-    deliveryZone: "INSIDE_DHAKA",
-    shippingFeeBDT: 60,
-    subtotalBDT: 14500,
-    discountBDT: 2175,
-    vatTaxBDT: 0,
-    totalBDT: 12385,
-    couponCode: "EID2026",
-    status: "DELIVERED",
-    paymentGateway: "BKASH",
-    paymentStatus: "PAID",
-    transactionId: "BKH928172635X",
-    courierName: "Pathao Express",
-    trackingId: "PTH-DH-98214",
-    items: [
-      {
-        productId: "prod-01",
-        productTitle: "Royal Dhakai Jamdani Saree (84-Count Khadi Handloom)",
-        variantTitle: "Ivory White & Gold Zari",
-        unitPriceBDT: 14500,
-        quantity: 1,
-        totalPriceBDT: 14500,
-        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_1_YSc7FTrx3.jpg",
-      },
-    ],
-    createdAt: "2026-09-10T14:32:00Z",
-  },
-  {
-    id: "ord-1002",
-    orderNumber: "BD-2026-8942",
-    customerName: "Arafat Rahman",
-    customerPhone: "01819876543",
-    customerEmail: "arafat.ctg@yahoo.com",
-    division: "Chattogram",
-    district: "Chattogram City",
-    thana: "Panchlaish",
-    streetLine: "Plot 12, GEC Circle",
-    deliveryZone: "OUTSIDE_DHAKA",
-    shippingFeeBDT: 130,
-    subtotalBDT: 4850,
-    discountBDT: 0,
-    vatTaxBDT: 0,
-    totalBDT: 4980,
-    status: "SHIPPED",
-    paymentGateway: "CASH_ON_DELIVERY",
-    paymentStatus: "PENDING",
-    courierName: "Steadfast Courier",
-    trackingId: "STF-CTG-77312",
-    items: [
-      {
-        productId: "prod-03",
-        productTitle: "Executive Hand-Embroidered Kabli Panjabi Set",
-        variantTitle: "Charcoal Black / Size 42 (L)",
-        unitPriceBDT: 4850,
-        quantity: 1,
-        totalPriceBDT: 4850,
-        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
-      },
-    ],
-    createdAt: "2026-09-12T11:15:00Z",
-  },
-  {
-    id: "ord-1003",
-    orderNumber: "BD-2026-8943",
-    customerName: "Farzana Yasmin",
-    customerPhone: "01912345678",
-    customerEmail: "farzana.y@outlook.com",
-    division: "Dhaka",
-    district: "Dhaka City",
-    thana: "Gulshan",
-    streetLine: "Apt 5B, Road 113, Gulshan 2",
-    deliveryZone: "INSIDE_DHAKA",
-    shippingFeeBDT: 60,
-    subtotalBDT: 9200,
-    discountBDT: 0,
-    vatTaxBDT: 0,
-    totalBDT: 9260,
-    status: "PROCESSING",
-    paymentGateway: "NAGAD",
-    paymentStatus: "PAID",
-    transactionId: "NGD764512998Z",
-    items: [
-      {
-        productId: "prod-02",
-        productTitle: "Rajshahi Mulberry Silk Saree (Monochrome Floral)",
-        variantTitle: "Slate Grey & Pearl White",
-        unitPriceBDT: 9200,
-        quantity: 1,
-        totalPriceBDT: 9200,
-        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_2_00U4iyWPC.jpg",
-      },
-    ],
-    createdAt: "2026-09-13T09:45:00Z",
-  },
-];
+const INITIAL_ORDERS: Order[] = [];
 
 const INITIAL_CUSTOMERS: Customer[] = [];
 
@@ -411,7 +306,30 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch { /* ignore */ }
     return CATEGORIES_DATA;
   });
-  const [orders, setOrders] = useState<Order[]>(INITIAL_ORDERS);
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const stored = localStorage.getItem("be_orders");
+      if (stored) {
+        const parsed = JSON.parse(stored) as Order[];
+        if (Array.isArray(parsed)) {
+          const realOrders = parsed.filter(
+            (o) =>
+              o &&
+              !o.id?.startsWith("ord-100") &&
+              !o.orderNumber?.startsWith("BD-2026-894") &&
+              !o.orderNumber?.startsWith("BD-2026-948") &&
+              o.customerName !== "Md. Tanvir Hossain" &&
+              o.customerName !== "Tanvir Rahman"
+          );
+          try {
+            localStorage.setItem("be_orders", JSON.stringify(realOrders));
+          } catch { /* ignore */ }
+          return realOrders;
+        }
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try {
       const stored = localStorage.getItem("be_admin_customers");
@@ -646,9 +564,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const refreshOrders = async (): Promise<void> => {
     try {
       const res = await orderService.getAllOrders();
-      if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-        setOrders(res.data);
-        try { localStorage.setItem("be_orders", JSON.stringify(res.data)); } catch { /* ignore */ }
+      if (res.success && Array.isArray(res.data)) {
+        const cleanOrders = res.data.filter(
+          (o) =>
+            o &&
+            !o.id?.startsWith("ord-100") &&
+            !o.orderNumber?.startsWith("BD-2026-894") &&
+            !o.orderNumber?.startsWith("BD-2026-948") &&
+            o.customerName !== "Md. Tanvir Hossain" &&
+            o.customerName !== "Tanvir Rahman"
+        );
+        setOrders(cleanOrders);
+        try {
+          localStorage.setItem("be_orders", JSON.stringify(cleanOrders));
+        } catch { /* ignore */ }
       }
     } catch (err: any) {
       console.warn("[Orders] Backend database sync warning:", err?.message);

@@ -302,42 +302,7 @@ export const INITIAL_COUPONS: StoredCoupon[] = [
   { code: "SHOROBOR500", discountType: "FIXED", discountValue: 500, minSpend: 5000, isActive: true },
 ];
 
-export const INITIAL_ORDERS: StoredOrder[] = [
-  {
-    id: "ord-1001",
-    orderNumber: "BD-2026-94812",
-    customerName: "Tanvir Rahman",
-    phone: "01711000111",
-    email: "tanvir.rahman@gmail.com",
-    division: "Dhaka",
-    district: "Dhaka City (North/South)",
-    thana: "Gulshan-2",
-    address: "House 14, Road 71, Gulshan-2, Dhaka 1212",
-    items: [
-      {
-        productId: "prod-2",
-        title: "Heritage Embroidered Jacquard Panjabi",
-        price: 4200,
-        quantity: 1,
-        size: "42 (L)",
-        color: "Emerald Green",
-        image: "https://ik.imagekit.io/mha5hytnj/products/catalog_product_5_6MGtON9rj.jpg",
-      },
-    ],
-    subtotal: 4200,
-    shippingFee: 70,
-    discountAmount: 0,
-    totalAmount: 4270,
-    paymentMethod: "BKASH",
-    paymentStatus: "PAID",
-    status: "PROCESSING",
-    transactionId: "TRX9B829182KA",
-    trackingNumber: "STDF-98218-DH",
-    courier: "Steadfast Courier",
-    notes: "Please call before delivery",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(),
-  },
-];
+export const INITIAL_ORDERS: StoredOrder[] = [];
 
 export const INITIAL_BANNERS: StoredBanner[] = [
   {
