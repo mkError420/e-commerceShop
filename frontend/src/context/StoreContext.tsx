@@ -229,7 +229,7 @@ interface StoreContextType {
 
   // Auth & Unified Login
   login: (identifier: string, password: string) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }> | { success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string };
-  loginWithGoogle: (googleUser: { name: string; email: string; picture?: string; id?: string }) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }>;
+  loginWithGoogle: (googleUser: { name: string; email: string; picture?: string; id?: string; credential?: string }) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }>;
 
   // Shop Admin Auth
   isAdminAuthenticated: boolean;
@@ -955,6 +955,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     email: string;
     picture?: string;
     id?: string;
+    credential?: string;
   }): Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }> => {
     const cleanEmail = googleUser.email.trim().toLowerCase();
     const cleanName = googleUser.name.trim() || cleanEmail.split("@")[0];
@@ -966,6 +967,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         name: cleanName,
         picture: googleUser.picture,
         googleId: googleUser.id,
+        credential: googleUser.credential,
       });
 
       if (apiRes.success && apiRes.user) {

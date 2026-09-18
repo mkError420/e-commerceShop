@@ -150,14 +150,35 @@ export const authController = {
   // Google OAuth Sign In / Sign Up
   async googleAuth(req: Request, res: Response): Promise<void> {
     try {
-      const { email, name, picture, googleId } = req.body;
-      if (!email) {
+      const { email, name, picture, googleId, credential } = req.body;
+
+      let cleanEmail = email ? String(email).trim().toLowerCase() : "";
+      let cleanName = name ? String(name).trim() : "";
+      let avatarPicture = picture;
+      let gid = googleId;
+
+      // If raw Google ID token (credential) was passed, decode payload
+      if (credential) {
+        try {
+          const parts = String(credential).split(".");
+          if (parts.length === 3) {
+            const decoded = JSON.parse(Buffer.from(parts[1], "base64").toString("utf8"));
+            if (decoded.email) cleanEmail = decoded.email.toLowerCase().trim();
+            if (decoded.name) cleanName = cleanName || decoded.name.trim();
+            if (decoded.picture) avatarPicture = avatarPicture || decoded.picture;
+            if (decoded.sub) gid = gid || decoded.sub;
+          }
+        } catch (e) {
+          console.warn("[Google Auth] Error decoding credential:", e);
+        }
+      }
+
+      if (!cleanEmail) {
         res.status(400).json({ success: false, message: "Google email is required" });
         return;
       }
 
-      const cleanEmail = String(email).trim().toLowerCase();
-      const cleanName = name ? String(name).trim() : cleanEmail.split("@")[0];
+      cleanName = cleanName || cleanEmail.split("@")[0];
 
       // 1. Check if user already exists in MongoDB
       let dbUser: any = null;
@@ -181,26 +202,28 @@ export const authController = {
       const targetRole = isAdminEmail ? "ADMIN" : "CUSTOMER";
 
       let userRecord: any = null;
+      const randomPhone = `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`;
 
       if (dbUser) {
         userRecord = {
           id: dbUser._id.toString(),
           name: dbUser.name || cleanName,
-          phone: dbUser.phone || "",
+          phone: dbUser.phone || randomPhone,
           email: dbUser.email,
           role: dbUser.role || targetRole,
+          picture: avatarPicture,
         };
       } else if (memUser) {
         userRecord = {
           id: memUser.id,
           name: memUser.name || cleanName,
-          phone: memUser.phone || "",
+          phone: memUser.phone || randomPhone,
           email: memUser.email,
           role: memUser.role || targetRole,
+          picture: avatarPicture,
         };
       } else {
         // Create new user in DB
-        const randomPhone = `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`;
         try {
           dbUser = await UserModel.create({
             name: cleanName,
@@ -215,7 +238,9 @@ export const authController = {
             phone: dbUser.phone,
             email: dbUser.email,
             role: dbUser.role,
+            picture: avatarPicture,
           };
+          console.log("✅ [MongoDB] New Google User Account registered:", cleanEmail);
         } catch (createErr) {
           console.warn("[MongoDB Google Auth] User creation fallback to memory store:", createErr);
         }
@@ -237,7 +262,31 @@ export const authController = {
             phone: newMemUser.phone,
             email: newMemUser.email,
             role: newMemUser.role,
+            picture: avatarPicture,
           };
+        }
+      }
+
+      // Also ensure Customer profile exists in MongoDB
+      if (targetRole === "CUSTOMER") {
+        try {
+          let customerDoc = await CustomerModel.findOne({ email: cleanEmail });
+          if (!customerDoc) {
+            customerDoc = await CustomerModel.create({
+              name: cleanName,
+              email: cleanEmail,
+              phone: userRecord.phone || randomPhone,
+              passwordHash: "google_oauth_verified",
+              avatarUrl: avatarPicture,
+              isEmailVerified: true,
+              isVerified: true,
+              loyaltyPoints: 100,
+              loyaltyTier: "Bronze",
+            });
+            console.log("✅ [MongoDB] New Customer profile created for Google user:", cleanEmail);
+          }
+        } catch (custErr) {
+          console.warn("[MongoDB] Customer profile check/create warning:", custErr);
         }
       }
 
@@ -261,6 +310,7 @@ export const authController = {
           phone: userRecord.phone,
           email: userRecord.email,
           role: userRecord.role,
+          picture: avatarPicture,
         },
         message: `Welcome, ${userRecord.name}! Google sign-in successful.`,
       });

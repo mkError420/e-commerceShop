@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useStore } from "../../context/StoreContext";
 import fashionBg from "../../assets/images/fashion_login_bg.jpg";
 import {
@@ -16,8 +16,15 @@ import {
   Mail,
   UserPlus,
   ChevronRight,
+  Settings,
   Sparkles,
 } from "lucide-react";
+
+declare global {
+  interface Window {
+    google?: any;
+  }
+}
 
 interface Props {
   initialMode?: "login" | "register";
@@ -76,10 +83,120 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
+  // Google GIS Button Ref
+  const googleBtnContainerRef = useRef<HTMLDivElement>(null);
+  const [gisLoaded, setGisLoaded] = useState(false);
+
   // Reset errors on mode change
   useEffect(() => {
     setErrorMessage("");
     setSuccessMessage("");
+  }, [authMode]);
+
+  // Decode JWT helper for Google Identity Services Credential response
+  const parseJwt = (token: string) => {
+    try {
+      const base64Url = token.split(".")[1];
+      const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split("")
+          .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+          .join("")
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.warn("JWT parse error:", e);
+      return null;
+    }
+  };
+
+  // Callback executed when real Google GIS popup/One-Tap returns an ID token
+  const handleGoogleCredentialResponse = async (response: any) => {
+    if (!response?.credential) return;
+    setIsGoogleLoading(true);
+    setErrorMessage("");
+    try {
+      const payload = parseJwt(response.credential);
+      const email = payload?.email;
+      const name = payload?.name || email?.split("@")[0] || "Google User";
+      const picture = payload?.picture;
+      const id = payload?.sub;
+
+      if (!email) {
+        setErrorMessage("Could not retrieve email from your Google account.");
+        return;
+      }
+
+      const res = await loginWithGoogle({
+        name,
+        email,
+        picture,
+        id,
+        credential: response.credential,
+      });
+
+      if (!res.success) {
+        setErrorMessage(res.message);
+      } else {
+        setShowGoogleModal(false);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Google authentication failed. Please try again.");
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
+  // Initialize Google Identity Services (GIS)
+  useEffect(() => {
+    const clientId =
+      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
+      "382949219381-e28371h8df9a7d65qwe789.apps.googleusercontent.com";
+
+    const initGis = () => {
+      const google = (window as any).google;
+      if (google?.accounts?.id) {
+        try {
+          google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+          setGisLoaded(true);
+
+          if (googleBtnContainerRef.current) {
+            googleBtnContainerRef.current.innerHTML = "";
+            google.accounts.id.renderButton(googleBtnContainerRef.current, {
+              theme: "outline",
+              size: "large",
+              width: 320,
+              text: "signin_with",
+              shape: "rectangular",
+              logo_alignment: "left",
+            });
+          }
+        } catch (e) {
+          console.warn("Google GIS initialization note:", e);
+        }
+      }
+    };
+
+    const google = (window as any).google;
+    if (google?.accounts?.id) {
+      initGis();
+    } else {
+      const timer = setInterval(() => {
+        const g = (window as any).google;
+        if (g?.accounts?.id) {
+          clearInterval(timer);
+          initGis();
+        }
+      }, 400);
+      return () => clearInterval(timer);
+    }
   }, [authMode]);
 
   // Handle Sign In (both Admin & Customer)
@@ -170,11 +287,20 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     }
   };
 
-  // Handle Google Login Flow
-  const handleGoogleSignIn = () => {
+  // Trigger Google Login
+  const handleGoogleSignInClick = () => {
+    // Attempt GIS prompt first if available
+    const google = (window as any).google;
+    if (google?.accounts?.id) {
+      try {
+        google.accounts.id.prompt();
+      } catch (_) {}
+    }
+    // Open the interactive Google account selector
     setShowGoogleModal(true);
   };
 
+  // User selects an account or demo Google profile
   const handleSelectGoogleAccount = async (account: {
     name: string;
     email: string;
@@ -334,7 +460,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   {t("Login to your site", "লগ ইন করুন")}
                 </h2>
                 <div className="text-white">
-                  {/* Solid Filled White Padlock Icon matching reference */}
+                  {/* Solid Filled White Padlock Icon */}
                   <svg
                     className="w-5 h-5 fill-white text-white"
                     viewBox="0 0 24 24"
@@ -421,12 +547,12 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
               </div>
 
               {/* ════════════════════════════════════════════════════════════════ */}
-              {/* GOOGLE SIGN IN BUTTON (Full Function)                            */}
+              {/* GOOGLE AUTHENTICATION BUTTON (Full Function)                     */}
               {/* ════════════════════════════════════════════════════════════════ */}
-              <div>
+              <div className="space-y-2">
                 <button
                   type="button"
-                  onClick={handleGoogleSignIn}
+                  onClick={handleGoogleSignInClick}
                   disabled={isGoogleLoading}
                   className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-[2px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-3 transition-all cursor-pointer shadow-md disabled:opacity-70 group"
                 >
@@ -450,9 +576,12 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                     />
                   </svg>
                   <span className="font-medium">
-                    {isGoogleLoading ? "Signing in with Google..." : "Login with Google Account"}
+                    {isGoogleLoading ? "Connecting to Google..." : "Login with Google Account"}
                   </span>
                 </button>
+
+                {/* Hidden container for Google GIS native button iframe if loaded */}
+                <div ref={googleBtnContainerRef} className="hidden" />
               </div>
 
               {/* Switch to Registration */}
@@ -566,7 +695,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
 
               <button
                 type="button"
-                onClick={handleGoogleSignIn}
+                onClick={handleGoogleSignInClick}
                 disabled={isGoogleLoading}
                 className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-[2px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-3 transition-all cursor-pointer shadow-md disabled:opacity-70"
               >
@@ -589,7 +718,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   />
                 </svg>
                 <span className="font-medium">
-                  {isGoogleLoading ? "Signing in with Google..." : "Login with Google Account"}
+                  {isGoogleLoading ? "Connecting to Google..." : "Sign up with Google Account"}
                 </span>
               </button>
 
@@ -617,7 +746,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
       </footer>
 
       {/* ════════════════════════════════════════════════════════════════ */}
-      {/* GOOGLE ACCOUNT CHOOSER MODAL (Full Function)                    */}
+      {/* GOOGLE ACCOUNT CHOOSER & REGISTRATION MODAL                     */}
       {/* ════════════════════════════════════════════════════════════════ */}
       {showGoogleModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
@@ -625,7 +754,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
             {/* Close Button */}
             <button
               onClick={() => setShowGoogleModal(false)}
-              className="absolute top-3.5 right-3.5 text-gray-400 hover:text-gray-700 transition p-1"
+              className="absolute top-3.5 right-3.5 text-gray-400 hover:text-gray-700 transition p-1 cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -656,12 +785,12 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                 Sign in with Google
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                Choose an account to continue to Bengal Edition Fashion
+                Choose or enter an account to continue to Bengal Edition Fashion
               </p>
             </div>
 
             {/* Account List */}
-            <div className="p-3 space-y-1.5 max-h-[320px] overflow-y-auto">
+            <div className="p-3 space-y-1.5 max-h-[340px] overflow-y-auto">
               {/* Account 1: Shop Admin */}
               <button
                 type="button"
@@ -773,7 +902,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   className="p-3 bg-gray-50 rounded-md border border-gray-200 space-y-2.5 animate-in fade-in"
                 >
                   <div className="text-xs font-semibold text-gray-700">
-                    Enter Google Account Details:
+                    Enter your Google Account details:
                   </div>
                   <input
                     type="text"
@@ -786,7 +915,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                     type="email"
                     value={customGoogleEmail}
                     onChange={(e) => setCustomGoogleEmail(e.target.value)}
-                    placeholder="your.google.id@gmail.com"
+                    placeholder="your.account@gmail.com"
                     className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
                     required
                   />
@@ -794,16 +923,16 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                     <button
                       type="button"
                       onClick={() => setShowCustomGoogleInput(false)}
-                      className="flex-1 text-xs py-1.5 text-gray-600 hover:bg-gray-200 rounded transition"
+                      className="flex-1 text-xs py-1.5 text-gray-600 hover:bg-gray-200 rounded transition cursor-pointer"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={isGoogleLoading}
-                      className="flex-1 text-xs py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
+                      className="flex-1 text-xs py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition cursor-pointer"
                     >
-                      {isGoogleLoading ? "Verifying..." : "Continue"}
+                      {isGoogleLoading ? "Connecting..." : "Sign in / Create Account"}
                     </button>
                   </div>
                 </form>
@@ -811,8 +940,9 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center text-[11px] text-gray-500">
-              Secured with Google OAuth 2.0 & MongoDB Atlas Auth
+            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center text-[11px] text-gray-500 flex items-center justify-center gap-1.5">
+              <Sparkles className="w-3 h-3 text-amber-500" />
+              <span>Auto-creates Customer Account with 100 Welcome Points</span>
             </div>
           </div>
         </div>

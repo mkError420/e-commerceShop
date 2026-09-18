@@ -57,7 +57,7 @@ export const authService = {
   },
 
   // Google OAuth Login
-  async googleLogin(payload: { email: string; name: string; picture?: string; googleId?: string }): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> {
+  async googleLogin(payload: { email: string; name: string; picture?: string; googleId?: string; credential?: string }): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> {
     const res = await apiClient<{ success: boolean; token: string; user: UserProfile; message?: string }>("/auth/google", {
       method: "POST",
       body: JSON.stringify(payload),
