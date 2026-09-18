@@ -149,24 +149,31 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     }
   };
 
-  // Initialize Google Identity Services (GIS)
+  // Check if a real Google Client ID is configured
+  const realClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+  const hasRealClientId =
+    !!realClientId &&
+    realClientId !== "YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com" &&
+    realClientId.endsWith(".apps.googleusercontent.com");
+
+  // Initialize Google Identity Services (GIS) — only when real Client ID exists
   useEffect(() => {
-    const clientId =
-      import.meta.env.VITE_GOOGLE_CLIENT_ID ||
-      "382949219381-e28371h8df9a7d65qwe789.apps.googleusercontent.com";
+    if (!hasRealClientId) return; // skip GIS init in demo/offline mode
 
     const initGis = () => {
       const google = (window as any).google;
       if (google?.accounts?.id) {
         try {
           google.accounts.id.initialize({
-            client_id: clientId,
+            client_id: realClientId,
             callback: handleGoogleCredentialResponse,
             auto_select: false,
             cancel_on_tap_outside: true,
+            use_fedcm_for_prompt: true, // use FedCM if available (Chrome)
           });
           setGisLoaded(true);
 
+          // Render the official Google button inside our hidden ref container
           if (googleBtnContainerRef.current) {
             googleBtnContainerRef.current.innerHTML = "";
             google.accounts.id.renderButton(googleBtnContainerRef.current, {
@@ -197,7 +204,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
       }, 400);
       return () => clearInterval(timer);
     }
-  }, [authMode]);
+  }, [authMode, hasRealClientId]);
 
   // Handle Sign In (both Admin & Customer)
   const handleSignIn = async (e: React.FormEvent) => {
@@ -289,15 +296,40 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
 
   // Trigger Google Login
   const handleGoogleSignInClick = () => {
-    // Attempt GIS prompt first if available
-    const google = (window as any).google;
-    if (google?.accounts?.id) {
-      try {
-        google.accounts.id.prompt();
-      } catch (_) {}
+    if (hasRealClientId) {
+      // ── REAL MODE: trigger the actual Google One-Tap / popup via GIS ──
+      const google = (window as any).google;
+      if (google?.accounts?.id) {
+        try {
+          // prompt() shows One-Tap or falls back to the popup
+          google.accounts.id.prompt((notification: any) => {
+            // If One-Tap is suppressed (e.g. user dismissed it before),
+            // click the hidden native Google button as a fallback popup
+            if (
+              notification.isNotDisplayed() ||
+              notification.isSkippedMoment()
+            ) {
+              const btn = googleBtnContainerRef.current?.querySelector(
+                "[role='button'], iframe"
+              ) as HTMLElement | null;
+              if (btn) btn.click();
+              else {
+                // Last resort: open demo modal so user isn't stuck
+                setShowGoogleModal(true);
+              }
+            }
+          });
+        } catch (_) {
+          setShowGoogleModal(true);
+        }
+      } else {
+        // GIS not yet loaded — wait a moment and retry
+        setTimeout(() => handleGoogleSignInClick(), 800);
+      }
+    } else {
+      // ── DEMO / OFFLINE MODE: open the account chooser modal ──
+      setShowGoogleModal(true);
     }
-    // Open the interactive Google account selector
-    setShowGoogleModal(true);
   };
 
   // User selects an account or demo Google profile
