@@ -22,6 +22,13 @@ declare global {
           prompt: (momentListener?: (notification: any) => void) => void;
           disableAutoSelect: () => void;
         };
+        oauth2?: {
+          initTokenClient: (config: any) => any;
+          initCodeClient?: (config: any) => any;
+          hasGrantedAllScopes?: (...args: any[]) => boolean;
+          hasGrantedAnyScope?: (...args: any[]) => boolean;
+          revoke?: (token: string, done?: () => void) => void;
+        };
       };
     };
   }

@@ -83,8 +83,9 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
   const [successMessage, setSuccessMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  // Google GIS Button Ref
+  // Google GIS Button Ref & OAuth2 Token Client
   const googleBtnContainerRef = useRef<HTMLDivElement>(null);
+  const tokenClientRef = useRef<any>(null);
   const [gisLoaded, setGisLoaded] = useState(false);
 
   // Reset errors on mode change
@@ -156,52 +157,121 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     realClientId !== "YOUR_GOOGLE_CLIENT_ID_HERE.apps.googleusercontent.com" &&
     realClientId.endsWith(".apps.googleusercontent.com");
 
-  // Initialize Google Identity Services (GIS) — only when real Client ID exists
+  // Initialize Google Identity Services (both OAuth2 Token Client & ID Services)
   useEffect(() => {
-    if (!hasRealClientId) return; // skip GIS init in demo/offline mode
+    if (!hasRealClientId) return;
 
     const initGis = () => {
       const google = (window as any).google;
-      if (google?.accounts?.id) {
+      if (!google?.accounts) return;
+
+      // 1. Initialize Google OAuth 2.0 Token Client (Opens Real Google Account Chooser popup)
+      if (google.accounts.oauth2) {
+        try {
+          tokenClientRef.current = google.accounts.oauth2.initTokenClient({
+            client_id: realClientId,
+            scope: "email profile openid",
+            callback: async (tokenResponse: any) => {
+              if (tokenResponse?.error) {
+                if (tokenResponse.error === "access_denied") {
+                  return; // User dismissed popup
+                }
+                setErrorMessage(
+                  `Google Sign-In notice: ${tokenResponse.error_description || tokenResponse.error}`
+                );
+                return;
+              }
+
+              if (tokenResponse?.access_token) {
+                setIsGoogleLoading(true);
+                setErrorMessage("");
+                try {
+                  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: {
+                      Authorization: `Bearer ${tokenResponse.access_token}`,
+                    },
+                  });
+                  if (!res.ok) {
+                    throw new Error("Could not fetch user profile from Google API");
+                  }
+                  const profile = await res.json();
+                  if (!profile.email) {
+                    setErrorMessage("Could not retrieve email from your Google account.");
+                    return;
+                  }
+
+                  const loginRes = await loginWithGoogle({
+                    name: profile.name || profile.email.split("@")[0],
+                    email: profile.email,
+                    picture: profile.picture,
+                    id: profile.sub,
+                  });
+
+                  if (!loginRes.success) {
+                    setErrorMessage(loginRes.message);
+                  } else {
+                    setShowGoogleModal(false);
+                  }
+                } catch (fetchErr: any) {
+                  setErrorMessage(fetchErr?.message || "Failed to retrieve Google profile.");
+                } finally {
+                  setIsGoogleLoading(false);
+                }
+              }
+            },
+            error_callback: (err: any) => {
+              console.error("Google OAuth error_callback:", err);
+              const currentOrigin = window.location.origin;
+              setErrorMessage(
+                `Google OAuth Error: Origin '${currentOrigin}' is not authorized. Please add '${currentOrigin}' to Authorized JavaScript Origins in Google Cloud Console.`
+              );
+            },
+          });
+          setGisLoaded(true);
+        } catch (e) {
+          console.warn("OAuth2 initTokenClient note:", e);
+        }
+      }
+
+      // 2. Also initialize Google Identity Services (One-Tap & renderButton)
+      if (google.accounts.id) {
         try {
           google.accounts.id.initialize({
             client_id: realClientId,
             callback: handleGoogleCredentialResponse,
             auto_select: false,
             cancel_on_tap_outside: true,
-            use_fedcm_for_prompt: true, // use FedCM if available (Chrome)
           });
-          setGisLoaded(true);
 
-          // Render the official Google button inside our hidden ref container
+          // Render the official Google button inside ref container if present
           if (googleBtnContainerRef.current) {
             googleBtnContainerRef.current.innerHTML = "";
             google.accounts.id.renderButton(googleBtnContainerRef.current, {
               theme: "outline",
               size: "large",
-              width: 320,
+              width: 300,
               text: "signin_with",
               shape: "rectangular",
               logo_alignment: "left",
             });
           }
         } catch (e) {
-          console.warn("Google GIS initialization note:", e);
+          console.warn("Google GIS ID init note:", e);
         }
       }
     };
 
     const google = (window as any).google;
-    if (google?.accounts?.id) {
+    if (google?.accounts?.oauth2 || google?.accounts?.id) {
       initGis();
     } else {
       const timer = setInterval(() => {
         const g = (window as any).google;
-        if (g?.accounts?.id) {
+        if (g?.accounts?.oauth2 || g?.accounts?.id) {
           clearInterval(timer);
           initGis();
         }
-      }, 400);
+      }, 300);
       return () => clearInterval(timer);
     }
   }, [authMode, hasRealClientId]);
@@ -296,38 +366,76 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
 
   // Trigger Google Login
   const handleGoogleSignInClick = () => {
+    setErrorMessage("");
     if (hasRealClientId) {
-      // ── REAL MODE: trigger the actual Google One-Tap / popup via GIS ──
+      // 1. Preferred: Google OAuth 2.0 Token Client (Official Account Chooser Popup)
+      if (tokenClientRef.current) {
+        try {
+          tokenClientRef.current.requestAccessToken({ prompt: "select_account" });
+          return;
+        } catch (err: any) {
+          console.warn("requestAccessToken invocation error:", err);
+        }
+      }
+
+      // 2. On-demand initialization if GIS loaded just now
       const google = (window as any).google;
+      if (google?.accounts?.oauth2) {
+        try {
+          const client = google.accounts.oauth2.initTokenClient({
+            client_id: realClientId,
+            scope: "email profile openid",
+            callback: async (tokenResponse: any) => {
+              if (tokenResponse?.access_token) {
+                setIsGoogleLoading(true);
+                try {
+                  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                    headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                  });
+                  const profile = await res.json();
+                  if (profile?.email) {
+                    await loginWithGoogle({
+                      name: profile.name || profile.email.split("@")[0],
+                      email: profile.email,
+                      picture: profile.picture,
+                      id: profile.sub,
+                    });
+                    setShowGoogleModal(false);
+                  }
+                } catch (e: any) {
+                  setErrorMessage(e?.message || "Google profile fetch error");
+                } finally {
+                  setIsGoogleLoading(false);
+                }
+              }
+            },
+            error_callback: (err: any) => {
+              console.error("OAuth error:", err);
+              const origin = window.location.origin;
+              setErrorMessage(
+                `Google OAuth Error: Origin '${origin}' is not authorized. Add '${origin}' to Authorized JavaScript Origins in Google Cloud Console.`
+              );
+            },
+          });
+          tokenClientRef.current = client;
+          client.requestAccessToken({ prompt: "select_account" });
+          return;
+        } catch (e) {
+          console.warn("On-demand OAuth2 init error:", e);
+        }
+      }
+
+      // 3. Fallback: Google One-Tap
       if (google?.accounts?.id) {
         try {
-          // prompt() shows One-Tap or falls back to the popup
-          google.accounts.id.prompt((notification: any) => {
-            // If One-Tap is suppressed (e.g. user dismissed it before),
-            // click the hidden native Google button as a fallback popup
-            if (
-              notification.isNotDisplayed() ||
-              notification.isSkippedMoment()
-            ) {
-              const btn = googleBtnContainerRef.current?.querySelector(
-                "[role='button'], iframe"
-              ) as HTMLElement | null;
-              if (btn) btn.click();
-              else {
-                // Last resort: open demo modal so user isn't stuck
-                setShowGoogleModal(true);
-              }
-            }
-          });
-        } catch (_) {
-          setShowGoogleModal(true);
-        }
-      } else {
-        // GIS not yet loaded — wait a moment and retry
-        setTimeout(() => handleGoogleSignInClick(), 800);
+          google.accounts.id.prompt();
+        } catch (_) {}
       }
+
+      // Open the modal fallback if Google services haven't loaded yet
+      setShowGoogleModal(true);
     } else {
-      // ── DEMO / OFFLINE MODE: open the account chooser modal ──
+      // Demo / offline mode
       setShowGoogleModal(true);
     }
   };
@@ -612,8 +720,8 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   </span>
                 </button>
 
-                {/* Hidden container for Google GIS native button iframe if loaded */}
-                <div ref={googleBtnContainerRef} className="hidden" />
+                {/* Container for Google GIS native button iframe if loaded */}
+                <div ref={googleBtnContainerRef} className="flex justify-center empty:hidden mt-2" />
               </div>
 
               {/* Switch to Registration */}
@@ -817,12 +925,41 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                 Sign in with Google
               </h3>
               <p className="text-xs text-gray-500 mt-1">
-                Choose or enter an account to continue to Bengal Edition Fashion
+                Authenticate with your real Google account or select a profile
               </p>
             </div>
 
+            {/* Active Google Account Connector */}
+            <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100 space-y-2">
+              <div className="text-xs font-semibold text-blue-950 flex items-center justify-center gap-1.5">
+                <Sparkles className="w-4 h-4 text-blue-600" />
+                <span>Use Your Active Google Account</span>
+              </div>
+              <p className="text-[11px] text-blue-800 text-center leading-relaxed">
+                Connects directly with the signed-in Google profile on your device
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGoogleModal(false);
+                  handleGoogleSignInClick();
+                }}
+                disabled={isGoogleLoading}
+                className="w-full py-2.5 px-4 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded font-medium text-xs shadow transition flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                  <path fill="#fff" d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"/>
+                  <path fill="#fff" d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"/>
+                </svg>
+                <span>Launch Google Sign-In Popup</span>
+              </button>
+            </div>
+
             {/* Account List */}
-            <div className="p-3 space-y-1.5 max-h-[340px] overflow-y-auto">
+            <div className="p-3 space-y-1.5 max-h-[250px] overflow-y-auto">
+              <div className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1 pb-1">
+                Or choose a quick demo account
+              </div>
               {/* Account 1: Shop Admin */}
               <button
                 type="button"
