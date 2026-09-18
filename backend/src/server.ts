@@ -10,10 +10,16 @@ import { notFoundHandler, errorHandler } from "./middleware/errorMiddleware";
 
 const app = express();
 
-// Ensure static uploads directory exists
-const uploadDir = path.resolve(process.cwd(), "uploads");
-if (!fs.existsSync(uploadDir)) {
-  fs.mkdirSync(uploadDir, { recursive: true });
+// Ensure static uploads directory exists (safely for serverless environments like Vercel)
+const uploadDir = process.env.VERCEL
+  ? path.join("/tmp", "uploads")
+  : path.resolve(process.cwd(), "uploads");
+try {
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+} catch (e: any) {
+  console.warn("[Uploads] Directory creation bypassed in read-only environment:", e?.message);
 }
 
 // Middlewares
@@ -81,7 +87,7 @@ app.get(["/api", "/api/v1"], (req, res) => {
 });
 
 // Mount Main API Routes
-app.use("/api/v1", apiRoutes);
+app.use(["/api/v1", "/v1"], apiRoutes);
 
 // Catch 404 and Forward to Error Handler
 app.use(notFoundHandler);

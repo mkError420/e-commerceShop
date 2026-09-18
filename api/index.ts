@@ -10,7 +10,7 @@ try {
 
 let isDbConnected = false;
 
-export default async function handler(req: Request, res: Response) {
+async function ensureDb() {
   if (!isDbConnected) {
     try {
       await connectDatabase();
@@ -19,6 +19,33 @@ export default async function handler(req: Request, res: Response) {
       console.warn("[Vercel] MongoDB connection warning:", e?.message);
     }
   }
+}
 
-  return app(req, res);
+export default async function handler(req: Request, res: Response) {
+  // Normalize URL in case Vercel rewrote /api/... to /...
+  if (req.url) {
+    if (!req.url.startsWith("/api") && req.url.startsWith("/v1")) {
+      req.url = `/api${req.url}`;
+    }
+  }
+
+  // Connect DB in background without blocking if slow
+  await Promise.race([
+    ensureDb(),
+    new Promise((resolve) => setTimeout(resolve, 2000)),
+  ]);
+
+  return new Promise<void>((resolve) => {
+    res.on("finish", resolve);
+    res.on("close", resolve);
+    try {
+      app(req, res);
+    } catch (err: any) {
+      console.error("[Vercel] Error executing request:", err);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "Internal server error" });
+      }
+      resolve();
+    }
+  });
 }
