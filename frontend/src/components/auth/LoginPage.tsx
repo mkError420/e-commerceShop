@@ -15,6 +15,8 @@ import {
   Smartphone,
   Mail,
   UserPlus,
+  ChevronRight,
+  Sparkles,
 } from "lucide-react";
 
 interface Props {
@@ -24,6 +26,7 @@ interface Props {
 export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
   const {
     login,
+    loginWithGoogle,
     registerCustomer,
     navigate,
     navigation,
@@ -60,6 +63,13 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
   const [showForgotModal, setShowForgotModal] = useState(false);
   const [forgotInput, setForgotInput] = useState("");
   const [forgotSubmitted, setForgotSubmitted] = useState(false);
+
+  // Google Sign In Modal & Loading State
+  const [showGoogleModal, setShowGoogleModal] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [showCustomGoogleInput, setShowCustomGoogleInput] = useState(false);
+  const [customGoogleEmail, setCustomGoogleEmail] = useState("");
+  const [customGoogleName, setCustomGoogleName] = useState("");
 
   // Feedback & Loading States
   const [errorMessage, setErrorMessage] = useState("");
@@ -160,14 +170,39 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     }
   };
 
-  // Handle Social Login simulation
-  const handleSocialLogin = (provider: string) => {
-    if (addToast) {
-      addToast(`${provider} login: Authenticating with secure token...`, "info");
+  // Handle Google Login Flow
+  const handleGoogleSignIn = () => {
+    setShowGoogleModal(true);
+  };
+
+  const handleSelectGoogleAccount = async (account: {
+    name: string;
+    email: string;
+    picture?: string;
+  }) => {
+    setIsGoogleLoading(true);
+    setErrorMessage("");
+    try {
+      const res = await loginWithGoogle(account);
+      setShowGoogleModal(false);
+      if (!res.success) {
+        setErrorMessage(res.message);
+      }
+    } catch (err: any) {
+      setErrorMessage(err?.message || "Google sign in failed. Please try again.");
+    } finally {
+      setIsGoogleLoading(false);
     }
-    // Auto-fill a guest demo or customer login for convenience
-    setIdentifier(`${provider.toLowerCase()}.user@fashion.com`);
-    setPassword("fashion2026");
+  };
+
+  const handleCustomGoogleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customGoogleEmail.trim()) return;
+    const name = customGoogleName.trim() || customGoogleEmail.split("@")[0];
+    await handleSelectGoogleAccount({
+      name,
+      email: customGoogleEmail.trim(),
+    });
   };
 
   const handleForgotPasswordSubmit = (e: React.FormEvent) => {
@@ -191,7 +226,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
       <header className="relative z-20 px-4 sm:px-8 py-4 flex items-center justify-between">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white bg-black/40 hover:bg-black/60 px-3.5 py-1.5 rounded-full border border-white/15 backdrop-blur-md transition-all group"
+          className="flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white bg-black/40 hover:bg-black/60 px-3.5 py-1.5 rounded-full border border-white/15 backdrop-blur-md transition-all group cursor-pointer"
         >
           <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
           <span>{t("Back to Store", "স্টোরে ফিরে যান")}</span>
@@ -201,7 +236,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
         <button
           type="button"
           onClick={autofillAdmin}
-          className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/80 px-3.5 py-1.5 rounded-full border border-white/20 backdrop-blur-md transition-all shadow-sm"
+          className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/80 px-3.5 py-1.5 rounded-full border border-white/20 backdrop-blur-md transition-all shadow-sm cursor-pointer"
           title="Autofill Admin Credentials"
         >
           <ShieldCheck className="w-3.5 h-3.5 text-yellow-400" />
@@ -229,13 +264,13 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
             <div className="flex gap-2">
               <button
                 onClick={() => navigate("/admin")}
-                className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors"
+                className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors cursor-pointer"
               >
                 Go to Admin Dashboard
               </button>
               <button
                 onClick={logoutAdmin}
-                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium py-1.5 px-3 rounded-[2px] text-xs transition-colors flex items-center gap-1"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium py-1.5 px-3 rounded-[2px] text-xs transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
@@ -256,13 +291,13 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
             <div className="flex gap-2">
               <button
                 onClick={() => navigate("/customer")}
-                className="flex-1 bg-white hover:bg-gray-100 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors"
+                className="flex-1 bg-white hover:bg-gray-100 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors cursor-pointer"
               >
                 Customer Dashboard
               </button>
               <button
                 onClick={logoutCustomer}
-                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium py-1.5 px-3 rounded-[2px] text-xs transition-colors flex items-center gap-1"
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium py-1.5 px-3 rounded-[2px] text-xs transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Sign Out</span>
@@ -343,7 +378,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-700 transition"
+                    className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-700 transition cursor-pointer"
                     title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
@@ -372,65 +407,62 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                     setForgotSubmitted(false);
                     setShowForgotModal(true);
                   }}
-                  className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                  className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors cursor-pointer"
                 >
                   Forgot password?
                 </button>
               </div>
 
               {/* Social Login Divider */}
-              <div className="text-center my-6">
+              <div className="text-center my-5">
                 <span className="text-gray-300/80 text-xs sm:text-sm tracking-wider">
                   or login with
                 </span>
               </div>
 
-              {/* Social Buttons: facebook, twitter, linkedin */}
-              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
-                {/* Facebook Button */}
+              {/* ════════════════════════════════════════════════════════════════ */}
+              {/* GOOGLE SIGN IN BUTTON (Full Function)                            */}
+              {/* ════════════════════════════════════════════════════════════════ */}
+              <div>
                 <button
                   type="button"
-                  onClick={() => handleSocialLogin("Facebook")}
-                  className="py-2 px-1.5 border border-white/40 hover:border-white text-gray-200 hover:text-white bg-black/20 hover:bg-white/10 text-xs flex items-center justify-center gap-1.5 transition-all rounded-[2px] cursor-pointer"
+                  onClick={handleGoogleSignIn}
+                  disabled={isGoogleLoading}
+                  className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-[2px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-3 transition-all cursor-pointer shadow-md disabled:opacity-70 group"
                 >
-                  <span className="font-bold text-sm leading-none">f</span>
-                  <span className="font-normal text-[11px] sm:text-xs">facebook</span>
-                </button>
-
-                {/* Twitter Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSocialLogin("Twitter")}
-                  className="py-2 px-1.5 border border-white/40 hover:border-white text-gray-200 hover:text-white bg-black/20 hover:bg-white/10 text-xs flex items-center justify-center gap-1.5 transition-all rounded-[2px] cursor-pointer"
-                >
-                  <svg
-                    className="w-3.5 h-3.5 fill-current"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.936 9.936 0 0024 4.59z" />
+                  {/* Official Google 4-color SVG Icon */}
+                  <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="#4285F4"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                    />
                   </svg>
-                  <span className="font-normal text-[11px] sm:text-xs">twitter</span>
-                </button>
-
-                {/* LinkedIn Button */}
-                <button
-                  type="button"
-                  onClick={() => handleSocialLogin("LinkedIn")}
-                  className="py-2 px-1.5 border border-white/40 hover:border-white text-gray-200 hover:text-white bg-black/20 hover:bg-white/10 text-xs flex items-center justify-center gap-1.5 transition-all rounded-[2px] cursor-pointer"
-                >
-                  <span className="font-bold text-xs lowercase leading-none">in</span>
-                  <span className="font-normal text-[11px] sm:text-xs">linkedin</span>
+                  <span className="font-medium">
+                    {isGoogleLoading ? "Signing in with Google..." : "Login with Google Account"}
+                  </span>
                 </button>
               </div>
 
               {/* Switch to Registration */}
-              <div className="text-center pt-5 mt-2 border-t border-white/10">
+              <div className="text-center pt-5 mt-3 border-t border-white/10">
                 <p className="text-xs text-gray-400">
                   {t("Don't have an account?", "নতুন গ্রাহক?")}{" "}
                   <button
                     type="button"
                     onClick={() => setAuthMode("register")}
-                    className="text-white hover:text-[#ff4c4c] underline transition-colors"
+                    className="text-white hover:text-[#ff4c4c] underline transition-colors cursor-pointer"
                   >
                     {t("Register here", "রেজিস্ট্রেশন করুন")}
                   </button>
@@ -509,7 +541,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   <button
                     type="button"
                     onClick={() => setShowRegPassword(!showRegPassword)}
-                    className="text-[11px] text-gray-400 hover:text-white transition"
+                    className="text-[11px] text-gray-400 hover:text-white transition cursor-pointer"
                   >
                     {showRegPassword ? "Hide passwords" : "Show passwords"}
                   </button>
@@ -525,6 +557,42 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                 </button>
               </form>
 
+              {/* Google Sign-in on Registration Form as well */}
+              <div className="text-center my-4">
+                <span className="text-gray-300/80 text-xs tracking-wider">
+                  or register with
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleGoogleSignIn}
+                disabled={isGoogleLoading}
+                className="w-full py-2.5 px-4 bg-white hover:bg-gray-50 active:bg-gray-100 text-gray-800 rounded-[2px] text-xs sm:text-sm font-semibold flex items-center justify-center gap-3 transition-all cursor-pointer shadow-md disabled:opacity-70"
+              >
+                <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+                <span className="font-medium">
+                  {isGoogleLoading ? "Signing in with Google..." : "Login with Google Account"}
+                </span>
+              </button>
+
               {/* Switch back to Login */}
               <div className="text-center pt-5 mt-3 border-t border-white/10">
                 <p className="text-xs text-gray-400">
@@ -532,7 +600,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   <button
                     type="button"
                     onClick={() => setAuthMode("login")}
-                    className="text-white hover:text-[#ff4c4c] underline transition-colors"
+                    className="text-white hover:text-[#ff4c4c] underline transition-colors cursor-pointer"
                   >
                     {t("Login to your site", "লগ ইন করুন")}
                   </button>
@@ -548,13 +616,215 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
         © 2026 Fashion Login Form. All rights reserved | Bengal Edition
       </footer>
 
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {/* GOOGLE ACCOUNT CHOOSER MODAL (Full Function)                    */}
+      {/* ════════════════════════════════════════════════════════════════ */}
+      {showGoogleModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm bg-white rounded-lg shadow-2xl overflow-hidden text-gray-800 relative">
+            {/* Close Button */}
+            <button
+              onClick={() => setShowGoogleModal(false)}
+              className="absolute top-3.5 right-3.5 text-gray-400 hover:text-gray-700 transition p-1"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Modal Header */}
+            <div className="p-6 pb-4 border-b border-gray-100 text-center">
+              <div className="inline-flex justify-center mb-2.5">
+                <svg className="w-8 h-8" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+              </div>
+              <h3 className="text-base font-semibold text-gray-900">
+                Sign in with Google
+              </h3>
+              <p className="text-xs text-gray-500 mt-1">
+                Choose an account to continue to Bengal Edition Fashion
+              </p>
+            </div>
+
+            {/* Account List */}
+            <div className="p-3 space-y-1.5 max-h-[320px] overflow-y-auto">
+              {/* Account 1: Shop Admin */}
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectGoogleAccount({
+                    name: "Shop Admin (Golam Rabbani)",
+                    email: "mk.rabbani.cse@gmail.com",
+                  })
+                }
+                disabled={isGoogleLoading}
+                className="w-full text-left p-3 hover:bg-gray-50 active:bg-gray-100 rounded-md transition flex items-center justify-between group cursor-pointer border border-transparent hover:border-gray-200"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-amber-500 text-white font-bold text-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                    GR
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
+                      <span>Shop Admin (Golam Rabbani)</span>
+                      <span className="text-[10px] bg-yellow-100 text-yellow-800 px-1.5 py-0.5 rounded font-medium">
+                        Admin
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 truncate">
+                      mk.rabbani.cse@gmail.com
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
+              </button>
+
+              {/* Account 2: Customer demo */}
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectGoogleAccount({
+                    name: "Tanvir Ahmed",
+                    email: "tanvir.fashion@gmail.com",
+                  })
+                }
+                disabled={isGoogleLoading}
+                className="w-full text-left p-3 hover:bg-gray-50 active:bg-gray-100 rounded-md transition flex items-center justify-between group cursor-pointer border border-transparent hover:border-gray-200"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-blue-600 text-white font-bold text-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                    TA
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
+                      <span>Tanvir Ahmed</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium">
+                        Customer
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 truncate">
+                      tanvir.fashion@gmail.com
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
+              </button>
+
+              {/* Account 3: Customer demo 2 */}
+              <button
+                type="button"
+                onClick={() =>
+                  handleSelectGoogleAccount({
+                    name: "Nusrat Jahan",
+                    email: "nusrat.jahan@gmail.com",
+                  })
+                }
+                disabled={isGoogleLoading}
+                className="w-full text-left p-3 hover:bg-gray-50 active:bg-gray-100 rounded-md transition flex items-center justify-between group cursor-pointer border border-transparent hover:border-gray-200"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-purple-600 text-white font-bold text-sm flex items-center justify-center flex-shrink-0 shadow-sm">
+                    NJ
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
+                      <span>Nusrat Jahan</span>
+                      <span className="text-[10px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-medium">
+                        Customer
+                      </span>
+                    </div>
+                    <div className="text-[11px] text-gray-500 truncate">
+                      nusrat.jahan@gmail.com
+                    </div>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-700" />
+              </button>
+
+              {/* Custom Google Account Input Toggle */}
+              {!showCustomGoogleInput ? (
+                <button
+                  type="button"
+                  onClick={() => setShowCustomGoogleInput(true)}
+                  className="w-full text-left p-3 hover:bg-gray-50 rounded-md transition flex items-center gap-3 text-xs font-medium text-blue-600 hover:text-blue-700 cursor-pointer"
+                >
+                  <div className="w-10 h-10 rounded-full border border-dashed border-gray-300 flex items-center justify-center text-gray-500">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <span>Use another Google account</span>
+                </button>
+              ) : (
+                <form
+                  onSubmit={handleCustomGoogleSubmit}
+                  className="p-3 bg-gray-50 rounded-md border border-gray-200 space-y-2.5 animate-in fade-in"
+                >
+                  <div className="text-xs font-semibold text-gray-700">
+                    Enter Google Account Details:
+                  </div>
+                  <input
+                    type="text"
+                    value={customGoogleName}
+                    onChange={(e) => setCustomGoogleName(e.target.value)}
+                    placeholder="Full Name (e.g. Shakib Al Hasan)"
+                    className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    type="email"
+                    value={customGoogleEmail}
+                    onChange={(e) => setCustomGoogleEmail(e.target.value)}
+                    placeholder="your.google.id@gmail.com"
+                    className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded bg-white focus:outline-none focus:border-blue-500"
+                    required
+                  />
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomGoogleInput(false)}
+                      className="flex-1 text-xs py-1.5 text-gray-600 hover:bg-gray-200 rounded transition"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isGoogleLoading}
+                      className="flex-1 text-xs py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium transition"
+                    >
+                      {isGoogleLoading ? "Verifying..." : "Continue"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-3 bg-gray-50 border-t border-gray-100 text-center text-[11px] text-gray-500">
+              Secured with Google OAuth 2.0 & MongoDB Atlas Auth
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Forgot Password Modal */}
       {showForgotModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
           <div className="w-full max-w-md bg-[#1f1f1f] border border-white/20 p-6 rounded-[2px] shadow-2xl text-white relative">
             <button
               onClick={() => setShowForgotModal(false)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+              className="absolute top-4 right-4 text-gray-400 hover:text-white cursor-pointer"
             >
               <X className="w-5 h-5" />
             </button>
@@ -574,7 +844,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                 <button
                   type="button"
                   onClick={() => setShowForgotModal(false)}
-                  className="w-full bg-[#ff4c4c] text-white py-2.5 rounded-[2px] text-sm hover:bg-[#f23d3d] transition"
+                  className="w-full bg-[#ff4c4c] text-white py-2.5 rounded-[2px] text-sm hover:bg-[#f23d3d] transition cursor-pointer"
                 >
                   Return to Login
                 </button>
@@ -599,13 +869,13 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   <button
                     type="button"
                     onClick={() => setShowForgotModal(false)}
-                    className="flex-1 border border-white/30 text-gray-300 hover:text-white py-2.5 rounded-[2px] text-xs transition"
+                    className="flex-1 border border-white/30 text-gray-300 hover:text-white py-2.5 rounded-[2px] text-xs transition cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 bg-[#ff4c4c] text-white py-2.5 rounded-[2px] text-xs hover:bg-[#f23d3d] transition font-medium"
+                    className="flex-1 bg-[#ff4c4c] text-white py-2.5 rounded-[2px] text-xs hover:bg-[#f23d3d] transition font-medium cursor-pointer"
                   >
                     Send Reset Link
                   </button>

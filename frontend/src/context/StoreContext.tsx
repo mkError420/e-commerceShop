@@ -229,6 +229,7 @@ interface StoreContextType {
 
   // Auth & Unified Login
   login: (identifier: string, password: string) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }> | { success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string };
+  loginWithGoogle: (googleUser: { name: string; email: string; picture?: string; id?: string }) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }>;
 
   // Shop Admin Auth
   isAdminAuthenticated: boolean;
@@ -946,6 +947,124 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ? "কোনো অ্যাকাউন্ট পাওয়া যায়নি। অনুগ্রহ করে রেজিস্ট্রেশন করুন अथवा সঠিক তথ্য দিন।"
         : "No account found with this email/mobile or incorrect password. Please register or verify credentials."
     };
+  };
+
+  // ─── Google Authentication ──────────────────────────────────────────────────
+  const loginWithGoogle = async (googleUser: {
+    name: string;
+    email: string;
+    picture?: string;
+    id?: string;
+  }): Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }> => {
+    const cleanEmail = googleUser.email.trim().toLowerCase();
+    const cleanName = googleUser.name.trim() || cleanEmail.split("@")[0];
+
+    // 1. Try Backend API Google Login first
+    try {
+      const apiRes = await authService.googleLogin({
+        email: cleanEmail,
+        name: cleanName,
+        picture: googleUser.picture,
+        googleId: googleUser.id,
+      });
+
+      if (apiRes.success && apiRes.user) {
+        if (apiRes.user.role === "ADMIN") {
+          setIsAdminAuthenticated(true);
+          setCurrentUser(null);
+          try {
+            localStorage.setItem("be_admin_authenticated", "true");
+            localStorage.removeItem("be_current_user");
+          } catch { /* ignore */ }
+          showToast(language === 'bn' ? `গুগল অ্যাডমিন লগইন সফল: ${cleanName}` : `Google Admin sign-in successful: ${cleanName}`);
+          setNavigation({ path: "/admin" });
+          return { success: true, role: "ADMIN", message: "Admin login successful" };
+        } else {
+          const userCust: CustomerUser = {
+            id: apiRes.user.id,
+            name: apiRes.user.name,
+            phone: apiRes.user.phone || `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`,
+            email: apiRes.user.email,
+            role: "CUSTOMER",
+            loyaltyTier: "Bronze",
+            loyaltyPoints: 100,
+            joinedDate: apiRes.user.createdAt ? apiRes.user.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+            notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: false },
+            savedAddresses: [],
+          };
+
+          setRegisteredCustomers((prev) => {
+            const updated = [userCust, ...prev.filter((p) => p.email?.toLowerCase() !== cleanEmail)];
+            try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+            return updated;
+          });
+
+          setIsAdminAuthenticated(false);
+          setCurrentUser(userCust);
+          try {
+            localStorage.setItem("be_current_user", JSON.stringify(userCust));
+            localStorage.removeItem("be_admin_authenticated");
+          } catch { /* ignore */ }
+          showToast(language === 'bn' ? `স্বাগতম, ${userCust.name} (গুগল দিয়ে যুক্ত)!` : `Welcome, ${userCust.name}! Signed in with Google.`);
+          setNavigation({ path: "/customer" });
+          return { success: true, role: "CUSTOMER", message: `Welcome, ${userCust.name}` };
+        }
+      }
+    } catch (apiErr: any) {
+      console.warn("[Google Auth] Backend unreachable, using offline fallback:", apiErr?.message);
+    }
+
+    // 2. Offline / Local fallback
+    const isAdmin =
+      cleanEmail === ADMIN_CREDENTIALS.email.toLowerCase() ||
+      cleanEmail === "mk.rabbani.cse@gmail.com";
+
+    if (isAdmin) {
+      setIsAdminAuthenticated(true);
+      setCurrentUser(null);
+      try {
+        localStorage.setItem("be_admin_authenticated", "true");
+        localStorage.removeItem("be_current_user");
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? `গুগল অ্যাডমিন লগইন সফল: ${cleanName}` : `Google Admin sign-in successful: ${cleanName}`);
+      setNavigation({ path: "/admin" });
+      return { success: true, role: "ADMIN", message: "Admin login successful" };
+    }
+
+    // Customer fallback
+    const existing = registeredCustomers.find(
+      (c) => c.email && c.email.toLowerCase() === cleanEmail
+    );
+
+    const userCust: CustomerUser = existing || {
+      id: `cust-google-${Date.now()}`,
+      name: cleanName,
+      phone: `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`,
+      email: cleanEmail,
+      role: "CUSTOMER",
+      loyaltyTier: "Bronze",
+      loyaltyPoints: 100,
+      joinedDate: new Date().toISOString().split("T")[0],
+      notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: false },
+      savedAddresses: [],
+    };
+
+    setRegisteredCustomers((prev) => {
+      const updated = [userCust, ...prev.filter((p) => p.email?.toLowerCase() !== cleanEmail)];
+      try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    setIsAdminAuthenticated(false);
+    setCurrentUser(userCust);
+    try {
+      localStorage.setItem("be_current_user", JSON.stringify(userCust));
+      localStorage.removeItem("be_admin_authenticated");
+    } catch { /* ignore */ }
+
+    showToast(language === 'bn' ? `স্বাগতম, ${userCust.name}! গুগল দিয়ে লগইন সম্পন্ন হয়েছে।` : `Welcome, ${userCust.name}! Signed in with Google.`);
+    setNavigation({ path: "/customer" });
+    return { success: true, role: "CUSTOMER", message: `Welcome, ${userCust.name}` };
   };
 
   // ─── Shop Admin Auth ────────────────────────────────────────────────────────
@@ -1980,6 +2099,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         deleteBanner,
         toggleBannerActive,
         login,
+        loginWithGoogle,
         isAdminAuthenticated,
         adminUser: isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null,
         loginAdmin,

@@ -7,6 +7,7 @@ const router = Router();
 // Public auth endpoints
 router.post("/login", authController.login);
 router.post("/register", authController.register);
+router.post("/google", authController.googleAuth);
 router.get("/me", authenticate, authController.getCurrentUser);
 
 // Admin customer & user management

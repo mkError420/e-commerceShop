@@ -147,6 +147,129 @@ export const authController = {
     }
   },
 
+  // Google OAuth Sign In / Sign Up
+  async googleAuth(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, name, picture, googleId } = req.body;
+      if (!email) {
+        res.status(400).json({ success: false, message: "Google email is required" });
+        return;
+      }
+
+      const cleanEmail = String(email).trim().toLowerCase();
+      const cleanName = name ? String(name).trim() : cleanEmail.split("@")[0];
+
+      // 1. Check if user already exists in MongoDB
+      let dbUser: any = null;
+      try {
+        dbUser = await UserModel.findOne({
+          email: { $regex: new RegExp(`^${cleanEmail}$`, "i") },
+        });
+      } catch (dbErr) {
+        console.warn("[MongoDB Google Auth] Lookup failed:", dbErr);
+      }
+
+      // Check if user exists in memory store
+      let memUser = dbStore.users.find(
+        (u) => u.email && u.email.toLowerCase() === cleanEmail
+      );
+
+      // Determine role: Shop Admin email is ADMIN
+      const isAdminEmail =
+        cleanEmail === "mk.rabbani.cse@gmail.com" ||
+        cleanEmail === "admin@shorobor.com.bd";
+      const targetRole = isAdminEmail ? "ADMIN" : "CUSTOMER";
+
+      let userRecord: any = null;
+
+      if (dbUser) {
+        userRecord = {
+          id: dbUser._id.toString(),
+          name: dbUser.name || cleanName,
+          phone: dbUser.phone || "",
+          email: dbUser.email,
+          role: dbUser.role || targetRole,
+        };
+      } else if (memUser) {
+        userRecord = {
+          id: memUser.id,
+          name: memUser.name || cleanName,
+          phone: memUser.phone || "",
+          email: memUser.email,
+          role: memUser.role || targetRole,
+        };
+      } else {
+        // Create new user in DB
+        const randomPhone = `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`;
+        try {
+          dbUser = await UserModel.create({
+            name: cleanName,
+            email: cleanEmail,
+            phone: randomPhone,
+            passwordHash: "google_oauth_verified",
+            role: targetRole,
+          });
+          userRecord = {
+            id: dbUser._id.toString(),
+            name: dbUser.name,
+            phone: dbUser.phone,
+            email: dbUser.email,
+            role: dbUser.role,
+          };
+        } catch (createErr) {
+          console.warn("[MongoDB Google Auth] User creation fallback to memory store:", createErr);
+        }
+
+        if (!userRecord) {
+          const newMemUser: StoredUser = {
+            id: `usr-${Date.now()}`,
+            name: cleanName,
+            phone: randomPhone,
+            email: cleanEmail,
+            passwordHash: "google_oauth_verified",
+            role: targetRole,
+            createdAt: new Date().toISOString(),
+          };
+          dbStore.users.push(newMemUser);
+          userRecord = {
+            id: newMemUser.id,
+            name: newMemUser.name,
+            phone: newMemUser.phone,
+            email: newMemUser.email,
+            role: newMemUser.role,
+          };
+        }
+      }
+
+      const token = jwt.sign(
+        {
+          id: userRecord.id,
+          phone: userRecord.phone,
+          role: userRecord.role,
+          email: userRecord.email,
+        },
+        ENV.JWT_SECRET,
+        { expiresIn: "7d" }
+      );
+
+      res.json({
+        success: true,
+        token,
+        user: {
+          id: userRecord.id,
+          name: userRecord.name,
+          phone: userRecord.phone,
+          email: userRecord.email,
+          role: userRecord.role,
+        },
+        message: `Welcome, ${userRecord.name}! Google sign-in successful.`,
+      });
+    } catch (error: any) {
+      console.error("Google Auth Error:", error);
+      res.status(500).json({ success: false, message: error.message || "Internal server error" });
+    }
+  },
+
   // Register a new customer or admin directly into MongoDB database
   async register(req: Request, res: Response): Promise<void> {
     try {

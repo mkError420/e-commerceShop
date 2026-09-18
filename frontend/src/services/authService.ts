@@ -56,6 +56,20 @@ export const authService = {
     return res;
   },
 
+  // Google OAuth Login
+  async googleLogin(payload: { email: string; name: string; picture?: string; googleId?: string }): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> {
+    const res = await apiClient<{ success: boolean; token: string; user: UserProfile; message?: string }>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+
+    if (res.token) {
+      localStorage.setItem("auth_token", res.token);
+      localStorage.setItem("user_profile", JSON.stringify(res.user));
+    }
+    return res;
+  },
+
   // Current user profile
   async getCurrentUser(): Promise<{ success: boolean; user: UserProfile }> {
     return apiClient<{ success: boolean; user: UserProfile }>("/auth/me");
