@@ -973,7 +973,6 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
 
             {/* Modal Footer */}
             <div className="p-3 bg-gray-50 border-t border-gray-100 text-center text-[11px] text-gray-500 flex items-center justify-center gap-1.5">
-              <Sparkles className="w-3 h-3 text-amber-500" />
               <span>Auto-creates Customer Account with 100 Welcome Points</span>
             </div>
           </div>
