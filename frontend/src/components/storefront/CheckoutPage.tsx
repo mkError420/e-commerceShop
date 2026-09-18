@@ -123,7 +123,7 @@ export const CheckoutPage: React.FC = () => {
       const newOrder = createOrder({
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
-        customerEmail: customerEmail.trim() || undefined,
+        customerEmail: customerEmail.trim() || currentUser?.email || undefined,
         division: selectedDivision,
         district: selectedDistrict,
         thana: selectedThana,

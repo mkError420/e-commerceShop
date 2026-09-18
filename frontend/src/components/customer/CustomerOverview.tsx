@@ -21,7 +21,22 @@ export const CustomerOverview: React.FC<Props> = ({ onNavigate }) => {
 
   if (!currentUser) return null;
 
-  const myOrders = orders.filter((o) => o.customerPhone === currentUser.phone);
+  const myOrders = orders.filter((o) => {
+    const phoneMatch = Boolean(
+      o.customerPhone && currentUser.phone && o.customerPhone === currentUser.phone
+    );
+    const emailMatch = Boolean(
+      o.customerEmail &&
+      currentUser.email &&
+      o.customerEmail.toLowerCase() === currentUser.email.toLowerCase()
+    );
+    const nameMatch = Boolean(
+      o.customerName &&
+      currentUser.name &&
+      o.customerName.toLowerCase() === currentUser.name.toLowerCase()
+    );
+    return phoneMatch || emailMatch || nameMatch;
+  });
   const activeOrders = myOrders.filter((o) => o.status === "PENDING" || o.status === "PROCESSING" || o.status === "SHIPPED");
   const totalSpent = myOrders.reduce((sum, o) => sum + o.totalBDT, 0);
   const recentOrders = myOrders.slice(0, 3);

@@ -49,7 +49,22 @@ export const CustomerOrders: React.FC = () => {
 
   if (!currentUser) return null;
 
-  const myOrders = orders.filter((o) => o.customerPhone === currentUser.phone);
+  const myOrders = orders.filter((o) => {
+    const phoneMatch = Boolean(
+      o.customerPhone && currentUser.phone && o.customerPhone === currentUser.phone
+    );
+    const emailMatch = Boolean(
+      o.customerEmail &&
+      currentUser.email &&
+      o.customerEmail.toLowerCase() === currentUser.email.toLowerCase()
+    );
+    const nameMatch = Boolean(
+      o.customerName &&
+      currentUser.name &&
+      o.customerName.toLowerCase() === currentUser.name.toLowerCase()
+    );
+    return phoneMatch || emailMatch || nameMatch;
+  });
 
   const filtered = myOrders.filter((o) => {
     const statusMatch = filterStatus === "ALL" || o.status === filterStatus;

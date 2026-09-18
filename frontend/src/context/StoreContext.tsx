@@ -594,23 +594,65 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       createdAt: new Date().toISOString(),
     };
 
-    setOrders((prev) => [newOrder, ...prev]);
+    // 1. Immediately persist to state & localStorage
+    setOrders((prev) => {
+      const updated = [newOrder, ...prev];
+      try {
+        localStorage.setItem("be_orders", JSON.stringify(updated));
+      } catch { /* ignore */ }
+      return updated;
+    });
+
     setLatestOrderId(newOrder.id);
     clearCart();
 
-    // Asynchronously synchronize with Backend API & MongoDB
+    // 2. Link with logged in user profile & update loyalty points
+    if (currentUser) {
+      const pointsEarned = Math.max(10, Math.floor(newOrder.totalBDT / 50));
+      const updatedUser: CustomerUser = {
+        ...currentUser,
+        phone: newOrder.customerPhone || currentUser.phone,
+        loyaltyPoints: (currentUser.loyaltyPoints || 0) + pointsEarned,
+      };
+      setCurrentUser(updatedUser);
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(updatedUser));
+      } catch { /* ignore */ }
+
+      setRegisteredCustomers((prev) => {
+        const updated = prev.map((c) =>
+          c.id === currentUser.id ||
+          (c.email && currentUser.email && c.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+          (c.phone && currentUser.phone && c.phone === currentUser.phone)
+            ? updatedUser
+            : c
+        );
+        try {
+          localStorage.setItem("be_registered_customers", JSON.stringify(updated));
+        } catch { /* ignore */ }
+        return updated;
+      });
+    }
+
+    // 3. Asynchronously synchronize with Backend API & MongoDB
     orderService
       .createOrder(newOrder)
       .then((res) => {
         if (res.success && res.data) {
-          setOrders((prev) => prev.map((o) => (o.id === newOrder.id ? res.data : o)));
+          setOrders((prev) => {
+            const synced = prev.map((o) => (o.id === newOrder.id ? res.data : o));
+            try {
+              localStorage.setItem("be_orders", JSON.stringify(synced));
+            } catch { /* ignore */ }
+            return synced;
+          });
         }
       })
       .catch((err) => {
         console.warn("[Orders] Backend database save notice:", err?.message);
       });
 
-    // Update customer spend & order count in Admin Customers database
+    // 4. Update customer spend & order count in Admin Customers database
     setCustomers((prev) => {
       const updated = prev.map((c) => {
         if (
