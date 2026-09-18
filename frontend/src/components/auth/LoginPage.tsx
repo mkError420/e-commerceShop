@@ -1,31 +1,27 @@
 import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
+import fashionBg from "../../assets/images/fashion_login_bg.jpg";
 import {
-  ShieldCheck,
-  User,
   Lock,
-  Smartphone,
-  Mail,
+  ArrowLeft,
+  AlertCircle,
+  CheckCircle2,
   Eye,
   EyeOff,
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  AlertCircle,
-  KeyRound,
-  Trophy,
-  UserPlus,
-  LogIn,
+  User,
+  ShieldCheck,
   LogOut,
+  X,
+  Smartphone,
+  Mail,
+  UserPlus,
 } from "lucide-react";
 
 interface Props {
   initialMode?: "login" | "register";
 }
 
-export const LoginPage: React.FC<Props> = ({
-  initialMode = "login",
-}) => {
+export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
   const {
     login,
     registerCustomer,
@@ -36,6 +32,7 @@ export const LoginPage: React.FC<Props> = ({
     currentUser,
     logoutAdmin,
     logoutCustomer,
+    addToast,
   } = useStore();
 
   // Read mode from query param if available
@@ -46,7 +43,7 @@ export const LoginPage: React.FC<Props> = ({
     modeParam === "register" ? "register" : initialMode
   );
 
-  // Unified Sign In Form State (Same for Admin & Customer)
+  // Unified Sign In Form State
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -59,6 +56,11 @@ export const LoginPage: React.FC<Props> = ({
   const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [showRegPassword, setShowRegPassword] = useState(false);
 
+  // Forgot Password Modal State
+  const [showForgotModal, setShowForgotModal] = useState(false);
+  const [forgotInput, setForgotInput] = useState("");
+  const [forgotSubmitted, setForgotSubmitted] = useState(false);
+
   // Feedback & Loading States
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -70,7 +72,7 @@ export const LoginPage: React.FC<Props> = ({
     setSuccessMessage("");
   }, [authMode]);
 
-  // Handle Unified Sign In (Admin & Customer in same field)
+  // Handle Sign In (both Admin & Customer)
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
@@ -79,8 +81,8 @@ export const LoginPage: React.FC<Props> = ({
     if (!identifier.trim()) {
       setErrorMessage(
         t(
-          "Please enter your email address or mobile number",
-          "অনুগ্রহ করে আপনার ইমেইল অথবা মোবাইল নম্বর লিখুন"
+          "Please enter your username, email or mobile number",
+          "অনুগ্রহ করে আপনার ব্যবহারকারীর নাম, ইমেইল অথবা মোবাইল নম্বর লিখুন"
         )
       );
       return;
@@ -88,10 +90,7 @@ export const LoginPage: React.FC<Props> = ({
 
     if (!password.trim()) {
       setErrorMessage(
-        t(
-          "Please enter your password",
-          "অনুগ্রহ করে আপনার পাসওয়ার্ড লিখুন"
-        )
+        t("Please enter your password", "অনুগ্রহ করে আপনার পাসওয়ার্ড লিখুন")
       );
       return;
     }
@@ -137,9 +136,7 @@ export const LoginPage: React.FC<Props> = ({
     }
 
     if (regPassword && regPassword !== regConfirmPassword) {
-      setErrorMessage(
-        t("Passwords do not match", "পাসওয়ার্ড দুটি মিলছে না")
-      );
+      setErrorMessage(t("Passwords do not match", "পাসওয়ার্ড দুটি মিলছে না"));
       return;
     }
 
@@ -154,425 +151,470 @@ export const LoginPage: React.FC<Props> = ({
 
   // Quick fill Shop Admin Credentials for instant testing
   const autofillAdmin = () => {
+    setAuthMode("login");
     setIdentifier("mk.rabbani.cse@gmail.com");
     setPassword("sup123456123");
     setErrorMessage("");
+    if (addToast) {
+      addToast("Admin credentials loaded into form", "info");
+    }
+  };
+
+  // Handle Social Login simulation
+  const handleSocialLogin = (provider: string) => {
+    if (addToast) {
+      addToast(`${provider} login: Authenticating with secure token...`, "info");
+    }
+    // Auto-fill a guest demo or customer login for convenience
+    setIdentifier(`${provider.toLowerCase()}.user@fashion.com`);
+    setPassword("fashion2026");
+  };
+
+  const handleForgotPasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotInput.trim()) return;
+    setForgotSubmitted(true);
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F8F6] flex flex-col justify-between">
-      {/* Top Bar Header */}
-      <header className="px-4 sm:px-8 py-4 bg-white border-b border-[#E0E0E0] flex items-center justify-between">
+    <div
+      className="relative min-h-screen w-full flex flex-col justify-between bg-cover bg-center bg-no-repeat selection:bg-[#ff4c4c] selection:text-white"
+      style={{
+        backgroundImage: `url(${fashionBg})`,
+        backgroundColor: "#111111",
+      }}
+    >
+      {/* Dark Translucent Vignette / Ambient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/45 to-black/75 backdrop-blur-[1px] pointer-events-none" />
+
+      {/* Top Floating Navigation Header */}
+      <header className="relative z-20 px-4 sm:px-8 py-4 flex items-center justify-between">
         <button
           onClick={() => navigate("/")}
-          className="flex items-center gap-2 text-xs font-semibold text-[#555555] hover:text-[#1A1A1A] transition-colors group"
+          className="flex items-center gap-2 text-xs font-medium text-white/80 hover:text-white bg-black/40 hover:bg-black/60 px-3.5 py-1.5 rounded-full border border-white/15 backdrop-blur-md transition-all group"
         >
-          <ArrowLeft className="w-4 h-4 transition-transform group-hover:-translate-x-0.5" />
-          <span>{t("Back to Storefront", "স্টোরফ্রন্টে ফিরে যান")}</span>
+          <ArrowLeft className="w-3.5 h-3.5 transition-transform group-hover:-translate-x-1" />
+          <span>{t("Back to Store", "স্টোরে ফিরে যান")}</span>
         </button>
 
-        {/* Brand Identity */}
-        <div className="flex items-center gap-2">
-          <div className="hidden sm:block text-center">
-            <div className="font-bold text-sm leading-tight text-[#1A1A1A] tracking-wider">
-              BENGAL EDITION
-            </div>
-            <div className="text-[9px] text-[#777777] uppercase tracking-widest font-mono">
-              Authentication Portal
-            </div>
-          </div>
-        </div>
-
-        <div className="text-xs text-[#888888] font-mono">
-          Dhaka · BD
-        </div>
+        {/* Quick Demo Helper Button */}
+        <button
+          type="button"
+          onClick={autofillAdmin}
+          className="flex items-center gap-1.5 text-xs font-medium text-white/90 hover:text-white bg-black/50 hover:bg-black/80 px-3.5 py-1.5 rounded-full border border-white/20 backdrop-blur-md transition-all shadow-sm"
+          title="Autofill Admin Credentials"
+        >
+          <ShieldCheck className="w-3.5 h-3.5 text-yellow-400" />
+          <span>Admin Demo</span>
+        </button>
       </header>
 
-      {/* Main Authentication Centerpiece */}
-      <main className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8">
-        <div className="w-full max-w-md">
+      {/* Main Center Content */}
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center px-4 py-8">
+        {/* Top Header: FASHION LOGIN FORM */}
+        <h1 className="text-2xl sm:text-3xl md:text-[34px] font-normal tracking-[0.22em] text-white text-center uppercase mb-7 drop-shadow-lg font-sans">
+          FASHION LOGIN FORM
+        </h1>
 
-          {/* If already signed in, show current session status */}
-          {isAdminAuthenticated && (
-            <div className="mb-6 bg-yellow-50 border border-yellow-300 rounded-2xl p-5 text-center shadow-sm space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-yellow-200 text-yellow-900 text-xs font-bold">
-                <ShieldCheck className="w-3.5 h-3.5" />
-                <span>Signed In as Shop Admin</span>
-              </div>
-              <p className="text-xs text-yellow-950 font-medium">
-                You are currently logged in with Admin privileges.
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigate("/admin")}
-                  className="flex-1 bg-yellow-400 hover:bg-yellow-500 text-gray-950 font-bold py-2 px-3 rounded-lg text-xs transition-colors"
-                >
-                  Go to Admin Dashboard
-                </button>
-                <button
-                  onClick={logoutAdmin}
-                  className="bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center gap-1"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
+        {/* Existing Active Session Alert (if already logged in) */}
+        {isAdminAuthenticated && (
+          <div className="w-full max-w-[420px] mb-4 bg-black/75 border border-yellow-500/40 rounded-xs p-3.5 text-center text-white backdrop-blur-md animate-in fade-in">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-yellow-400 mb-1">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Signed In as Shop Admin</span>
             </div>
-          )}
-
-          {currentUser && !isAdminAuthenticated && (
-            <div className="mb-6 bg-white border border-gray-200 rounded-2xl p-5 text-center shadow-sm space-y-3">
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-xs font-bold">
-                <User className="w-3.5 h-3.5 text-emerald-600" />
-                <span>Signed In as {currentUser.name}</span>
-              </div>
-              <p className="text-xs text-gray-600">
-                Customer account active ({currentUser.phone || currentUser.email})
-              </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => navigate("/customer")}
-                  className="flex-1 bg-[#1A1A1A] hover:bg-black text-white font-bold py-2 px-3 rounded-lg text-xs transition-colors"
-                >
-                  Go to Customer Dashboard
-                </button>
-                <button
-                  onClick={logoutCustomer}
-                  className="bg-white hover:bg-gray-100 text-gray-800 border border-gray-300 font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center gap-1"
-                >
-                  <LogOut className="w-3.5 h-3.5" />
-                  <span>Sign Out</span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Feedback Alerts */}
-          {errorMessage && (
-            <div className="mb-4 p-3.5 bg-rose-50 border border-rose-200 rounded-xl flex items-start gap-3 text-rose-800 text-xs animate-in fade-in duration-200">
-              <AlertCircle className="w-4 h-4 text-rose-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{errorMessage}</div>
-            </div>
-          )}
-
-          {successMessage && (
-            <div className="mb-4 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-start gap-3 text-emerald-800 text-xs animate-in fade-in duration-200">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 font-medium">{successMessage}</div>
-            </div>
-          )}
-
-          {/* Authentication Card */}
-          <div className="bg-white border border-[#E0E0E0] rounded-2xl shadow-xl overflow-hidden">
-            {/* Unified Mode Switcher: Sign In vs New Registration */}
-            <div className="flex border-b border-[#E0E0E0]">
+            <p className="text-[11px] text-gray-300 mb-2.5">
+              You have administrative privileges active.
+            </p>
+            <div className="flex gap-2">
               <button
-                onClick={() => setAuthMode("login")}
-                className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                  authMode === "login"
-                    ? "bg-[#1A1A1A] text-white"
-                    : "text-[#666666] hover:bg-gray-50"
-                }`}
+                onClick={() => navigate("/admin")}
+                className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors"
               >
-                <LogIn className="w-4 h-4" />
-                <span>{t("Sign In", "লগ ইন")}</span>
+                Go to Admin Dashboard
               </button>
-
               <button
-                onClick={() => setAuthMode("register")}
-                className={`flex-1 py-3.5 text-xs sm:text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                  authMode === "register"
-                    ? "bg-[#1A1A1A] text-white"
-                    : "text-[#666666] hover:bg-gray-50"
-                }`}
+                onClick={logoutAdmin}
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium py-1.5 px-3 rounded-[2px] text-xs transition-colors flex items-center gap-1"
               >
-                <UserPlus className="w-4 h-4" />
-                <span>{t("New Registration", "নতুন রেজিস্ট্রেশন")}</span>
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
               </button>
-            </div>
-
-            <div className="p-6 sm:p-8">
-              {/* ═══════════════════════════════════════════════════════════════ */}
-              {/* UNIFIED SIGN IN FORM (Same fields for Admin & Customer)        */}
-              {/* ═══════════════════════════════════════════════════════════════ */}
-              {authMode === "login" ? (
-                <div className="space-y-5">
-                  <div className="text-center sm:text-left">
-                    <h2 className="text-lg font-bold text-[#1A1A1A]">
-                      {t("Welcome Back", "স্বাগতম")}
-                    </h2>
-                    <p className="text-xs text-[#666666] mt-0.5">
-                      {t(
-                        "Sign in to access your dashboard (Admin & Customer).",
-                        "আপনার ড্যাশবোর্ডে প্রবেশ করতে লগ ইন করুন।"
-                      )}
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleSignIn} className="space-y-4">
-                    {/* Identifier Field: Email or Phone */}
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1A1A] mb-1.5">
-                        {t("Email Address or Mobile Number", "ইমেইল বা মোবাইল নম্বর")} *
-                      </label>
-                      <div className="relative">
-                        <div className="absolute left-3.5 top-3 text-[#888888]">
-                          {identifier.includes("@") ? (
-                            <Mail className="w-4 h-4" />
-                          ) : (
-                            <Smartphone className="w-4 h-4" />
-                          )}
-                        </div>
-                        <input
-                          type="text"
-                          value={identifier}
-                          onChange={(e) => setIdentifier(e.target.value)}
-                          placeholder="mk.rabbani.cse@gmail.com or 01711223344"
-                          className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
-                          required
-                          autoComplete="username"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Password Field */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5">
-                        <label className="text-xs font-semibold text-[#1A1A1A]">
-                          {t("Password", "পাসওয়ার্ড")} *
-                        </label>
-                      </div>
-                      <div className="relative">
-                        <Lock className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
-                        <input
-                          type={showPassword ? "text" : "password"}
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          placeholder="••••••••••••"
-                          className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
-                          required
-                          autoComplete="current-password"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="absolute right-3.5 top-3 text-[#888888] hover:text-[#1A1A1A]"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Sign In Action Button */}
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-[#1A1A1A] hover:bg-black text-white font-semibold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50 mt-2"
-                    >
-                      <LogIn className="w-4 h-4" />
-                      <span>{isLoading ? t("Verifying...", "যাচাই করা হচ্ছে...") : t("Sign In", "সাইন ইন করুন")}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </button>
-                  </form>
-
-                  {/* Shop Admin Quick Test Helper Card */}
-                  <div className="pt-4 border-t border-gray-100">
-                    <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-                      <div className="min-w-0">
-                        <div className="text-[11px] font-bold text-gray-900 flex items-center gap-1.5">
-                          <ShieldCheck className="w-3.5 h-3.5 text-yellow-600" />
-                          <span>Shop Admin Credentials</span>
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-mono mt-0.5 truncate">
-                          Mail: <span className="text-gray-800 font-semibold">mk.rabbani.cse@gmail.com</span>
-                        </div>
-                        <div className="text-[10px] text-gray-500 font-mono">
-                          Pass: <span className="text-gray-800 font-semibold">sup123456123</span>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={autofillAdmin}
-                        className="px-2.5 py-1.5 bg-yellow-400 hover:bg-yellow-500 text-gray-950 rounded-lg text-xs font-bold transition-all whitespace-nowrap self-start sm:self-auto shadow-2xs"
-                      >
-                        Autofill Admin
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Switch to Registration */}
-                  <div className="text-center pt-2">
-                    <p className="text-xs text-[#666666]">
-                      {t("Don't have a customer account?", "নতুন কাস্টমার?")}{" "}
-                      <button
-                        type="button"
-                        onClick={() => setAuthMode("register")}
-                        className="font-bold text-[#1A1A1A] hover:underline"
-                      >
-                        {t("Register Here →", "রেজিস্ট্রেশন করুন →")}
-                      </button>
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                /* ═══════════════════════════════════════════════════════════════ */
-                /* CUSTOMER REGISTRATION FORM                                    */
-                /* ═══════════════════════════════════════════════════════════════ */
-                <div className="space-y-4">
-                  <div className="text-center sm:text-left mb-2">
-                    <h2 className="text-lg font-bold text-[#1A1A1A]">
-                      {t("Create Customer Account", "নতুন কাস্টমার অ্যাকাউন্ট")}
-                    </h2>
-                    <p className="text-xs text-[#666666] mt-0.5">
-                      {t(
-                        "Register to track orders, save addresses, and earn rewards.",
-                        "অর্ডার ট্র্যাকিং এবং লয়্যালটি রিওয়ার্ড পেতে অ্যাকাউন্ট খুলুন।"
-                      )}
-                    </p>
-                  </div>
-
-                  <form onSubmit={handleCustomerRegister} className="space-y-3.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">
-                        {t("Full Name", "আপনার পূর্ণ নাম")} *
-                      </label>
-                      <div className="relative">
-                        <User className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
-                        <input
-                          type="text"
-                          value={regName}
-                          onChange={(e) => setRegName(e.target.value)}
-                          placeholder="e.g. Nusrat Jahan / Tanvir Ahmed"
-                          className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">
-                        {t("Bangladeshi Mobile Number", "বাংলাদেশি মোবাইল নম্বর")} *
-                      </label>
-                      <div className="relative">
-                        <Smartphone className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
-                        <input
-                          type="tel"
-                          value={regPhone}
-                          onChange={(e) => setRegPhone(e.target.value)}
-                          placeholder="01711223344"
-                          maxLength={11}
-                          className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
-                          required
-                        />
-                      </div>
-                      <span className="text-[10px] text-[#888888] mt-0.5 block">
-                        {t("11 digits starting with 01 (Used for SMS courier delivery tracking)", "১১ ডিজিট (০১ দিয়ে শুরু)")}
-                      </span>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">
-                        {t("Email Address (Optional)", "ইমেইল অ্যাড্রেস (ঐচ্ছিক)")}
-                      </label>
-                      <div className="relative">
-                        <Mail className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
-                        <input
-                          type="email"
-                          value={regEmail}
-                          onChange={(e) => setRegEmail(e.target.value)}
-                          placeholder="your.email@domain.com"
-                          className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">
-                          {t("Set Password", "পাসওয়ার্ড")} *
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
-                          <input
-                            type={showRegPassword ? "text" : "password"}
-                            value={regPassword}
-                            onChange={(e) => setRegPassword(e.target.value)}
-                            placeholder="Min 6 characters"
-                            className="w-full pl-10 pr-9 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
-                            required
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowRegPassword(!showRegPassword)}
-                            className="absolute right-3 top-3 text-[#888888] hover:text-[#1A1A1A]"
-                          >
-                            {showRegPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold text-[#1A1A1A] mb-1">
-                          {t("Confirm Password", "নিশ্চিত করুন")} *
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3.5 top-3 w-4 h-4 text-[#888888]" />
-                          <input
-                            type={showRegPassword ? "text" : "password"}
-                            value={regConfirmPassword}
-                            onChange={(e) => setRegConfirmPassword(e.target.value)}
-                            placeholder="Re-type password"
-                            className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm border border-[#CCCCCC] rounded-xl focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] transition-all bg-white font-mono"
-                            required
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Reward Callout */}
-                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex items-center gap-2.5 text-amber-900">
-                      <Trophy className="w-4 h-4 text-amber-700 flex-shrink-0" />
-                      <div className="text-[11px] leading-tight">
-                        <span className="font-bold">{t("Welcome Reward:", "স্বাগত উপহার:")}</span>{" "}
-                        {t("Receive 100 Heritage Loyalty Points instantly upon registration.", "রেজিস্ট্রেশন করলেই ১০০ লয়্যালটি পয়েন্ট পাবেন।")}
-                      </div>
-                    </div>
-
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="w-full bg-[#1A1A1A] hover:bg-black text-white font-semibold py-3 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md disabled:opacity-50 mt-2"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      <span>{isLoading ? t("Creating Account...", "অ্যাকাউন্ট তৈরি হচ্ছে...") : t("Create Customer Account", "রেজিস্ট্রেশন সম্পন্ন করুন")}</span>
-                    </button>
-                  </form>
-
-                  {/* Switch back to Sign In */}
-                  <div className="text-center pt-2">
-                    <p className="text-xs text-[#666666]">
-                      {t("Already have an account?", "ইতিমধ্যেই অ্যাকাউন্ট আছে?")}{" "}
-                      <button
-                        type="button"
-                        onClick={() => setAuthMode("login")}
-                        className="font-bold text-[#1A1A1A] hover:underline"
-                      >
-                        {t("Sign In →", "সাইন ইন করুন →")}
-                      </button>
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
+        )}
+
+        {currentUser && !isAdminAuthenticated && (
+          <div className="w-full max-w-[420px] mb-4 bg-black/75 border border-emerald-500/40 rounded-xs p-3.5 text-center text-white backdrop-blur-md animate-in fade-in">
+            <div className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-400 mb-1">
+              <User className="w-4 h-4" />
+              <span>Signed In as {currentUser.name}</span>
+            </div>
+            <p className="text-[11px] text-gray-300 mb-2.5">
+              Customer account active ({currentUser.phone || currentUser.email})
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => navigate("/customer")}
+                className="flex-1 bg-white hover:bg-gray-100 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors"
+              >
+                Customer Dashboard
+              </button>
+              <button
+                onClick={logoutCustomer}
+                className="bg-white/10 hover:bg-white/20 text-white border border-white/20 font-medium py-1.5 px-3 rounded-[2px] text-xs transition-colors flex items-center gap-1"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Feedback Messages */}
+        {errorMessage && (
+          <div className="w-full max-w-[420px] mb-4 p-3 bg-red-950/80 border border-red-500/60 rounded-[2px] flex items-start gap-2.5 text-red-200 text-xs backdrop-blur-md animate-in fade-in">
+            <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">{errorMessage}</div>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="w-full max-w-[420px] mb-4 p-3 bg-emerald-950/80 border border-emerald-500/60 rounded-[2px] flex items-start gap-2.5 text-emerald-200 text-xs backdrop-blur-md animate-in fade-in">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">{successMessage}</div>
+          </div>
+        )}
+
+        {/* ════════════════════════════════════════════════════════════════ */}
+        {/* Centered Login Card                                            */}
+        {/* ════════════════════════════════════════════════════════════════ */}
+        <div className="w-full max-w-[420px] bg-[#1e1e1e]/90 sm:bg-[#1a1a1a]/92 backdrop-blur-md border border-white/10 p-7 sm:p-9 shadow-2xl rounded-[2px]">
+          {authMode === "login" ? (
+            /* ────────────────────── LOGIN FORM ────────────────────── */
+            <div>
+              {/* Card Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl sm:text-[22px] font-normal text-white tracking-wide">
+                  {t("Login to your site", "লগ ইন করুন")}
+                </h2>
+                <div className="text-white">
+                  {/* Solid Filled White Padlock Icon matching reference */}
+                  <svg
+                    className="w-5 h-5 fill-white text-white"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSignIn} className="space-y-4">
+                {/* Username Input */}
+                <div>
+                  <input
+                    type="text"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
+                    placeholder="Username"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-3 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition"
+                    required
+                    autoComplete="username"
+                  />
+                </div>
+
+                {/* Password Input */}
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Password"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-3 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition pr-10"
+                    required
+                    autoComplete="current-password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-3.5 text-gray-400 hover:text-gray-700 transition"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Coral Red Login Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#ff4c4c] hover:bg-[#f23d3d] active:bg-[#db2f2f] text-white font-normal py-3 rounded-[2px] text-sm tracking-wide transition-all shadow cursor-pointer disabled:opacity-50"
+                >
+                  {isLoading ? t("Logging in...", "লগ ইন হচ্ছে...") : t("Login", "লগ ইন")}
+                </button>
+              </form>
+
+              {/* Forgot password */}
+              <div className="text-center mt-3.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setForgotSubmitted(false);
+                    setShowForgotModal(true);
+                  }}
+                  className="text-xs sm:text-sm text-gray-400 hover:text-white transition-colors"
+                >
+                  Forgot password?
+                </button>
+              </div>
+
+              {/* Social Login Divider */}
+              <div className="text-center my-6">
+                <span className="text-gray-300/80 text-xs sm:text-sm tracking-wider">
+                  or login with
+                </span>
+              </div>
+
+              {/* Social Buttons: facebook, twitter, linkedin */}
+              <div className="grid grid-cols-3 gap-2 sm:gap-2.5">
+                {/* Facebook Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin("Facebook")}
+                  className="py-2 px-1.5 border border-white/40 hover:border-white text-gray-200 hover:text-white bg-black/20 hover:bg-white/10 text-xs flex items-center justify-center gap-1.5 transition-all rounded-[2px] cursor-pointer"
+                >
+                  <span className="font-bold text-sm leading-none">f</span>
+                  <span className="font-normal text-[11px] sm:text-xs">facebook</span>
+                </button>
+
+                {/* Twitter Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin("Twitter")}
+                  className="py-2 px-1.5 border border-white/40 hover:border-white text-gray-200 hover:text-white bg-black/20 hover:bg-white/10 text-xs flex items-center justify-center gap-1.5 transition-all rounded-[2px] cursor-pointer"
+                >
+                  <svg
+                    className="w-3.5 h-3.5 fill-current"
+                    viewBox="0 0 24 24"
+                  >
+                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.936 9.936 0 0024 4.59z" />
+                  </svg>
+                  <span className="font-normal text-[11px] sm:text-xs">twitter</span>
+                </button>
+
+                {/* LinkedIn Button */}
+                <button
+                  type="button"
+                  onClick={() => handleSocialLogin("LinkedIn")}
+                  className="py-2 px-1.5 border border-white/40 hover:border-white text-gray-200 hover:text-white bg-black/20 hover:bg-white/10 text-xs flex items-center justify-center gap-1.5 transition-all rounded-[2px] cursor-pointer"
+                >
+                  <span className="font-bold text-xs lowercase leading-none">in</span>
+                  <span className="font-normal text-[11px] sm:text-xs">linkedin</span>
+                </button>
+              </div>
+
+              {/* Switch to Registration */}
+              <div className="text-center pt-5 mt-2 border-t border-white/10">
+                <p className="text-xs text-gray-400">
+                  {t("Don't have an account?", "নতুন গ্রাহক?")}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("register")}
+                    className="text-white hover:text-[#ff4c4c] underline transition-colors"
+                  >
+                    {t("Register here", "রেজিস্ট্রেশন করুন")}
+                  </button>
+                </p>
+              </div>
+            </div>
+          ) : (
+            /* ────────────────── REGISTRATION FORM ────────────────── */
+            <div>
+              {/* Registration Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl sm:text-[22px] font-normal text-white tracking-wide">
+                  {t("Create Account", "অ্যাকাউন্ট তৈরি করুন")}
+                </h2>
+                <UserPlus className="w-5 h-5 text-white" />
+              </div>
+
+              <form onSubmit={handleCustomerRegister} className="space-y-3.5">
+                {/* Full Name */}
+                <div>
+                  <input
+                    type="text"
+                    value={regName}
+                    onChange={(e) => setRegName(e.target.value)}
+                    placeholder="Full Name"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition"
+                    required
+                  />
+                </div>
+
+                {/* Phone */}
+                <div>
+                  <input
+                    type="tel"
+                    value={regPhone}
+                    onChange={(e) => setRegPhone(e.target.value)}
+                    placeholder="Mobile Number (e.g. 01711223344)"
+                    maxLength={11}
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition font-mono"
+                    required
+                  />
+                </div>
+
+                {/* Email (Optional) */}
+                <div>
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="Email Address (Optional)"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition"
+                  />
+                </div>
+
+                {/* Password & Confirm */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <input
+                    type={showRegPassword ? "text" : "password"}
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
+                    placeholder="Password (Min 6)"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-3.5 py-2.5 rounded-[2px] text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition font-mono"
+                    required
+                  />
+                  <input
+                    type={showRegPassword ? "text" : "password"}
+                    value={regConfirmPassword}
+                    onChange={(e) => setRegConfirmPassword(e.target.value)}
+                    placeholder="Confirm Password"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-3.5 py-2.5 rounded-[2px] text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition font-mono"
+                    required
+                  />
+                </div>
+
+                <div className="flex items-center justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setShowRegPassword(!showRegPassword)}
+                    className="text-[11px] text-gray-400 hover:text-white transition"
+                  >
+                    {showRegPassword ? "Hide passwords" : "Show passwords"}
+                  </button>
+                </div>
+
+                {/* Coral Red Register Button */}
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#ff4c4c] hover:bg-[#f23d3d] active:bg-[#db2f2f] text-white font-normal py-3 rounded-[2px] text-sm tracking-wide transition-all shadow cursor-pointer disabled:opacity-50 mt-1"
+                >
+                  {isLoading ? t("Creating Account...", "তৈরি হচ্ছে...") : t("Register Account", "রেজিস্ট্রেশন করুন")}
+                </button>
+              </form>
+
+              {/* Switch back to Login */}
+              <div className="text-center pt-5 mt-3 border-t border-white/10">
+                <p className="text-xs text-gray-400">
+                  {t("Already have an account?", "ইতিমধ্যেই অ্যাকাউন্ট আছে?")}{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAuthMode("login")}
+                    className="text-white hover:text-[#ff4c4c] underline transition-colors"
+                  >
+                    {t("Login to your site", "লগ ইন করুন")}
+                  </button>
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* Footer */}
-      <footer className="py-4 text-center text-[11px] text-[#888888] border-t border-[#EAEAEA] bg-white">
-        © 2026 BENGAL EDITION · Secure Unified Authentication · NBR BIN: 002381940-0101
+      {/* Footer matching reference design */}
+      <footer className="relative z-10 text-center py-6 px-4 text-xs text-white/70 tracking-wide font-light">
+        © 2026 Fashion Login Form. All rights reserved | Bengal Edition
       </footer>
+
+      {/* Forgot Password Modal */}
+      {showForgotModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-[#1f1f1f] border border-white/20 p-6 rounded-[2px] shadow-2xl text-white relative">
+            <button
+              onClick={() => setShowForgotModal(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-2 mb-3">
+              <Lock className="w-5 h-5 text-[#ff4c4c]" />
+              <h3 className="text-lg font-normal">Reset Password</h3>
+            </div>
+
+            {forgotSubmitted ? (
+              <div className="space-y-4 py-2">
+                <div className="p-3 bg-emerald-950/80 border border-emerald-500/50 rounded-[2px] text-emerald-200 text-xs leading-relaxed">
+                  A password reset verification code has been sent to{" "}
+                  <span className="font-semibold text-white">{forgotInput}</span>.
+                  Please check your SMS or inbox.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full bg-[#ff4c4c] text-white py-2.5 rounded-[2px] text-sm hover:bg-[#f23d3d] transition"
+                >
+                  Return to Login
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleForgotPasswordSubmit} className="space-y-4">
+                <p className="text-xs text-gray-300">
+                  Enter your registered mobile number or email address. We will
+                  send you an OTP code to verify your identity.
+                </p>
+                <div>
+                  <input
+                    type="text"
+                    value={forgotInput}
+                    onChange={(e) => setForgotInput(e.target.value)}
+                    placeholder="Mobile number or email"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c]"
+                    required
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowForgotModal(false)}
+                    className="flex-1 border border-white/30 text-gray-300 hover:text-white py-2.5 rounded-[2px] text-xs transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 bg-[#ff4c4c] text-white py-2.5 rounded-[2px] text-xs hover:bg-[#f23d3d] transition font-medium"
+                  >
+                    Send Reset Link
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -25,7 +25,7 @@ const MainRouter: React.FC = () => {
   // Render Dedicated Login / Registration Page
   if (path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/register")) {
     return (
-      <div className="min-h-screen bg-[#F8F8F6]">
+      <div className="min-h-screen bg-[#111111]">
         <LoginPage />
         <ArchitectureModal />
         <ToastNotification toasts={toasts} />
