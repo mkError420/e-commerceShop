@@ -61,6 +61,21 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
     const data = await response.json().catch(() => null);
 
     if (!response.ok) {
+      // In static frontend deployments (e.g. Vercel without backend),
+      // return a graceful fallback so StoreContext smoothly uses local/mock storage
+      if (response.status >= 500 || response.status === 404) {
+        return {
+          success: false,
+          data: [],
+          customers: [],
+          admins: [],
+          products: [],
+          categories: [],
+          orders: [],
+          message: "Backend offline, using local store",
+        } as unknown as T;
+      }
+
       throw new ApiError(
         response.status,
         data?.message || `Request failed with status ${response.status}`,
@@ -73,8 +88,17 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
     if (err instanceof ApiError) {
       throw err;
     }
-    // Network errors or backend offline
-    throw new ApiError(503, err.message || "Backend service unreachable");
+    // Network offline fallback
+    return {
+      success: false,
+      data: [],
+      customers: [],
+      admins: [],
+      products: [],
+      categories: [],
+      orders: [],
+      message: "Backend service unreachable, using local store",
+    } as unknown as T;
   }
 }
 
