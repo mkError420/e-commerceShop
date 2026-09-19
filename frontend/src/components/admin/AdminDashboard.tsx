@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import {
   LayoutDashboard,
@@ -52,10 +52,31 @@ export const AdminDashboard: React.FC = () => {
     logoutAdmin,
     currentUser,
     logoutCustomer,
+    refreshOrders,
+    refreshCustomers,
   } = useStore();
 
   const [activeTab, setActiveTab] = useState<"overview" | "products" | "categories" | "orders" | "customers" | "shop-admins" | "banners" | "coupons" | "settings">("overview");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Auto-refresh orders and customers when admin dashboard loads
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      refreshOrders().catch(() => console.log("Orders refresh failed"));
+      refreshCustomers().catch(() => console.log("Customers refresh failed"));
+    }
+  }, [isAdminAuthenticated, refreshOrders, refreshCustomers]);
+
+  // Auto-refresh data when switching tabs
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      if (activeTab === "orders") {
+        refreshOrders().catch(() => console.log("Orders refresh failed"));
+      } else if (activeTab === "customers") {
+        refreshCustomers().catch(() => console.log("Customers refresh failed"));
+      }
+    }
+  }, [activeTab, isAdminAuthenticated, refreshOrders, refreshCustomers]);
 
   // If not authenticated as Admin, prompt to login or redirect customer
   if (!isAdminAuthenticated) {

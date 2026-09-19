@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { Customer, AdminRole, AdminPermission } from "../../types";
 import {
@@ -49,6 +49,11 @@ export const AdminCustomers: React.FC = () => {
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Auto-refresh customers when component mounts
+  useEffect(() => {
+    refreshCustomers().catch(() => console.log("Initial customers refresh failed"));
+  }, [refreshCustomers]);
 
   // Delete Customer state
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);

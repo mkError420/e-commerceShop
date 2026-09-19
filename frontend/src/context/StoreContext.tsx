@@ -490,9 +490,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Toast helper
   const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
-    setToasts((prev) => [...prev, { id, text, type }]);
+    setToasts((prev: ToastMessage[]) => [...prev, { id, text, type }]);
     setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== id));
+      setToasts((prev: ToastMessage[]) => prev.filter((t: ToastMessage) => t.id !== id));
     }, 3200);
   };
 
@@ -517,10 +517,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   // Cart operations
   const addToCart = (product: Product, variant?: ProductVariant, qty: number = 1) => {
     const itemId = `${product.id}-${variant?.id || 'default'}`;
-    setCart((prev) => {
-      const existing = prev.find((item) => item.id === itemId);
+    setCart((prev: CartItem[]) => {
+      const existing = prev.find((item: CartItem) => item.id === itemId);
       if (existing) {
-        return prev.map((item) =>
+        return prev.map((item: CartItem) =>
           item.id === itemId ? { ...item, quantity: item.quantity + qty } : item
         );
       }
@@ -546,21 +546,21 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateCartQuantity = (itemId: string, delta: number) => {
-    setCart((prev) => {
+    setCart((prev: CartItem[]) => {
       return prev
-        .map((item) => {
+        .map((item: CartItem) => {
           if (item.id === itemId) {
             const newQty = item.quantity + delta;
             return newQty > 0 ? { ...item, quantity: newQty } : null;
           }
           return item;
         })
-        .filter(Boolean) as CartItem[];
+        .filter((item: CartItem | null): item is CartItem => item !== null);
     });
   };
 
   const removeFromCart = (itemId: string) => {
-    setCart((prev) => prev.filter((item) => item.id !== itemId));
+    setCart((prev: CartItem[]) => prev.filter((item: CartItem) => item.id !== itemId));
     showToast(language === 'bn' ? "পণ্য সরানো হয়েছে" : "Item removed from bag", "info");
   };
 
@@ -687,6 +687,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             } catch { /* ignore */ }
             return synced;
           });
+          console.log("✅ [Orders] Order successfully synced to backend database");
         }
       })
       .catch((err) => {
@@ -730,6 +731,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           registeredDate: new Date().toISOString(),
         };
         updated = [newCustomerRecord, ...prev];
+        console.log("✅ [Customers] New customer profile created for admin dashboard:", newCustomerRecord.phoneNumber);
+
+        // Also sync to backend database
+        if (registerCustomer) {
+          registerCustomer(newOrder.customerName, newOrder.customerPhone, newOrder.customerEmail, "order_generated")
+            .then(() => console.log("✅ [Customers] New customer synced to backend database"))
+            .catch((err) => console.warn("[Customers] Backend sync warning:", err?.message));
+        }
       }
 
       try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }

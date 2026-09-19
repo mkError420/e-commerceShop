@@ -42,7 +42,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     currentUser,
     logoutAdmin,
     logoutCustomer,
-    addToast,
+    showToast,
   } = useStore();
 
   // Read mode and redirect from query params if available
@@ -383,9 +383,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     setIdentifier("mk.rabbani.cse@gmail.com");
     setPassword("sup123456123");
     setErrorMessage("");
-    if (addToast) {
-      addToast("Admin credentials loaded into form", "info");
-    }
+    showToast("Admin credentials loaded into form", "info");
   };
 
   // Trigger Google Login

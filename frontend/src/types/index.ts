@@ -3,7 +3,7 @@ export type Language = 'en' | 'bn';
 
 export type DeliveryZone = 'INSIDE_DHAKA' | 'OUTSIDE_DHAKA';
 
-export type PaymentMethod = 'BKASH' | 'NAGAD' | 'SSLCOMMERZ' | 'CASH_ON_DELIVERY';
+export type PaymentMethod = 'BKASH' | 'NAGAD' | 'SSLCOMMERZ' | 'CASH_ON_DELIVERY' | 'BANK_TRANSFER';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 

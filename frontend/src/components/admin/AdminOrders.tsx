@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useStore } from "../../context/StoreContext";
 import { Order, OrderStatus, PaymentStatus, OrderItem, Product } from "../../types";
 import {
@@ -58,6 +58,7 @@ export const AdminOrders: React.FC = () => {
     createAdminOrder,
     formatPrice,
     showToast,
+    refreshOrders,
   } = useStore();
 
   /* ── Filter & Search States ── */
@@ -65,6 +66,11 @@ export const AdminOrders: React.FC = () => {
   const [courierFilter, setCourierFilter] = useState<string>("ALL");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Auto-refresh orders when component mounts
+  useEffect(() => {
+    refreshOrders().catch(() => console.log("Initial orders refresh failed"));
+  }, [refreshOrders]);
 
   /* ── Modals State ── */
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);

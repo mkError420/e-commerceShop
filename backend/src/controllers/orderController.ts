@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import mongoose from "mongoose";
 import { dbStore, StoredOrder } from "../config/inMemoryStore";
 import { OrderModel } from "../models/Order";
+import { CustomerModel } from "../models/Customer";
 import { isDatabaseConnected } from "../config/db";
 import { courierService } from "../services/courierService";
 import { paymentGatewayService } from "../services/paymentGatewayService";
@@ -286,6 +287,45 @@ export const orderController = {
         await OrderModel.create(newOrderData);
         savedInDb = true;
         console.log(`✅ [MongoDB] Order created in database: #${orderNumber} for ${customerName}`);
+
+        // Also create or update customer profile in Customer collection
+        try {
+          const existingCustomer = await CustomerModel.findOne({ phone: phone });
+          if (existingCustomer) {
+            await CustomerModel.updateOne(
+              { phone: phone },
+              {
+                $set: {
+                  name: customerName,
+                  email: email,
+                  lastOrderDate: new Date(),
+                  isVerified: true,
+                },
+                $inc: {
+                  totalOrdersCount: 1,
+                  totalSpentBDT: totalAmount,
+                },
+              }
+            );
+            console.log(`✅ [MongoDB] Customer profile updated for: ${phone}`);
+          } else {
+            await CustomerModel.create({
+              name: customerName,
+              phone: phone,
+              email: email,
+              passwordHash: "order_generated",
+              totalOrdersCount: 1,
+              totalSpentBDT: totalAmount,
+              lastOrderDate: new Date(),
+              isVerified: true,
+              loyaltyPoints: 100,
+              loyaltyTier: "Bronze",
+            });
+            console.log(`✅ [MongoDB] New customer profile created for: ${phone}`);
+          }
+        } catch (custErr: any) {
+          console.warn("[MongoDB] Customer profile update warning:", custErr?.message);
+        }
       }
     } catch (err: any) {
       console.warn("[MongoDB] Order create notice:", err?.message);

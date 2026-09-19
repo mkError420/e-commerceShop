@@ -81,6 +81,7 @@ export interface ICustomer extends Document {
   lastLoginAt?: Date;
   lastLoginIp?: string;
   deviceTokens: string[];                 // FCM tokens for push notifications
+  lastOrderDate?: Date;                  // Track when customer last placed an order
 
   // ── Timestamps ────────────────────────────────────────────────────────────
   createdAt: Date;
@@ -177,6 +178,7 @@ const CustomerSchema = new Schema<ICustomer>(
     lastLoginAt: { type: Date },
     lastLoginIp: { type: String, trim: true },
     deviceTokens: { type: [String], default: [] },
+    lastOrderDate: { type: Date },
   },
   {
     timestamps: true,                     // Auto-manages createdAt / updatedAt

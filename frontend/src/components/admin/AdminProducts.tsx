@@ -532,6 +532,7 @@ export const AdminProducts: React.FC = () => {
       showToast("Product updated successfully!");
     } else {
       addProduct({
+        id: `prod-${Date.now()}`,
         sku: effectiveSku,
         nameEn: form.nameEn.trim(),
         nameBn: form.nameBn.trim() || form.nameEn.trim(),
@@ -558,6 +559,8 @@ export const AdminProducts: React.FC = () => {
         isFlashDeal: form.isFlashDeal,
         tags: tagArr,
         variants: finalVariants,
+        rating: 0,
+        reviewsCount: 0,
         reviews: [],
       });
       showToast("New product created successfully!");
