@@ -43,7 +43,7 @@ export const AdminCustomers: React.FC = () => {
   } = useStore();
 
   const [searchQuery, setSearchQuery] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"ALL" | "CUSTOMER" | "ADMIN" | "MANAGER">("ALL");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | "CUSTOMER" | "ADMIN" | "MANAGER">("CUSTOMER");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "BLOCKED">("ALL");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
@@ -286,8 +286,12 @@ export const AdminCustomers: React.FC = () => {
     }
   };
 
-  // Filtered customers
+  // Filtered customers - only show customers by default, not admins
   const filteredCustomers = customers.filter((cust) => {
+    // Only show customers (role is CUSTOMER or undefined)
+    const isCustomer = !cust.role || cust.role === "CUSTOMER";
+    if (!isCustomer) return false;
+
     const matchesSearch =
       cust.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       cust.phoneNumber.includes(searchQuery) ||
@@ -306,11 +310,12 @@ export const AdminCustomers: React.FC = () => {
     return matchesSearch && matchesStatus && matchesRole;
   });
 
-  // Calculate statistics
-  const totalCustomers = customers.length;
-  const activeCustomers = customers.filter((c) => !c.isBlocked).length;
-  const blockedCustomers = customers.filter((c) => c.isBlocked).length;
-  const totalCustomerSpendBDT = customers.reduce((sum, c) => sum + (c.totalSpentBDT || 0), 0);
+  // Calculate statistics - only for customers, not admins
+  const customerOnlyList = customers.filter((c) => !c.role || c.role === "CUSTOMER");
+  const totalCustomers = customerOnlyList.length;
+  const activeCustomers = customerOnlyList.filter((c) => !c.isBlocked).length;
+  const blockedCustomers = customerOnlyList.filter((c) => c.isBlocked).length;
+  const totalCustomerSpendBDT = customerOnlyList.reduce((sum, c) => sum + (c.totalSpentBDT || 0), 0);
 
   // Get orders associated with a selected customer
   const getCustomerOrders = (phone: string) => {
@@ -456,9 +461,9 @@ export const AdminCustomers: React.FC = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {/* Role Filter */}
+          {/* Role Filter - Customer Directory Only */}
           <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 p-1 rounded-xl">
-            <span className="text-[10px] font-bold text-gray-400 uppercase px-2">Role:</span>
+            <span className="text-[10px] font-bold text-gray-400 uppercase px-2">Show:</span>
             <button
               onClick={() => setRoleFilter("ALL")}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
@@ -467,27 +472,7 @@ export const AdminCustomers: React.FC = () => {
                   : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              All
-            </button>
-            <button
-              onClick={() => setRoleFilter("ADMIN")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                roleFilter === "ADMIN"
-                  ? "bg-amber-500 text-white shadow-xs"
-                  : "text-amber-700 hover:bg-amber-100"
-              }`}
-            >
-              Shop Admins
-            </button>
-            <button
-              onClick={() => setRoleFilter("MANAGER")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                roleFilter === "MANAGER"
-                  ? "bg-blue-600 text-white shadow-xs"
-                  : "text-blue-700 hover:bg-blue-100"
-              }`}
-            >
-              Managers
+              All Customers
             </button>
             <button
               onClick={() => setRoleFilter("CUSTOMER")}
@@ -497,7 +482,7 @@ export const AdminCustomers: React.FC = () => {
                   : "text-gray-600 hover:bg-gray-200"
               }`}
             >
-              Shoppers
+              Shoppers Only
             </button>
           </div>
 
@@ -544,8 +529,7 @@ export const AdminCustomers: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600">
             <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-medium">
               <tr>
-                <th className="py-3.5 px-4">User Name &amp; ID</th>
-                <th className="py-3.5 px-4">Role &amp; Privilege</th>
+                <th className="py-3.5 px-4">Customer Name &amp; ID</th>
                 <th className="py-3.5 px-4">Contact Info</th>
                 <th className="py-3.5 px-4">Registered Date</th>
                 <th className="py-3.5 px-4 text-center">Orders</th>
@@ -557,7 +541,7 @@ export const AdminCustomers: React.FC = () => {
             <tbody className="divide-y divide-gray-100 font-normal">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                  <td colSpan={6} className="py-12 text-center text-gray-400">
                     <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="font-semibold text-gray-600">No customers found</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">
@@ -579,49 +563,18 @@ export const AdminCustomers: React.FC = () => {
                       {/* Name & ID */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className={`w-9 h-9 rounded-full font-extrabold flex items-center justify-center text-xs shadow-2xs shrink-0 ${
-                            cust.role === "ADMIN"
-                              ? "bg-gradient-to-br from-amber-400 to-yellow-600 text-gray-950 ring-2 ring-amber-300"
-                              : cust.role === "MANAGER"
-                              ? "bg-gradient-to-br from-blue-400 to-indigo-600 text-white"
-                              : "bg-gradient-to-br from-yellow-400 to-amber-500 text-gray-950"
-                          }`}>
+                          <div className="w-9 h-9 rounded-full font-extrabold flex items-center justify-center text-xs shadow-2xs shrink-0 bg-gradient-to-br from-yellow-400 to-amber-500 text-gray-950">
                             {initials || "C"}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
-                              <span>{cust.name}</span>
-                              {cust.role === "ADMIN" && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold tracking-wide uppercase">
-                                  Admin
-                                </span>
-                              )}
+                            <div className="font-bold text-gray-900 text-sm">
+                              {cust.name}
                             </div>
                             <div className="text-[10px] text-gray-400 font-mono">
                               ID: {cust.id}
                             </div>
                           </div>
                         </div>
-                      </td>
-
-                      {/* Role & Privilege */}
-                      <td className="py-3.5 px-4">
-                        {cust.role === "ADMIN" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
-                            <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
-                            <span>SHOP ADMIN</span>
-                          </span>
-                        ) : cust.role === "MANAGER" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300 shadow-2xs">
-                            <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
-                            <span>MANAGER</span>
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
-                            <Users className="w-3 h-3 text-gray-500" />
-                            <span>Customer</span>
-                          </span>
-                        )}
                       </td>
 
                       {/* Contact Info */}
