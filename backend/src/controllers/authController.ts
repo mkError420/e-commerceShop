@@ -323,17 +323,24 @@ export const authController = {
   // Register a new customer or admin directly into MongoDB database
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { name, phone, email, password, role } = req.body;
-      if (!name || !phone) {
-        res.status(400).json({ success: false, message: "Name and Phone number are required" });
+      const { name, phone, email, password, role, permissions } = req.body;
+      if (!name || (!phone && !email)) {
+        res.status(400).json({ success: false, message: "Name and Phone number or Email are required" });
         return;
       }
 
-      const cleanPhone = String(phone).trim();
+      const cleanPhone = phone ? String(phone).trim() : `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`;
       const cleanName = String(name).trim();
       const cleanEmail = email ? String(email).trim().toLowerCase() : undefined;
       const targetRole: "ADMIN" | "CUSTOMER" | "MANAGER" =
         role === "ADMIN" ? "ADMIN" : role === "MANAGER" ? "MANAGER" : "CUSTOMER";
+
+      const defaultPermissions = targetRole === "ADMIN"
+        ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+        : targetRole === "MANAGER"
+        ? ["dashboard", "products", "categories", "orders", "customers", "coupons"]
+        : [];
+      const finalPermissions = Array.isArray(permissions) && permissions.length > 0 ? permissions : defaultPermissions;
 
       // 1. Check if user already exists in MongoDB
       let existingInDb = null;
@@ -349,7 +356,7 @@ export const authController = {
       }
 
       const existingInMem = dbStore.users.find(
-        (u) => u.phone === cleanPhone || (cleanEmail && u.email?.toLowerCase() === cleanEmail)
+        (u) => (phone && u.phone === cleanPhone) || (cleanEmail && u.email?.toLowerCase() === cleanEmail)
       );
 
       if (existingInDb || existingInMem) {
@@ -372,34 +379,36 @@ export const authController = {
           email: cleanEmail,
           passwordHash: passwordHash || "mock_hash",
           role: targetRole,
+          permissions: finalPermissions,
         });
         console.log(`✅ [MongoDB] New ${targetRole} registered in database: ${savedUser.name} (${savedUser.phone})`);
 
-        // If registered role is CUSTOMER, also save/sync to Customers collection
-        if (targetRole === "CUSTOMER") {
-          try {
-            await CustomerModel.findOneAndUpdate(
-              { phone: cleanPhone },
-              {
-                name: cleanName,
-                phone: cleanPhone,
-                email: cleanEmail,
-                passwordHash: passwordHash || "mock_hash",
-                role: "CUSTOMER",
-              },
-              { upsert: true, new: true, setDefaultsOnInsert: true }
-            );
-            console.log(`✅ [MongoDB Customers] Customer profile stored for: ${cleanPhone}`);
-          } catch (custErr: any) {
-            console.warn("[MongoDB Customers] Profile sync warning:", custErr?.message || custErr);
-          }
+        // Also save/sync to Customers collection for unified CRM profile
+        try {
+          await CustomerModel.findOneAndUpdate(
+            { phone: cleanPhone },
+            {
+              name: cleanName,
+              phone: cleanPhone,
+              email: cleanEmail,
+              passwordHash: passwordHash || "mock_hash",
+              role: targetRole,
+              isVerified: true,
+              loyaltyPoints: 100,
+              loyaltyTier: "Bronze",
+            },
+            { upsert: true, new: true, setDefaultsOnInsert: true }
+          );
+          console.log(`✅ [MongoDB Customers] Customer profile stored for: ${cleanPhone}`);
+        } catch (custErr: any) {
+          console.warn("[MongoDB Customers] Profile sync warning:", custErr?.message || custErr);
         }
       } catch (dbSaveErr: any) {
         console.error("⚠️ [MongoDB] User creation error:", dbSaveErr.message);
         if (dbSaveErr.code === 11000) {
           res.status(409).json({
             success: false,
-            message: "A user with this phone number is already registered in the database.",
+            message: "A user with this phone number or email is already registered in the database.",
           });
           return;
         }
@@ -415,6 +424,7 @@ export const authController = {
         email: cleanEmail,
         passwordHash: passwordHash || "mock_hash",
         role: targetRole,
+        permissions: finalPermissions,
         createdAt: new Date().toISOString(),
       };
       dbStore.users.push(newStoredUser);
@@ -498,66 +508,86 @@ export const authController = {
         console.warn("[MongoDB] getAllCustomers CustomerModel fetch error:", custErr);
       }
       try {
-        dbUsers = await UserModel.find({ role: "CUSTOMER" }).sort({ createdAt: -1 }).lean();
+        dbUsers = await UserModel.find({}).sort({ createdAt: -1 }).lean();
       } catch (dbErr) {
         console.warn("[MongoDB] getAllCustomers UserModel fetch error:", dbErr);
       }
 
-      // Merge CustomerModel, UserModel, and in-memory customers by phone number
+      // Merge CustomerModel, UserModel, and in-memory customers by phone or email
       const customerMap = new Map<string, any>();
 
       // 1. Add from CustomerModel (rich profiles with orders, spent, status)
       dbCustomers.forEach((c: any) => {
-        if (c.phone) {
-          customerMap.set(c.phone, {
-            id: c._id ? c._id.toString() : `cust-${Date.now()}`,
-            name: c.name || "Customer",
-            phoneNumber: c.phone,
-            email: c.email || "N/A",
-            role: "CUSTOMER",
-            totalOrders: c.totalOrdersCount || 0,
-            totalSpentBDT: c.totalSpentBDT || 0,
-            isBlocked: !!c.isBlocked,
-            registeredDate: c.createdAt ? new Date(c.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
-          });
-        }
+        const key = c.phone || c.email || (c._id ? c._id.toString() : `cust-${Date.now()}`);
+        customerMap.set(key, {
+          id: c._id ? c._id.toString() : `cust-${Date.now()}`,
+          name: c.name || "Customer",
+          phoneNumber: c.phone || "N/A",
+          email: c.email || "N/A",
+          role: c.role || "CUSTOMER",
+          totalOrders: c.totalOrdersCount || 0,
+          totalSpentBDT: c.totalSpentBDT || 0,
+          isBlocked: !!c.isBlocked,
+          loyaltyTier: c.loyaltyTier || "Bronze",
+          loyaltyPoints: c.loyaltyPoints || 0,
+          permissions: [],
+          registeredDate: c.createdAt ? new Date(c.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+        });
       });
 
-      // 2. Add/merge UserModel customers if not already present
+      // 2. Add or enrich with UserModel records (which have actual roles & permissions)
       dbUsers.forEach((u: any) => {
-        if (u.phone && !customerMap.has(u.phone)) {
-          customerMap.set(u.phone, {
+        const key = u.phone || u.email || (u._id ? u._id.toString() : `usr-${Date.now()}`);
+        const existing = customerMap.get(key) || customerMap.get(u.phone) || (u.email ? customerMap.get(u.email) : null);
+        if (existing) {
+          existing.id = u._id ? u._id.toString() : existing.id;
+          existing.role = u.role || existing.role || "CUSTOMER";
+          existing.permissions = u.permissions || existing.permissions || [];
+          if (u.name && !existing.name) existing.name = u.name;
+          if (u.email && (!existing.email || existing.email === "N/A")) existing.email = u.email;
+          if (u.isBlocked !== undefined) existing.isBlocked = !!u.isBlocked;
+        } else {
+          customerMap.set(key, {
             id: u._id ? u._id.toString() : `usr-${Date.now()}`,
-            name: u.name || "Customer",
-            phoneNumber: u.phone,
+            name: u.name || "User",
+            phoneNumber: u.phone || "N/A",
             email: u.email || "N/A",
             role: u.role || "CUSTOMER",
             totalOrders: 0,
             totalSpentBDT: 0,
-            isBlocked: false,
+            isBlocked: !!u.isBlocked,
+            loyaltyTier: "Bronze",
+            loyaltyPoints: 100,
+            permissions: u.permissions || (u.role === "ADMIN" ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"] : []),
             registeredDate: u.createdAt ? new Date(u.createdAt).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
           });
         }
       });
 
-      // 3. Add memory customers if not already present
-      dbStore.users
-        .filter((u) => u.role === "CUSTOMER")
-        .forEach((u) => {
-          if (u.phone && !customerMap.has(u.phone)) {
-            customerMap.set(u.phone, {
-              id: u.id,
-              name: u.name,
-              phoneNumber: u.phone,
-              email: u.email || "N/A",
-              role: u.role,
-              totalOrders: 0,
-              totalSpentBDT: 0,
-              isBlocked: false,
-              registeredDate: u.createdAt ? u.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
-            });
-          }
-        });
+      // 3. Add memory users if not already present
+      dbStore.users.forEach((u) => {
+        const key = u.phone || u.email || u.id;
+        const existing = customerMap.get(key) || customerMap.get(u.phone) || (u.email ? customerMap.get(u.email) : null);
+        if (existing) {
+          existing.role = u.role || existing.role;
+          if (u.permissions) existing.permissions = u.permissions;
+        } else {
+          customerMap.set(key, {
+            id: u.id,
+            name: u.name,
+            phoneNumber: u.phone || "N/A",
+            email: u.email || "N/A",
+            role: u.role,
+            totalOrders: 0,
+            totalSpentBDT: 0,
+            isBlocked: !!u.isBlocked,
+            loyaltyTier: "Bronze",
+            loyaltyPoints: 100,
+            permissions: u.permissions || (u.role === "ADMIN" ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"] : []),
+            registeredDate: u.createdAt ? u.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+          });
+        }
+      });
 
       const combinedCustomers = Array.from(customerMap.values());
 
@@ -675,27 +705,29 @@ export const authController = {
     }
   },
 
-  // Update a customer or user in database
+  // Update a customer or user in database (Profile, Role, Permissions, Password, Status)
   async updateUser(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, phone, email, role, isBlocked } = req.body;
+      const { name, phone, email, role, isBlocked, permissions, password } = req.body;
       if (!id) {
         res.status(400).json({ success: false, message: "User ID is required" });
         return;
       }
 
       let existingPhone: string | undefined;
+      let existingUserDoc: any = null;
+      let existingCustDoc: any = null;
 
-      // Look up existing user to get phone
+      // Look up existing user to get phone & existing record
       try {
-        const u = await UserModel.findById(id);
-        if (u) existingPhone = u.phone;
+        existingUserDoc = await UserModel.findById(id);
+        if (existingUserDoc) existingPhone = existingUserDoc.phone;
       } catch {}
       if (!existingPhone) {
         try {
-          const c = await CustomerModel.findById(id);
-          if (c) existingPhone = c.phone;
+          existingCustDoc = await CustomerModel.findById(id);
+          if (existingCustDoc) existingPhone = existingCustDoc.phone;
         } catch {}
       }
 
@@ -704,16 +736,45 @@ export const authController = {
       if (phone) updateData.phone = String(phone).trim();
       if (email !== undefined) updateData.email = email ? String(email).trim().toLowerCase() : undefined;
       if (role) updateData.role = role;
+      if (isBlocked !== undefined) updateData.isBlocked = Boolean(isBlocked);
 
-      const customerUpdateData = { ...updateData };
-      if (isBlocked !== undefined) {
-        customerUpdateData.isBlocked = Boolean(isBlocked);
+      // Handle password update / reset
+      if (password && String(password).trim().length >= 6) {
+        const hash = await bcrypt.hash(String(password).trim(), 10);
+        updateData.passwordHash = hash;
       }
 
-      // Update UserModel
+      // Handle permissions if role is ADMIN or MANAGER
+      if (Array.isArray(permissions) && permissions.length > 0) {
+        updateData.permissions = permissions;
+      } else if (role === "ADMIN") {
+        updateData.permissions = ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"];
+      } else if (role === "MANAGER") {
+        updateData.permissions = ["dashboard", "products", "categories", "orders", "customers", "coupons"];
+      }
+
+      const customerUpdateData = { ...updateData };
+
+      // Update / Upsert in UserModel
       try {
-        if (existingPhone) {
-          await UserModel.updateMany({ phone: existingPhone }, { $set: updateData });
+        const targetPhone = updateData.phone || existingPhone;
+        if (targetPhone) {
+          const updated = await UserModel.findOneAndUpdate(
+            { phone: targetPhone },
+            { $set: updateData },
+            { new: true }
+          );
+          if (!updated && (role === "ADMIN" || role === "MANAGER" || name)) {
+            await UserModel.create({
+              name: updateData.name || existingCustDoc?.name || "Staff Member",
+              phone: targetPhone,
+              email: updateData.email || existingCustDoc?.email || "",
+              passwordHash: updateData.passwordHash || "admin123",
+              role: role || "ADMIN",
+              permissions: updateData.permissions || ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+              isBlocked: !!updateData.isBlocked,
+            });
+          }
         } else {
           await UserModel.findByIdAndUpdate(id, { $set: updateData });
         }
@@ -721,10 +782,11 @@ export const authController = {
         console.warn("[MongoDB] updateUser UserModel error:", uErr);
       }
 
-      // Update CustomerModel
+      // Update / Upsert in CustomerModel
       try {
-        if (existingPhone) {
-          await CustomerModel.updateMany({ phone: existingPhone }, { $set: customerUpdateData });
+        const targetPhone = updateData.phone || existingPhone;
+        if (targetPhone) {
+          await CustomerModel.updateMany({ phone: targetPhone }, { $set: customerUpdateData });
         } else {
           await CustomerModel.findByIdAndUpdate(id, { $set: customerUpdateData });
         }
@@ -745,7 +807,9 @@ export const authController = {
 
       res.json({
         success: true,
-        message: "Customer updated successfully",
+        message: role === "ADMIN" || role === "MANAGER"
+          ? `User promoted to Shop ${role === "ADMIN" ? "Admin" : "Manager"} successfully with full function!`
+          : "User profile updated successfully",
       });
     } catch (error: any) {
       res.status(500).json({ success: false, message: error.message });

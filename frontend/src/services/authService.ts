@@ -19,6 +19,9 @@ export interface ApiCustomerRecord {
   totalSpentBDT: number;
   isBlocked: boolean;
   registeredDate: string;
+  permissions?: string[];
+  loyaltyTier?: string;
+  loyaltyPoints?: number;
 }
 
 export const authService = {
@@ -42,11 +45,12 @@ export const authService = {
     phone: string,
     email?: string,
     password?: string,
-    role: "ADMIN" | "CUSTOMER" | "MANAGER" = "CUSTOMER"
+    role: "ADMIN" | "CUSTOMER" | "MANAGER" = "CUSTOMER",
+    permissions?: string[]
   ): Promise<{ success: boolean; token: string; user: UserProfile; message?: string }> {
     const res = await apiClient<{ success: boolean; token: string; user: UserProfile; message?: string }>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ name, phone, email, password, role }),
+      body: JSON.stringify({ name, phone, email, password, role, permissions }),
     });
 
     if (res.token) {
@@ -75,7 +79,7 @@ export const authService = {
     return apiClient<{ success: boolean; user: UserProfile }>("/auth/me");
   },
 
-  // Admin: Get all customers from database
+  // Admin: Get all customers & users from database
   async getCustomers(): Promise<{ success: boolean; count: number; customers: ApiCustomerRecord[] }> {
     return apiClient<{ success: boolean; count: number; customers: ApiCustomerRecord[] }>("/auth/customers");
   },
@@ -85,14 +89,34 @@ export const authService = {
     return apiClient<{ success: boolean; count: number; users: any[] }>("/auth/users");
   },
 
-  // Admin: Update user / customer in database
+  // Admin: Update user / customer in database (Name, Phone, Email, Role, Permissions, Password, Status)
   async updateUser(
     id: string,
-    data: { name?: string; phone?: string; email?: string; role?: string; isBlocked?: boolean }
+    data: {
+      name?: string;
+      phone?: string;
+      email?: string;
+      role?: string;
+      isBlocked?: boolean;
+      permissions?: string[];
+      password?: string;
+    }
   ): Promise<{ success: boolean; message: string }> {
     return apiClient<{ success: boolean; message: string }>(`/auth/users/${id}`, {
       method: "PUT",
       body: JSON.stringify(data),
+    });
+  },
+
+  // Admin: Promote customer/user to Shop Admin or Manager with custom permissions
+  async promoteUserToAdmin(
+    id: string,
+    role: "ADMIN" | "MANAGER",
+    permissions?: string[]
+  ): Promise<{ success: boolean; message: string }> {
+    return apiClient<{ success: boolean; message: string }>(`/auth/users/${id}`, {
+      method: "PUT",
+      body: JSON.stringify({ role, permissions }),
     });
   },
 

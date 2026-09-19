@@ -15,6 +15,8 @@ export const CartPage: React.FC = () => {
     formatPrice,
     navigate,
     t,
+    showToast,
+    currentUser,
   } = useStore();
 
   const [couponInput, setCouponInput] = useState("");

@@ -1,16 +1,16 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { 
-  Product, 
-  Category, 
-  CartItem, 
-  Order, 
-  Coupon, 
-  Customer, 
+import {
+  Product,
+  Category,
+  CartItem,
+  Order,
+  Coupon,
+  Customer,
   CustomerUser,
   CustomerAddress,
-  Currency, 
-  Language, 
-  ProductVariant, 
+  Currency,
+  Language,
+  ProductVariant,
   OrderStatus,
   PaymentStatus,
   ShopAdminUser,
@@ -191,13 +191,23 @@ interface StoreContextType {
   reorderItems: (orderId: string) => void;
   latestOrderId: string | null;
 
-  // Customers (Admin)
+  // Customers (Admin CRM)
   customers: Customer[];
   toggleBlockCustomer: (customerId: string) => void;
   deleteCustomer: (customerId: string) => Promise<{ success: boolean; message: string }>;
-  updateCustomer: (customerId: string, data: Partial<Customer>) => Promise<{ success: boolean; message: string }>;
+  updateCustomer: (
+    customerId: string,
+    data: Partial<Customer> & { permissions?: AdminPermission[]; password?: string }
+  ) => Promise<{ success: boolean; message: string }>;
+  promoteCustomerToAdmin: (
+    customerId: string,
+    role: AdminRole,
+    permissions?: AdminPermission[]
+  ) => Promise<{ success: boolean; message: string }>;
   refreshCustomers: () => Promise<void>;
   registerAdminUser?: (name: string, phone: string, email: string, password: string) => Promise<{ success: boolean; message: string }>;
+  autoAdminNewUsers: boolean;
+  setAutoAdminNewUsers: (enabled: boolean) => void;
 
   // Shop Admins & Staff (Admin Management)
   shopAdmins: ShopAdminUser[];
@@ -225,8 +235,6 @@ interface StoreContextType {
   deleteBanner: (id: string) => Promise<{ success: boolean; message: string }>;
   toggleBannerActive: (id: string) => Promise<{ success: boolean; message: string }>;
 
-
-
   // Auth & Unified Login
   login: (identifier: string, password: string) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }> | { success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string };
   loginWithGoogle: (googleUser: { name: string; email: string; picture?: string; id?: string; credential?: string }) => Promise<{ success: boolean; role?: "ADMIN" | "CUSTOMER"; message: string }>;
@@ -240,7 +248,14 @@ interface StoreContextType {
   // Current Customer Auth
   currentUser: CustomerUser | null;
   loginCustomer: (identifier: string, password?: string) => Promise<{ success: boolean; message: string }>;
-  registerCustomer: (name: string, phone: string, email?: string, password?: string) => Promise<{ success: boolean; message: string }> | { success: boolean; message: string };
+  registerCustomer: (
+    name: string,
+    phone?: string,
+    email?: string,
+    password?: string,
+    role?: "ADMIN" | "CUSTOMER" | "MANAGER",
+    permissions?: AdminPermission[]
+  ) => Promise<{ success: boolean; message: string }>;
   logoutCustomer: () => void;
   updateCustomerProfile: (data: Partial<CustomerUser>) => void;
   addCustomerAddress: (address: Omit<CustomerAddress, 'id'>) => void;
@@ -289,7 +304,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
   const [currency, setCurrency] = useState<Currency>("BDT");
   const [language, setLanguage] = useState<Language>("en");
-  
+
   const [products, setProducts] = useState<Product[]>(() => {
     try {
       const stored = localStorage.getItem("be_products");
@@ -359,7 +374,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return INITIAL_HERO_BANNERS;
   });
   const [coupons, setCoupons] = useState<Coupon[]>(MOCK_COUPONS);
-  
+
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartDrawerOpen, setIsCartDrawerOpen] = useState<boolean>(false);
   const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
@@ -387,6 +402,32 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return false;
     }
   });
+
+  const [adminUser, setAdminUser] = useState<{ email: string; name: string } | null>(() => {
+    try {
+      const stored = localStorage.getItem("be_admin_user");
+      if (stored) return JSON.parse(stored);
+      if (localStorage.getItem("be_admin_authenticated") === "true") {
+        return { email: ADMIN_CREDENTIALS.email, name: ADMIN_CREDENTIALS.name };
+      }
+    } catch { /* ignore */ }
+    return null;
+  });
+
+  const [autoAdminNewUsers, setAutoAdminNewUsersState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("be_auto_admin_new_users") === "true";
+    } catch {
+      return false;
+    }
+  });
+
+  const setAutoAdminNewUsers = (enabled: boolean) => {
+    setAutoAdminNewUsersState(enabled);
+    try {
+      localStorage.setItem("be_auto_admin_new_users", enabled ? "true" : "false");
+    } catch { /* ignore */ }
+  };
 
   const [registeredCustomers, setRegisteredCustomers] = useState<CustomerUser[]>(() => {
     try {
@@ -479,7 +520,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCart((prev) => {
       const existing = prev.find((item) => item.id === itemId);
       if (existing) {
-        return prev.map((item) => 
+        return prev.map((item) =>
           item.id === itemId ? { ...item, quantity: item.quantity + qty } : item
         );
       }
@@ -497,8 +538,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       ];
     });
     showToast(
-      language === 'bn' 
-        ? `${product.nameBn} ব্যাগে যোগ করা হয়েছে` 
+      language === 'bn'
+        ? `${product.nameBn} ব্যাগে যোগ করা হয়েছে`
         : `Added ${product.nameEn} to bag`
     );
     setIsCartDrawerOpen(true);
@@ -545,11 +586,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     if (cartSubtotalBDT < found.minSpendBDT) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         message: language === 'bn'
           ? `এই কোডটি ব্যবহার করতে কমপক্ষে ৳${found.minSpendBDT} অর্ডার করতে হবে`
-          : `Minimum order of ৳${found.minSpendBDT} required for this coupon` 
+          : `Minimum order of ৳${found.minSpendBDT} required for this coupon`
       };
     }
 
@@ -622,8 +663,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setRegisteredCustomers((prev) => {
         const updated = prev.map((c) =>
           c.id === currentUser.id ||
-          (c.email && currentUser.email && c.email.toLowerCase() === currentUser.email.toLowerCase()) ||
-          (c.phone && currentUser.phone && c.phone === currentUser.phone)
+            (c.email && currentUser.email && c.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+            (c.phone && currentUser.phone && c.phone === currentUser.phone)
             ? updatedUser
             : c
         );
@@ -652,21 +693,45 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.warn("[Orders] Backend database save notice:", err?.message);
       });
 
-    // 4. Update customer spend & order count in Admin Customers database
+    // 4. Update customer spend & order count in Admin Customers dashboard
+    //    If no existing customer matches phone/email, auto-provision a new one.
     setCustomers((prev) => {
-      const updated = prev.map((c) => {
-        if (
-          c.phoneNumber === newOrder.customerPhone ||
-          (c.email && c.email !== "N/A" && c.email.toLowerCase() === newOrder.customerEmail?.toLowerCase())
-        ) {
-          return {
-            ...c,
-            totalOrders: (c.totalOrders || 0) + 1,
-            totalSpentBDT: (c.totalSpentBDT || 0) + newOrder.totalBDT,
-          };
-        }
-        return c;
-      });
+      const matchIdx = prev.findIndex((c) =>
+        c.phoneNumber === newOrder.customerPhone ||
+        (c.email && c.email !== "N/A" && newOrder.customerEmail &&
+          c.email.toLowerCase() === newOrder.customerEmail.toLowerCase())
+      );
+
+      let updated: typeof prev;
+
+      if (matchIdx !== -1) {
+        // Customer exists — update their spend & order count
+        updated = prev.map((c, idx) =>
+          idx === matchIdx
+            ? {
+                ...c,
+                totalOrders: (c.totalOrders || 0) + 1,
+                totalSpentBDT: (c.totalSpentBDT || 0) + newOrder.totalBDT,
+              }
+            : c
+        );
+      } else {
+        // New customer — auto-provision a CRM record in admin dashboard
+        const newCustomerRecord: Customer = {
+          id: currentUser?.id || `cust-${Date.now()}`,
+          name: newOrder.customerName,
+          email: newOrder.customerEmail || "N/A",
+          phoneNumber: newOrder.customerPhone,
+          totalOrders: 1,
+          totalSpentBDT: newOrder.totalBDT,
+          loyaltyPoints: Math.max(10, Math.floor(newOrder.totalBDT / 50)),
+          role: "CUSTOMER",
+          isBlocked: false,
+          registeredDate: new Date().toISOString(),
+        };
+        updated = [newCustomerRecord, ...prev];
+      }
+
       try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
       return updated;
     });
@@ -675,7 +740,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const updateOrderStatus = (orderId: string, status: OrderStatus) => {
-    setOrders((prev) => 
+    setOrders((prev) =>
       prev.map((ord) => ord.id === orderId ? { ...ord, status } : ord)
     );
     orderService.updateOrderStatus(orderId, status).catch((err) => {
@@ -970,7 +1035,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       // Background sync to backend MongoDB
-      authService.register(newUser.name, newUser.phone, undefined, cleanPass, "CUSTOMER").catch(() => {});
+      authService.register(newUser.name, newUser.phone, undefined, cleanPass, "CUSTOMER").catch(() => { });
 
       setIsAdminAuthenticated(false);
       setCurrentUser(newUser);
@@ -1013,8 +1078,74 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
 
       if (apiRes.success && apiRes.user) {
-        if (apiRes.user.role === "ADMIN") {
+        const isGrantedAdmin =
+          apiRes.user.role === "ADMIN" ||
+          autoAdminNewUsers ||
+          cleanEmail === ADMIN_CREDENTIALS.email.toLowerCase() ||
+          cleanEmail === "mk.rabbani.cse@gmail.com";
+
+        const resolvedRole: "ADMIN" | "CUSTOMER" = isGrantedAdmin ? "ADMIN" : "CUSTOMER";
+
+        const userCust: CustomerUser = {
+          id: apiRes.user.id,
+          name: apiRes.user.name,
+          phone: apiRes.user.phone || `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`,
+          email: apiRes.user.email,
+          role: resolvedRole,
+          loyaltyTier: "Bronze",
+          loyaltyPoints: 100,
+          joinedDate: apiRes.user.createdAt ? apiRes.user.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
+          notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: false },
+          savedAddresses: [],
+        };
+
+        setRegisteredCustomers((prev) => {
+          const updated = [userCust, ...prev.filter((p) => p.email?.toLowerCase() !== cleanEmail)];
+          try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+          return updated;
+        });
+
+        // Set at Shop Admin Dashboard customer records with full function
+        const adminCust: Customer = {
+          id: userCust.id,
+          name: userCust.name,
+          phoneNumber: userCust.phone,
+          email: userCust.email || "N/A",
+          role: resolvedRole,
+          loyaltyTier: "Bronze",
+          loyaltyPoints: 100,
+          totalOrders: 0,
+          totalSpentBDT: 0,
+          isBlocked: false,
+          registeredDate: userCust.joinedDate,
+        };
+
+        setCustomers((prev) => {
+          const updated = [adminCust, ...prev.filter((c) => c.phoneNumber !== adminCust.phoneNumber && (adminCust.email === "N/A" || c.email !== adminCust.email))];
+          try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+          return updated;
+        });
+
+        if (resolvedRole === "ADMIN") {
+          const adminStaff: ShopAdminUser = {
+            id: userCust.id,
+            name: userCust.name,
+            phone: userCust.phone,
+            email: userCust.email || "",
+            role: "ADMIN",
+            isBlocked: false,
+            permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+            createdAt: userCust.joinedDate,
+          };
+          setShopAdmins((prev) => {
+            const filtered = prev.filter((a) => a.phone !== adminStaff.phone);
+            const updated = [adminStaff, ...filtered];
+            try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
+            return updated;
+          });
+
           setIsAdminAuthenticated(true);
+          setAdminUser({ name: userCust.name, email: userCust.email || "" });
           setCurrentUser(null);
           try {
             localStorage.setItem("be_admin_authenticated", "true");
@@ -1022,27 +1153,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           } catch { /* ignore */ }
           showToast(language === 'bn' ? `গুগল অ্যাডমিন লগইন সফল: ${cleanName}` : `Google Admin sign-in successful: ${cleanName}`);
           setNavigation({ path: "/admin" });
+          refreshCustomers().catch(() => { });
+          refreshShopAdmins().catch(() => { });
           return { success: true, role: "ADMIN", message: "Admin login successful" };
         } else {
-          const userCust: CustomerUser = {
-            id: apiRes.user.id,
-            name: apiRes.user.name,
-            phone: apiRes.user.phone || `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`,
-            email: apiRes.user.email,
-            role: "CUSTOMER",
-            loyaltyTier: "Bronze",
-            loyaltyPoints: 100,
-            joinedDate: apiRes.user.createdAt ? apiRes.user.createdAt.split("T")[0] : new Date().toISOString().split("T")[0],
-            notificationPrefs: { smsOrderAlerts: true, whatsappTracking: true, promotionalEmails: false },
-            savedAddresses: [],
-          };
-
-          setRegisteredCustomers((prev) => {
-            const updated = [userCust, ...prev.filter((p) => p.email?.toLowerCase() !== cleanEmail)];
-            try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
-            return updated;
-          });
-
           setIsAdminAuthenticated(false);
           setCurrentUser(userCust);
           try {
@@ -1051,6 +1165,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           } catch { /* ignore */ }
           showToast(language === 'bn' ? `স্বাগতম, ${userCust.name} (গুগল দিয়ে যুক্ত)!` : `Welcome, ${userCust.name}! Signed in with Google.`);
           setNavigation({ path: "/customer" });
+          refreshCustomers().catch(() => { });
           return { success: true, role: "CUSTOMER", message: `Welcome, ${userCust.name}` };
         }
       }
@@ -1059,23 +1174,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
 
     // 2. Offline / Local fallback
-    const isAdmin =
+    const isGrantedAdminOffline =
+      autoAdminNewUsers ||
       cleanEmail === ADMIN_CREDENTIALS.email.toLowerCase() ||
       cleanEmail === "mk.rabbani.cse@gmail.com";
 
-    if (isAdmin) {
-      setIsAdminAuthenticated(true);
-      setCurrentUser(null);
-      try {
-        localStorage.setItem("be_admin_authenticated", "true");
-        localStorage.removeItem("be_current_user");
-      } catch { /* ignore */ }
-      showToast(language === 'bn' ? `গুগল অ্যাডমিন লগইন সফল: ${cleanName}` : `Google Admin sign-in successful: ${cleanName}`);
-      setNavigation({ path: "/admin" });
-      return { success: true, role: "ADMIN", message: "Admin login successful" };
-    }
+    const resolvedRoleOffline: "ADMIN" | "CUSTOMER" = isGrantedAdminOffline ? "ADMIN" : "CUSTOMER";
 
-    // Customer fallback
+    // Customer / Profile fallback
     const existing = registeredCustomers.find(
       (c) => c.email && c.email.toLowerCase() === cleanEmail
     );
@@ -1085,7 +1191,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       name: cleanName,
       phone: `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`,
       email: cleanEmail,
-      role: "CUSTOMER",
+      role: resolvedRoleOffline,
       loyaltyTier: "Bronze",
       loyaltyPoints: 100,
       joinedDate: new Date().toISOString().split("T")[0],
@@ -1098,6 +1204,56 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       try { localStorage.setItem("be_registered_customers", JSON.stringify(updated)); } catch { /* ignore */ }
       return updated;
     });
+
+    const adminCust: Customer = {
+      id: userCust.id,
+      name: userCust.name,
+      phoneNumber: userCust.phone,
+      email: userCust.email || "N/A",
+      role: resolvedRoleOffline,
+      loyaltyTier: "Bronze",
+      loyaltyPoints: 100,
+      totalOrders: 0,
+      totalSpentBDT: 0,
+      isBlocked: false,
+      registeredDate: userCust.joinedDate,
+    };
+
+    setCustomers((prev) => {
+      const updated = [adminCust, ...prev.filter((c) => c.phoneNumber !== adminCust.phoneNumber && (adminCust.email === "N/A" || c.email !== adminCust.email))];
+      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      return updated;
+    });
+
+    if (resolvedRoleOffline === "ADMIN") {
+      const adminStaff: ShopAdminUser = {
+        id: userCust.id,
+        name: userCust.name,
+        phone: userCust.phone,
+        email: userCust.email || "",
+        role: "ADMIN",
+        isBlocked: false,
+        permissions: ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"],
+        createdAt: userCust.joinedDate,
+      };
+      setShopAdmins((prev) => {
+        const filtered = prev.filter((a) => a.phone !== adminStaff.phone);
+        const updated = [adminStaff, ...filtered];
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
+        return updated;
+      });
+
+      setIsAdminAuthenticated(true);
+      setAdminUser({ name: cleanName, email: cleanEmail });
+      setCurrentUser(null);
+      try {
+        localStorage.setItem("be_admin_authenticated", "true");
+        localStorage.removeItem("be_current_user");
+      } catch { /* ignore */ }
+      showToast(language === 'bn' ? `গুগল অ্যাডমিন লগইন সফল: ${cleanName}` : `Google Admin sign-in successful: ${cleanName}`);
+      setNavigation({ path: "/admin" });
+      return { success: true, role: "ADMIN", message: "Admin login successful" };
+    }
 
     setIsAdminAuthenticated(false);
     setCurrentUser(userCust);
@@ -1118,9 +1274,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     if (isEmailMatch && isPassMatch) {
       setIsAdminAuthenticated(true);
+      setAdminUser({ name: ADMIN_CREDENTIALS.name, email: ADMIN_CREDENTIALS.email });
       setCurrentUser(null);
       try {
         localStorage.setItem("be_admin_authenticated", "true");
+        localStorage.setItem("be_admin_user", JSON.stringify({ name: ADMIN_CREDENTIALS.name, email: ADMIN_CREDENTIALS.email }));
         localStorage.removeItem("be_current_user");
       } catch { /* ignore */ }
       showToast(language === 'bn' ? "অ্যাডমিন লগইন সফল হয়েছে!" : "Shop Admin logged in successfully!");
@@ -1138,8 +1296,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const logoutAdmin = () => {
     setIsAdminAuthenticated(false);
+    setAdminUser(null);
     try {
       localStorage.removeItem("be_admin_authenticated");
+      localStorage.removeItem("be_admin_user");
     } catch { /* ignore */ }
     showToast(language === 'bn' ? "অ্যাডমিন লগ আউট সম্পন্ন" : "Admin signed out", "info");
     setNavigation({ path: "/" });
@@ -1253,15 +1413,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const registerCustomer = async (
     name: string,
-    phone: string,
+    phone?: string,
     email?: string,
-    password?: string
+    password?: string,
+    role?: "ADMIN" | "CUSTOMER" | "MANAGER",
+    permissions?: AdminPermission[]
   ): Promise<{ success: boolean; message: string }> => {
-    if (!name.trim() || !phone.trim()) {
-      return { success: false, message: "Full name and Bangladeshi mobile number are required." };
+    if (!name.trim() || (!phone?.trim() && !email?.trim())) {
+      return { success: false, message: "Full name and Bangladeshi mobile number or Email are required." };
     }
-    const cleanPhone = phone.trim();
-    if (!cleanPhone.startsWith("01") || cleanPhone.length !== 11) {
+    const cleanPhone = phone?.trim() || `017${Math.floor(10000000 + Math.random() * 90000000).toString().slice(0, 8)}`;
+    if (phone?.trim() && (!cleanPhone.startsWith("01") || cleanPhone.length !== 11)) {
       return { success: false, message: "Please enter a valid 11-digit Bangladeshi phone (e.g. 01711223344)." };
     }
     if (password && password.length < 6) {
@@ -1270,10 +1432,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     const todayDate = new Date().toISOString().split("T")[0];
     let createdId = `cust-${Date.now()}`;
+    const targetRole: "ADMIN" | "CUSTOMER" | "MANAGER" = role || (autoAdminNewUsers ? "ADMIN" : "CUSTOMER");
+    const defaultPerms: AdminPermission[] = targetRole === "ADMIN"
+      ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+      : targetRole === "MANAGER"
+        ? ["dashboard", "products", "categories", "orders", "customers", "coupons"]
+        : [];
+    const finalPerms = permissions && permissions.length > 0 ? permissions : defaultPerms;
 
     // 1. Direct persistence to MongoDB Atlas via backend API
     try {
-      const apiRes = await authService.register(name.trim(), cleanPhone, email?.trim(), password?.trim(), "CUSTOMER");
+      const apiRes = await authService.register(name.trim(), cleanPhone, email?.trim(), password?.trim(), targetRole, finalPerms);
       if (apiRes.user?.id) {
         createdId = apiRes.user.id;
       }
@@ -1295,7 +1464,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       phone: cleanPhone,
       email: email?.trim() || undefined,
       password: password || undefined,
-      role: "CUSTOMER",
+      role: targetRole,
       loyaltyTier: "Bronze",
       loyaltyPoints: 100, // Welcome reward bonus
       joinedDate: todayDate,
@@ -1310,12 +1479,16 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return updated;
     });
 
-    // 3. Set at Admin Dashboard customer records with full details
+    // 3. Set at Admin Dashboard customer records with full details & role
     const newAdminCustomer: Customer = {
       id: createdId,
       name: newUser.name,
       phoneNumber: newUser.phone,
       email: newUser.email || "N/A",
+      role: targetRole,
+      permissions: finalPerms,
+      loyaltyTier: "Bronze",
+      loyaltyPoints: 100,
       totalOrders: 0,
       totalSpentBDT: 0,
       isBlocked: false,
@@ -1328,18 +1501,54 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return updated;
     });
 
-    setIsAdminAuthenticated(false);
-    try { localStorage.removeItem("be_admin_authenticated"); } catch { /* ignore */ }
-    setCurrentUser(newUser);
-    try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
-    showToast(
-      language === 'bn'
-        ? `অভিনন্দন ${newUser.name}! অ্যাকাউন্ট ডেটাবেজে সংরক্ষিত হয়েছে এবং ১০০ বোনাস পয়েন্ট পেয়েছেন!`
-        : `Welcome to Bengal Edition, ${newUser.name}! Saved in database with +100 bonus loyalty points!`
-    );
-    setNavigation({ path: "/customer" });
+    // If registered as Admin or Manager, also add to shopAdmins state
+    if (targetRole === "ADMIN" || targetRole === "MANAGER") {
+      const newAdminStaff: ShopAdminUser = {
+        id: createdId,
+        name: newUser.name,
+        phone: newUser.phone,
+        email: newUser.email || "",
+        role: targetRole as AdminRole,
+        isBlocked: false,
+        permissions: finalPerms,
+        createdAt: todayDate,
+      };
+      setShopAdmins((prev) => {
+        const filtered = prev.filter((a) => a.phone !== newAdminStaff.phone);
+        const updated = [newAdminStaff, ...filtered];
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
+        return updated;
+      });
+
+      setIsAdminAuthenticated(true);
+      setAdminUser({ name: newUser.name, email: newUser.email || "" });
+      setCurrentUser(null);
+      try {
+        localStorage.setItem("be_admin_authenticated", "true");
+        localStorage.removeItem("be_current_user");
+      } catch { }
+      showToast(
+        language === 'bn'
+          ? `স্বাগতম ${newUser.name}! আপনি শপ অ্যাডমিন ড্যাশবোর্ডে সম্পূর্ণ অ্যাক্সেস পেয়েছেন!`
+          : `Welcome ${newUser.name}! Registered as Shop Admin with full dashboard functions!`
+      );
+      setNavigation({ path: "/admin" });
+    } else {
+      setIsAdminAuthenticated(false);
+      try { localStorage.removeItem("be_admin_authenticated"); } catch { /* ignore */ }
+      setCurrentUser(newUser);
+      try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
+      showToast(
+        language === 'bn'
+          ? `অভিনন্দন ${newUser.name}! অ্যাকাউন্ট ডেটাবেজে সংরক্ষিত হয়েছে এবং ১০০ বোনাস পয়েন্ট পেয়েছেন!`
+          : `Welcome to Bengal Edition, ${newUser.name}! Profile saved to database with +100 bonus loyalty points!`
+      );
+      setNavigation({ path: "/customer" });
+    }
+
     // Sync new customer to admin Customers panel from database
     try { await refreshCustomers(); } catch { /* ignore */ }
+    try { await refreshShopAdmins(); } catch { /* ignore */ }
     return { success: true, message: "Registered" };
   };
 
@@ -1349,14 +1558,19 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (res.success && Array.isArray(res.customers)) {
         setCustomers((prev) => {
           const map = new Map<string, Customer>();
-          prev.forEach((c) => map.set(c.phoneNumber, c));
+          prev.forEach((c) => map.set(c.phoneNumber || c.id, c));
           res.customers.forEach((mc) => {
-            const existing = map.get(mc.phoneNumber);
-            map.set(mc.phoneNumber, {
+            const key = mc.phoneNumber || mc.id;
+            const existing = map.get(key) || (mc.email && mc.email !== "N/A" ? map.get(mc.email) : null);
+            map.set(key, {
               id: mc.id,
               name: mc.name,
               phoneNumber: mc.phoneNumber,
               email: mc.email || "N/A",
+              role: (mc.role as any) || existing?.role || "CUSTOMER",
+              permissions: (mc.permissions as any) || existing?.permissions || [],
+              loyaltyTier: (mc.loyaltyTier as any) || existing?.loyaltyTier || "Bronze",
+              loyaltyPoints: mc.loyaltyPoints !== undefined ? mc.loyaltyPoints : (existing?.loyaltyPoints || 100),
               totalOrders: existing ? existing.totalOrders : mc.totalOrders || 0,
               totalSpentBDT: existing ? existing.totalSpentBDT : mc.totalSpentBDT || 0,
               isBlocked: existing ? existing.isBlocked : mc.isBlocked || false,
@@ -1398,7 +1612,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const res = await authService.getShopAdmins();
       if (res.success && Array.isArray(res.admins) && res.admins.length > 0) {
         setShopAdmins(res.admins);
-        try { localStorage.setItem("be_shop_admins", JSON.stringify(res.admins)); } catch {}
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(res.admins)); } catch { }
       }
     } catch (err: any) {
       console.warn("[Admin] Shop Admin database sync error:", err?.message);
@@ -1439,7 +1653,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
       setShopAdmins((prev) => {
         const updated = [newAdmin, ...prev];
-        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Shop Admin saved locally.", "info");
@@ -1459,7 +1673,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (err: any) {
       setShopAdmins((prev) => {
         const updated = prev.map((a) => (a.id === id ? { ...a, ...data } : a));
-        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Shop Admin updated locally", "info");
@@ -1482,7 +1696,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       setShopAdmins((prev) => {
         const updated = prev.filter((a) => a.id !== id);
-        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Shop Admin removed", "info");
@@ -1499,7 +1713,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (err: any) {
       setShopAdmins((prev) => {
         const updated = prev.map((a) => (a.id === id ? { ...a, isBlocked: !a.isBlocked } : a));
-        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Shop Admin status updated", "info");
@@ -1512,7 +1726,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const res = await bannerService.getBanners();
       if (res.success && Array.isArray(res.data) && res.data.length > 0) {
         setBanners(res.data);
-        try { localStorage.setItem("be_hero_banners", JSON.stringify(res.data)); } catch {}
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(res.data)); } catch { }
       }
     } catch (err: any) {
       console.warn("[Banners] Backend database sync notice:", err?.message);
@@ -1540,7 +1754,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       };
       setBanners((prev) => {
         const updated = [...prev, newBanner];
-        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Banner saved locally", "info");
@@ -1560,7 +1774,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (err: any) {
       setBanners((prev) => {
         const updated = prev.map((b) => (b.id === id ? { ...b, ...data } : b));
-        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Banner updated locally", "info");
@@ -1583,7 +1797,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (err: any) {
       setBanners((prev) => {
         const updated = prev.filter((b) => b.id !== id);
-        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Banner removed locally", "info");
@@ -1605,7 +1819,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (err: any) {
       setBanners((prev) => {
         const updated = prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b));
-        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch {}
+        try { localStorage.setItem("be_hero_banners", JSON.stringify(updated)); } catch { }
         return updated;
       });
       showToast("Banner status updated locally", "info");
@@ -2008,7 +2222,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const res = await authService.deleteUser(customerId);
       showToast(language === 'bn' ? "গ্রাহক ডাটাবেজ থেকে মুছে ফেলা হয়েছে" : "Customer permanently deleted from database");
-      try { await refreshCustomers(); } catch {}
+      try { await refreshCustomers(); } catch { }
       return { success: true, message: res.message || "Customer deleted" };
     } catch (err: any) {
       console.warn("[CRM] Delete customer API error:", err?.message);
@@ -2019,7 +2233,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const updateCustomer = async (
     customerId: string,
-    data: Partial<Customer>
+    data: Partial<Customer> & { permissions?: AdminPermission[]; password?: string }
   ): Promise<{ success: boolean; message: string }> => {
     const existing = customers.find((c) => c.id === customerId);
     const oldPhone = existing?.phoneNumber;
@@ -2038,6 +2252,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             ...(data.name ? { name: data.name } : {}),
             ...(data.phoneNumber ? { phone: data.phoneNumber } : {}),
             ...(data.email ? { email: data.email } : {}),
+            ...(data.role ? { role: data.role } : {}),
+            ...(data.password ? { password: data.password } : {}),
           };
         }
         return c;
@@ -2046,21 +2262,79 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       return updated;
     });
 
+    // If updated to ADMIN or MANAGER, synchronize with shopAdmins
+    if (data.role === "ADMIN" || data.role === "MANAGER") {
+      const defaultPerms: AdminPermission[] = data.role === "ADMIN"
+        ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+        : ["dashboard", "products", "categories", "orders", "customers", "coupons"];
+      const finalPerms = data.permissions && data.permissions.length > 0 ? data.permissions : defaultPerms;
+
+      const shopAdminRecord: ShopAdminUser = {
+        id: customerId,
+        name: data.name || existing?.name || "Shop Admin",
+        phone: data.phoneNumber || existing?.phoneNumber || "01700000000",
+        email: data.email || existing?.email || "",
+        role: data.role as AdminRole,
+        isBlocked: data.isBlocked !== undefined ? data.isBlocked : (existing?.isBlocked || false),
+        permissions: finalPerms,
+        createdAt: existing?.registeredDate || new Date().toISOString(),
+      };
+
+      setShopAdmins((prev) => {
+        const filtered = prev.filter((a) => a.id !== customerId && a.phone !== shopAdminRecord.phone);
+        const updated = [shopAdminRecord, ...filtered];
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
+        return updated;
+      });
+    } else if (data.role === "CUSTOMER") {
+      // If demoted to CUSTOMER, remove from shopAdmins
+      setShopAdmins((prev) => {
+        const updated = prev.filter((a) => a.id !== customerId && (oldPhone ? a.phone !== oldPhone : true));
+        try { localStorage.setItem("be_shop_admins", JSON.stringify(updated)); } catch { }
+        return updated;
+      });
+    }
+
     try {
       const res = await authService.updateUser(customerId, {
         name: data.name,
         phone: data.phoneNumber,
         email: data.email,
+        role: data.role,
         isBlocked: data.isBlocked,
+        permissions: data.permissions as any,
+        password: data.password,
       });
-      showToast(language === 'bn' ? "গ্রাহকের তথ্য আপডেট হয়েছে" : "Customer profile updated in database");
-      try { await refreshCustomers(); } catch {}
+      showToast(language === 'bn' ? "প্রোফাইল আপডেট সফল হয়েছে" : res.message || "Customer profile updated in database");
+      try { await refreshCustomers(); } catch { }
+      try { await refreshShopAdmins(); } catch { }
       return { success: true, message: res.message || "Customer updated" };
     } catch (err: any) {
       console.warn("[CRM] Update customer API error:", err?.message);
-      showToast(language === 'bn' ? "গ্রাহকের তথ্য আপডেট হয়েছে" : "Customer updated");
+      showToast(language === 'bn' ? "প্রোফাইল আপডেট হয়েছে" : "Customer updated");
       return { success: true, message: "Customer updated" };
     }
+  };
+
+  const promoteCustomerToAdmin = async (
+    customerId: string,
+    role: AdminRole = "ADMIN",
+    permissions?: AdminPermission[]
+  ): Promise<{ success: boolean; message: string }> => {
+    const existing = customers.find((c) => c.id === customerId);
+    if (!existing) {
+      return { success: false, message: "Customer profile not found" };
+    }
+
+    const defaultPerms: AdminPermission[] = role === "ADMIN"
+      ? ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+      : ["dashboard", "products", "categories", "orders", "customers", "coupons"];
+    const finalPerms = permissions && permissions.length > 0 ? permissions : defaultPerms;
+
+    return await updateCustomer(customerId, {
+      role,
+      permissions: finalPerms,
+    });
   };
 
   const addCoupon = (c: Coupon) => {
@@ -2128,8 +2402,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         toggleBlockCustomer,
         deleteCustomer,
         updateCustomer,
+        promoteCustomerToAdmin,
         refreshCustomers,
         registerAdminUser,
+        autoAdminNewUsers,
+        setAutoAdminNewUsers,
         shopAdmins,
         refreshShopAdmins,
         createShopAdmin,
@@ -2145,7 +2422,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         login,
         loginWithGoogle,
         isAdminAuthenticated,
-        adminUser: isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null,
+        adminUser: adminUser || (isAdminAuthenticated ? { email: "mk.rabbani.cse@gmail.com", name: "Shop Admin (Golam Rabbani)" } : null),
         loginAdmin,
         logoutAdmin,
         currentUser,

@@ -45,13 +45,25 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     addToast,
   } = useStore();
 
-  // Read mode from query param if available
+  // Read mode and redirect from query params if available
   const queryParams = new URLSearchParams(navigation.path.split("?")[1] || "");
   const modeParam = queryParams.get("mode");
+  const redirectAfterLogin = queryParams.get("redirect") || "";
 
   const [authMode, setAuthMode] = useState<"login" | "register">(
-    modeParam === "register" ? "register" : initialMode
+    modeParam === "register" || navigation.path.startsWith("/register") ? "register" : initialMode
   );
+
+  // Auto-redirect when user becomes authenticated (after login/register)
+  useEffect(() => {
+    if (currentUser && !isAdminAuthenticated) {
+      if (redirectAfterLogin) {
+        navigate(redirectAfterLogin);
+      } else {
+        navigate("/customer");
+      }
+    }
+  }, [currentUser, isAdminAuthenticated]);
 
   // Unified Sign In Form State
   const [identifier, setIdentifier] = useState("");
@@ -314,22 +326,34 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     setErrorMessage("");
     setSuccessMessage("");
 
-    if (!regName.trim() || !regPhone.trim()) {
+    if (!regName.trim()) {
       setErrorMessage(
-        t("Full name and mobile number are required", "পূর্ণ নাম এবং মোবাইল নম্বর আবশ্যক")
+        t("Full name is required", "পূর্ণ নাম আবশ্যক")
       );
       return;
     }
 
-    const cleanPhone = regPhone.trim();
-    if (!cleanPhone.startsWith("01") || cleanPhone.length !== 11) {
+    if (!regEmail.trim() && !regPhone.trim()) {
       setErrorMessage(
-        t(
-          "Please provide a valid 11-digit Bangladeshi mobile number (e.g. 01711223344)",
-          "১১ ডিজিটের সঠিক বাংলাদেশি মোবাইল নম্বর দিন (যেমন: ০১৭১১২২৩৩৪৪)"
-        )
+        t("Please provide an email address or mobile number", "ইমেইল অ্যাড্রেস বা মোবাইল নম্বর দিন")
       );
       return;
+    }
+
+    let phoneToUse = regPhone.trim();
+    if (phoneToUse) {
+      if (!phoneToUse.startsWith("01") || phoneToUse.length !== 11) {
+        setErrorMessage(
+          t(
+            "Please provide a valid 11-digit Bangladeshi mobile number (e.g. 01711223344)",
+            "১১ ডিজিটের সঠিক বাংলাদেশি মোবাইল নম্বর দিন (যেমন: ০১৭১১২২৩৩৪৪)"
+          )
+        );
+        return;
+      }
+    } else {
+      // Auto generate a valid BD mobile number placeholder if registering with email only
+      phoneToUse = "017" + Math.floor(10000000 + Math.random() * 90000000).toString();
     }
 
     if (regPassword && regPassword.length < 6) {
@@ -345,7 +369,7 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
     }
 
     setIsLoading(true);
-    const res = await registerCustomer(regName, regPhone, regEmail, regPassword);
+    const res = await registerCustomer(regName, phoneToUse, regEmail.trim() || undefined, regPassword);
     setIsLoading(false);
 
     if (!res.success) {
@@ -556,10 +580,10 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
             </p>
             <div className="flex gap-2">
               <button
-                onClick={() => navigate("/customer")}
+                onClick={() => navigate(redirectAfterLogin || "/customer")}
                 className="flex-1 bg-white hover:bg-gray-100 text-black font-semibold py-1.5 px-3 rounded-[2px] text-xs transition-colors cursor-pointer"
               >
-                Customer Dashboard
+                {redirectAfterLogin === "/checkout" ? "Continue to Checkout" : "Customer Dashboard"}
               </button>
               <button
                 onClick={logoutCustomer}
@@ -762,27 +786,26 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   />
                 </div>
 
+                {/* Email Address */}
+                <div>
+                  <input
+                    type="email"
+                    value={regEmail}
+                    onChange={(e) => setRegEmail(e.target.value)}
+                    placeholder="Email Address (e.g. name@example.com)"
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition"
+                  />
+                </div>
+
                 {/* Phone */}
                 <div>
                   <input
                     type="tel"
                     value={regPhone}
                     onChange={(e) => setRegPhone(e.target.value)}
-                    placeholder="Mobile Number (e.g. 01711223344)"
+                    placeholder="Mobile Number (e.g. 01711223344 - optional if email provided)"
                     maxLength={11}
                     className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition font-mono"
-                    required
-                  />
-                </div>
-
-                {/* Email (Optional) */}
-                <div>
-                  <input
-                    type="email"
-                    value={regEmail}
-                    onChange={(e) => setRegEmail(e.target.value)}
-                    placeholder="Email Address (Optional)"
-                    className="w-full bg-white text-gray-900 placeholder-gray-400 px-4 py-2.5 rounded-[2px] text-sm focus:outline-none focus:ring-2 focus:ring-[#ff4c4c] border-0 transition"
                   />
                 </div>
 

@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import { useStore } from "../../context/StoreContext";
-import { Customer } from "../../types";
+import { Customer, AdminRole, AdminPermission } from "../../types";
 import {
   Users,
   Search,
   ShieldCheck,
+  ShieldAlert,
   Ban,
   ShoppingBag,
   Phone,
@@ -22,6 +23,8 @@ import {
   Trash2,
   Edit,
   AlertTriangle,
+  KeyRound,
+  Sparkles,
 } from "lucide-react";
 
 export const AdminCustomers: React.FC = () => {
@@ -30,6 +33,7 @@ export const AdminCustomers: React.FC = () => {
     toggleBlockCustomer,
     deleteCustomer,
     updateCustomer,
+    promoteCustomerToAdmin,
     formatPrice,
     orders,
     showToast,
@@ -39,6 +43,7 @@ export const AdminCustomers: React.FC = () => {
   } = useStore();
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<"ALL" | "CUSTOMER" | "ADMIN" | "MANAGER">("ALL");
   const [statusFilter, setStatusFilter] = useState<"ALL" | "ACTIVE" | "BLOCKED">("ALL");
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
 
@@ -54,13 +59,31 @@ export const AdminCustomers: React.FC = () => {
   const [editName, setEditName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editRole, setEditRole] = useState<"CUSTOMER" | "ADMIN" | "MANAGER">("CUSTOMER");
+  const [editPassword, setEditPassword] = useState("");
   const [editIsBlocked, setEditIsBlocked] = useState(false);
   const [isSavingEdit, setIsSavingEdit] = useState(false);
   const [editError, setEditError] = useState("");
 
+  // Promote / Role Assignment Modal State
+  const [customerToPromote, setCustomerToPromote] = useState<Customer | null>(null);
+  const [promoteRole, setPromoteRole] = useState<AdminRole>("ADMIN");
+  const [promotePermissions, setPromotePermissions] = useState<AdminPermission[]>([
+    "dashboard",
+    "products",
+    "categories",
+    "orders",
+    "customers",
+    "coupons",
+    "settings",
+    "admins",
+  ]);
+  const [isPromoting, setIsPromoting] = useState(false);
+  const [promoteError, setPromoteError] = useState("");
+
   // Add User / Admin Modal State
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newRole, setNewRole] = useState<"CUSTOMER" | "ADMIN">("CUSTOMER");
+  const [newRole, setNewRole] = useState<"CUSTOMER" | "ADMIN" | "MANAGER">("CUSTOMER");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -141,6 +164,8 @@ export const AdminCustomers: React.FC = () => {
     setEditName(cust.name);
     setEditPhone(cust.phoneNumber);
     setEditEmail(cust.email === "N/A" ? "" : cust.email || "");
+    setEditRole(cust.role || "CUSTOMER");
+    setEditPassword("");
     setEditIsBlocked(cust.isBlocked);
     setEditError("");
   };
@@ -161,13 +186,20 @@ export const AdminCustomers: React.FC = () => {
       return;
     }
 
+    if (editPassword.trim() && editPassword.trim().length < 6) {
+      setEditError("Password must be at least 6 characters long.");
+      return;
+    }
+
     setIsSavingEdit(true);
     try {
       const res = await updateCustomer(customerToEdit.id, {
         name: editName.trim(),
         phoneNumber: cleanPhone,
         email: editEmail.trim() || undefined,
+        role: editRole,
         isBlocked: editIsBlocked,
+        password: editPassword.trim() || undefined,
       });
       if (!res.success) {
         setEditError(res.message);
@@ -181,6 +213,7 @@ export const AdminCustomers: React.FC = () => {
           name: editName.trim(),
           phoneNumber: cleanPhone,
           email: editEmail.trim() || "N/A",
+          role: editRole,
           isBlocked: editIsBlocked,
         });
       }
@@ -188,6 +221,47 @@ export const AdminCustomers: React.FC = () => {
       setEditError(err?.message || "Failed to update customer.");
     } finally {
       setIsSavingEdit(false);
+    }
+  };
+
+  const handleOpenPromote = (cust: Customer) => {
+    setCustomerToPromote(cust);
+    setPromoteRole(cust.role === "MANAGER" ? "MANAGER" : "ADMIN");
+    setPromotePermissions(
+      cust.permissions && cust.permissions.length > 0
+        ? cust.permissions
+        : cust.role === "MANAGER"
+        ? ["dashboard", "products", "categories", "orders", "customers", "coupons"]
+        : ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+    );
+    setPromoteError("");
+  };
+
+  const handleConfirmPromote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!customerToPromote) return;
+    setIsPromoting(true);
+    setPromoteError("");
+    try {
+      const res = await promoteCustomerToAdmin(customerToPromote.id, promoteRole, promotePermissions);
+      if (!res.success) {
+        setPromoteError(res.message);
+        setIsPromoting(false);
+        return;
+      }
+      showToast(`User ${customerToPromote.name} set as Shop ${promoteRole === "ADMIN" ? "Admin" : "Manager"} with full functions!`);
+      if (selectedCustomer && selectedCustomer.id === customerToPromote.id) {
+        setSelectedCustomer({
+          ...selectedCustomer,
+          role: promoteRole,
+          permissions: promotePermissions,
+        });
+      }
+      setCustomerToPromote(null);
+    } catch (err: any) {
+      setPromoteError(err?.message || "Failed to promote user.");
+    } finally {
+      setIsPromoting(false);
     }
   };
 
@@ -219,7 +293,12 @@ export const AdminCustomers: React.FC = () => {
       (statusFilter === "ACTIVE" && !cust.isBlocked) ||
       (statusFilter === "BLOCKED" && cust.isBlocked);
 
-    return matchesSearch && matchesStatus;
+    const matchesRole =
+      roleFilter === "ALL" ||
+      (roleFilter === "CUSTOMER" && (!cust.role || cust.role === "CUSTOMER")) ||
+      cust.role === roleFilter;
+
+    return matchesSearch && matchesStatus && matchesRole;
   });
 
   // Calculate statistics
@@ -351,8 +430,8 @@ export const AdminCustomers: React.FC = () => {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
-        <div className="relative w-full sm:w-80">
+      <div className="bg-white border border-gray-200 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+        <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
           <input
             type="text"
@@ -371,37 +450,86 @@ export const AdminCustomers: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 w-full sm:w-auto overflow-x-auto">
-          <button
-            onClick={() => setStatusFilter("ALL")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              statusFilter === "ALL"
-                ? "bg-gray-950 text-white"
-                : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-            }`}
-          >
-            All ({totalCustomers})
-          </button>
-          <button
-            onClick={() => setStatusFilter("ACTIVE")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              statusFilter === "ACTIVE"
-                ? "bg-emerald-700 text-white"
-                : "bg-emerald-50 text-emerald-800 hover:bg-emerald-100"
-            }`}
-          >
-            Active ({activeCustomers})
-          </button>
-          <button
-            onClick={() => setStatusFilter("BLOCKED")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-              statusFilter === "BLOCKED"
-                ? "bg-rose-700 text-white"
-                : "bg-rose-50 text-rose-800 hover:bg-rose-100"
-            }`}
-          >
-            Blocked ({blockedCustomers})
-          </button>
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* Role Filter */}
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 p-1 rounded-xl">
+            <span className="text-[10px] font-bold text-gray-400 uppercase px-2">Role:</span>
+            <button
+              onClick={() => setRoleFilter("ALL")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                roleFilter === "ALL"
+                  ? "bg-gray-900 text-white shadow-xs"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              All
+            </button>
+            <button
+              onClick={() => setRoleFilter("ADMIN")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                roleFilter === "ADMIN"
+                  ? "bg-amber-500 text-white shadow-xs"
+                  : "text-amber-700 hover:bg-amber-100"
+              }`}
+            >
+              Shop Admins
+            </button>
+            <button
+              onClick={() => setRoleFilter("MANAGER")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                roleFilter === "MANAGER"
+                  ? "bg-blue-600 text-white shadow-xs"
+                  : "text-blue-700 hover:bg-blue-100"
+              }`}
+            >
+              Managers
+            </button>
+            <button
+              onClick={() => setRoleFilter("CUSTOMER")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                roleFilter === "CUSTOMER"
+                  ? "bg-gray-700 text-white shadow-xs"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              Shoppers
+            </button>
+          </div>
+
+          {/* Status Filter */}
+          <div className="flex items-center gap-1 bg-gray-50 border border-gray-200 p-1 rounded-xl">
+            <span className="text-[10px] font-bold text-gray-400 uppercase px-2">Status:</span>
+            <button
+              onClick={() => setStatusFilter("ALL")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === "ALL"
+                  ? "bg-gray-950 text-white"
+                  : "text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              All ({totalCustomers})
+            </button>
+            <button
+              onClick={() => setStatusFilter("ACTIVE")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === "ACTIVE"
+                  ? "bg-emerald-700 text-white"
+                  : "text-emerald-800 hover:bg-emerald-100"
+              }`}
+            >
+              Active ({activeCustomers})
+            </button>
+            <button
+              onClick={() => setStatusFilter("BLOCKED")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
+                statusFilter === "BLOCKED"
+                  ? "bg-rose-700 text-white"
+                  : "text-rose-800 hover:bg-rose-100"
+              }`}
+            >
+              Blocked ({blockedCustomers})
+            </button>
+          </div>
         </div>
       </div>
 
@@ -411,19 +539,20 @@ export const AdminCustomers: React.FC = () => {
           <table className="w-full text-left text-xs text-gray-600">
             <thead className="bg-gray-50/80 border-b border-gray-200 text-gray-500 font-medium">
               <tr>
-                <th className="py-3.5 px-4">Customer Name &amp; ID</th>
+                <th className="py-3.5 px-4">User Name &amp; ID</th>
+                <th className="py-3.5 px-4">Role &amp; Privilege</th>
                 <th className="py-3.5 px-4">Contact Info</th>
                 <th className="py-3.5 px-4">Registered Date</th>
                 <th className="py-3.5 px-4 text-center">Orders</th>
                 <th className="py-3.5 px-4 text-right">Total Spent</th>
                 <th className="py-3.5 px-4 text-center">Account Status</th>
-                <th className="py-3.5 px-4 text-right">Action</th>
+                <th className="py-3.5 px-4 text-right">Admin Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 font-normal">
               {filteredCustomers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-gray-400">
+                  <td colSpan={8} className="py-12 text-center text-gray-400">
                     <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                     <p className="font-semibold text-gray-600">No customers found</p>
                     <p className="text-[11px] text-gray-400 mt-0.5">
@@ -445,18 +574,49 @@ export const AdminCustomers: React.FC = () => {
                       {/* Name & ID */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-gray-950 font-extrabold flex items-center justify-center text-xs shadow-2xs shrink-0">
+                          <div className={`w-9 h-9 rounded-full font-extrabold flex items-center justify-center text-xs shadow-2xs shrink-0 ${
+                            cust.role === "ADMIN"
+                              ? "bg-gradient-to-br from-amber-400 to-yellow-600 text-gray-950 ring-2 ring-amber-300"
+                              : cust.role === "MANAGER"
+                              ? "bg-gradient-to-br from-blue-400 to-indigo-600 text-white"
+                              : "bg-gradient-to-br from-yellow-400 to-amber-500 text-gray-950"
+                          }`}>
                             {initials || "C"}
                           </div>
                           <div>
-                            <div className="font-bold text-gray-900 text-sm">
-                              {cust.name}
+                            <div className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
+                              <span>{cust.name}</span>
+                              {cust.role === "ADMIN" && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-extrabold tracking-wide uppercase">
+                                  Admin
+                                </span>
+                              )}
                             </div>
                             <div className="text-[10px] text-gray-400 font-mono">
                               ID: {cust.id}
                             </div>
                           </div>
                         </div>
+                      </td>
+
+                      {/* Role & Privilege */}
+                      <td className="py-3.5 px-4">
+                        {cust.role === "ADMIN" ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                            <span>SHOP ADMIN</span>
+                          </span>
+                        ) : cust.role === "MANAGER" ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-900 border border-blue-300 shadow-2xs">
+                            <ShieldCheck className="w-3.5 h-3.5 text-blue-700" />
+                            <span>MANAGER</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
+                            <Users className="w-3 h-3 text-gray-500" />
+                            <span>Customer</span>
+                          </span>
+                        )}
                       </td>
 
                       {/* Contact Info */}
@@ -519,6 +679,16 @@ export const AdminCustomers: React.FC = () => {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             type="button"
+                            onClick={() => handleOpenPromote(cust)}
+                            className="text-xs font-semibold text-amber-900 hover:text-amber-950 bg-amber-100/80 hover:bg-amber-200 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                            title="Set as Shop Admin or Configure Dashboard Access"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                            <span>{cust.role === "ADMIN" ? "Permissions" : "Set Admin"}</span>
+                          </button>
+
+                          <button
+                            type="button"
                             onClick={() => setSelectedCustomer(cust)}
                             className="text-xs font-semibold text-gray-700 hover:text-gray-900 bg-gray-100 hover:bg-yellow-400 px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer"
                             title="View Customer Details & Orders"
@@ -530,7 +700,7 @@ export const AdminCustomers: React.FC = () => {
                             type="button"
                             onClick={() => handleOpenEdit(cust)}
                             className="text-xs font-semibold text-blue-700 hover:text-blue-900 bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
-                            title="Edit Customer Details"
+                            title="Edit Customer Details & Credentials"
                           >
                             <Edit className="w-3.5 h-3.5" />
                             <span>Edit</span>
@@ -636,6 +806,46 @@ export const AdminCustomers: React.FC = () => {
               </div>
             </div>
 
+            {/* Administrative Role & Privileges */}
+            <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-3.5 space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5 font-bold text-xs text-amber-950">
+                  <ShieldCheck className="w-4 h-4 text-amber-600" />
+                  <span>Administrative Role: {selectedCustomer.role || "CUSTOMER"}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenPromote(selectedCustomer);
+                  }}
+                  className="text-[11px] font-bold text-amber-900 bg-white hover:bg-amber-100 border border-amber-300 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                >
+                  Configure Privileges
+                </button>
+              </div>
+              {selectedCustomer.role === "ADMIN" || selectedCustomer.role === "MANAGER" ? (
+                <div className="text-[11px] text-amber-900/80">
+                  <div className="font-semibold text-[10px] text-amber-800 uppercase tracking-wide mb-1">
+                    Active Dashboard Modules:
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {(selectedCustomer.permissions && selectedCustomer.permissions.length > 0
+                      ? selectedCustomer.permissions
+                      : ["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]
+                    ).map((perm) => (
+                      <span key={perm} className="bg-white/90 text-amber-900 px-2 py-0.5 rounded text-[10px] font-semibold border border-amber-200">
+                        {perm}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <p className="text-[11px] text-amber-800/80">
+                  Standard shopper profile. You can promote this user to Shop Admin or Store Manager at any time.
+                </p>
+              )}
+            </div>
+
             {/* Profile Information List */}
             <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 space-y-2.5 text-xs">
               <div className="flex justify-between items-center py-1 border-b border-gray-200/60">
@@ -693,6 +903,17 @@ export const AdminCustomers: React.FC = () => {
             {/* Modal Actions */}
             <div className="pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleOpenPromote(selectedCustomer);
+                  }}
+                  className="px-3 py-2 bg-amber-100 hover:bg-amber-200 text-amber-900 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-700" />
+                  <span>{selectedCustomer.role === "ADMIN" ? "Permissions" : "Set Admin"}</span>
+                </button>
+
                 <button
                   type="button"
                   onClick={() => {
@@ -947,6 +1168,63 @@ export const AdminCustomers: React.FC = () => {
                 />
               </div>
 
+              {/* Account Role */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Assigned Role</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditRole("CUSTOMER")}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${
+                      editRole === "CUSTOMER"
+                        ? "bg-gray-800 text-white border-gray-800 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Customer
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditRole("ADMIN")}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${
+                      editRole === "ADMIN"
+                        ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Shop Admin
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditRole("MANAGER")}
+                    className={`py-2 px-2.5 rounded-xl text-xs font-bold border transition-all ${
+                      editRole === "MANAGER"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-xs"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    Manager
+                  </button>
+                </div>
+              </div>
+
+              {/* Reset Password */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
+                  Reset Password <span className="text-gray-400 font-normal">(leave blank to keep current)</span>
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+                  <input
+                    type="password"
+                    value={editPassword}
+                    onChange={(e) => setEditPassword(e.target.value)}
+                    placeholder="Enter new password (min 6 characters)"
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-400"
+                  />
+                </div>
+              </div>
+
               {/* Account Status */}
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-1">Account Status</label>
@@ -980,16 +1258,203 @@ export const AdminCustomers: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setCustomerToEdit(null)}
-                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all"
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isSavingEdit}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50"
+                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
                 >
                   {isSavingEdit ? "Saving..." : "Save Changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Promote to Shop Admin / Manager Modal */}
+      {customerToPromote && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 animate-scaleUp max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-800 flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-5 h-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 text-base">Assign Shop Admin Privileges</h3>
+                  <p className="text-[11px] text-gray-500">Configure dashboard roles &amp; operational permissions</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCustomerToPromote(null)}
+                className="p-1 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmPromote} className="mt-4 space-y-4 text-xs">
+              {promoteError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                  {promoteError}
+                </div>
+              )}
+
+              {/* Target User Info Banner */}
+              <div className="p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-gray-400 font-medium block">TARGET USER</span>
+                  <div className="font-bold text-gray-900 text-sm">{customerToPromote.name}</div>
+                  <div className="text-[11px] text-gray-500 font-mono">{customerToPromote.phoneNumber} {customerToPromote.email && `• ${customerToPromote.email}`}</div>
+                </div>
+                <div className="text-right">
+                  <span className="text-[10px] text-gray-400 font-medium block">CURRENT ROLE</span>
+                  <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-800 font-bold text-[10px]">
+                    {customerToPromote.role || "CUSTOMER"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Role Selection */}
+              <div>
+                <label className="block text-xs font-bold text-gray-800 mb-1.5">Administrative Role</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPromoteRole("ADMIN");
+                      setPromotePermissions(["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                      promoteRole === "ADMIN"
+                        ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Shop Admin</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPromoteRole("MANAGER");
+                      setPromotePermissions(["dashboard", "products", "categories", "orders", "customers", "coupons"]);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                      promoteRole === "MANAGER"
+                        ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <UserCheck className="w-4 h-4" />
+                    <span>Store Manager</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPromoteRole("CUSTOMER" as any);
+                      setPromotePermissions([]);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                      (promoteRole as string) === "CUSTOMER"
+                        ? "bg-gray-800 text-white border-gray-800 shadow-sm"
+                        : "bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100"
+                    }`}
+                  >
+                    <Users className="w-4 h-4" />
+                    <span>Shopper</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Permissions Checklist */}
+              {(promoteRole as string) !== "CUSTOMER" && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-gray-800">
+                      Module Permissions ({promotePermissions.length}/8 Granted)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (promotePermissions.length === 8) {
+                          setPromotePermissions([]);
+                        } else {
+                          setPromotePermissions(["dashboard", "products", "categories", "orders", "customers", "coupons", "settings", "admins"]);
+                        }
+                      }}
+                      className="text-[11px] text-amber-700 hover:underline font-semibold cursor-pointer"
+                    >
+                      {promotePermissions.length === 8 ? "Deselect All" : "Select All Modules"}
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 p-3 bg-gray-50 rounded-xl border border-gray-200">
+                    {[
+                      { key: "dashboard", label: "Dashboard Analytics", desc: "View sales, KPI metrics" },
+                      { key: "products", label: "Product Catalog", desc: "Add, edit, delete items" },
+                      { key: "categories", label: "Categories", desc: "Manage catalog taxonomy" },
+                      { key: "orders", label: "Order Management", desc: "Update status, dispatch" },
+                      { key: "customers", label: "Customers & CRM", desc: "View shopper profiles" },
+                      { key: "coupons", label: "Discount Coupons", desc: "Manage promo campaigns" },
+                      { key: "settings", label: "Store Settings", desc: "Courier & MFS config" },
+                      { key: "admins", label: "Staff & Admins", desc: "Manage shop admin team" },
+                    ].map(({ key, label, desc }) => {
+                      const isChecked = promotePermissions.includes(key as AdminPermission);
+                      return (
+                        <label
+                          key={key}
+                          className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-all ${
+                            isChecked
+                              ? "bg-amber-50/80 border-amber-200 text-gray-900"
+                              : "bg-white border-gray-200 text-gray-500 opacity-80"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setPromotePermissions([...promotePermissions, key as AdminPermission]);
+                              } else {
+                                setPromotePermissions(promotePermissions.filter((p) => p !== key));
+                              }
+                            }}
+                            className="mt-0.5 rounded text-amber-500 focus:ring-amber-400"
+                          />
+                          <div>
+                            <div className="font-bold text-xs">{label}</div>
+                            <div className="text-[10px] text-gray-400 leading-tight">{desc}</div>
+                          </div>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="pt-3 border-t border-gray-100 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCustomerToPromote(null)}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPromoting}
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{isPromoting ? "Applying..." : "Save Role & Permissions"}</span>
                 </button>
               </div>
             </form>

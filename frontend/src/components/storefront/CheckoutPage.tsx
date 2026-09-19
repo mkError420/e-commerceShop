@@ -14,7 +14,11 @@ import {
   CheckCircle2, 
   AlertCircle,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Lock,
+  LogIn,
+  UserPlus,
+  Package
 } from "lucide-react";
 
 export const CheckoutPage: React.FC = () => {
@@ -34,6 +38,93 @@ export const CheckoutPage: React.FC = () => {
   const [customerName, setCustomerName] = useState(currentUser?.name || "");
   const [customerPhone, setCustomerPhone] = useState(currentUser?.phone || "");
   const [customerEmail, setCustomerEmail] = useState(currentUser?.email || "");
+
+  // ─── Auth Guard: Guest users cannot place orders ───────────────────────────
+  if (!currentUser) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center px-4 py-16">
+        <div className="max-w-md w-full">
+          {/* Cart items count badge */}
+          {cart.length > 0 && (
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold px-3 py-1.5 rounded-full">
+                <Package className="w-3.5 h-3.5" />
+                <span>{cart.length} item{cart.length > 1 ? "s" : ""} waiting in your cart</span>
+              </div>
+            </div>
+          )}
+
+          {/* Main lock card */}
+          <div className="bg-white border border-[#E0E0E0] rounded-2xl overflow-hidden shadow-xl">
+            {/* Top gradient banner */}
+            <div className="bg-gradient-to-br from-[#1A1A1A] to-[#444444] px-8 py-8 text-center">
+              <div className="w-16 h-16 rounded-full bg-white/10 border-2 border-white/20 flex items-center justify-center mx-auto mb-4">
+                <Lock className="w-7 h-7 text-white" />
+              </div>
+              <h1 className="text-xl font-bold text-white mb-1">
+                {t("Login Required to Checkout", "চেকআউটের জন্য লগইন করুন")}
+              </h1>
+              <p className="text-xs text-white/60">
+                {t(
+                  "Secure your order and track it from your personal dashboard.",
+                  "আপনার অর্ডার নিরাপদ করুন এবং ড্যাশবোর্ড থেকে ট্র্যাক করুন।"
+                )}
+              </p>
+            </div>
+
+            {/* Body */}
+            <div className="px-8 py-7 space-y-4">
+              {/* Benefits list */}
+              <div className="space-y-2.5 mb-6">
+                {[
+                  { icon: ShieldCheck, label: t("Order protected under your account", "আপনার অ্যাকাউন্টে সংরক্ষিত অর্ডার") },
+                  { icon: Truck, label: t("Real-time delivery tracking", "রিয়েল-টাইম ডেলিভারি ট্র্যাকিং") },
+                  { icon: Sparkles, label: t("Earn loyalty points on every order", "প্রতি অর্ডারে লয়্যালটি পয়েন্ট অর্জন করুন") },
+                ].map(({ icon: Icon, label }) => (
+                  <div key={label} className="flex items-center gap-3 text-xs text-[#444444]">
+                    <div className="w-7 h-7 rounded-full bg-[#F5F5F5] flex items-center justify-center shrink-0">
+                      <Icon className="w-3.5 h-3.5 text-[#1A1A1A]" />
+                    </div>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA Buttons */}
+              <button
+                id="checkout-login-btn"
+                onClick={() => navigate("/login?redirect=/checkout")}
+                className="w-full bg-[#1A1A1A] text-white text-sm font-bold py-3.5 rounded-lg hover:bg-black transition-all flex items-center justify-center gap-2 shadow-md"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>{t("Sign In to Your Account", "আপনার অ্যাকাউন্টে সাইন ইন করুন")}</span>
+              </button>
+
+              <div className="flex items-center gap-3">
+                <div className="flex-1 border-t border-[#E0E0E0]" />
+                <span className="text-[11px] text-[#999999] shrink-0">or</span>
+                <div className="flex-1 border-t border-[#E0E0E0]" />
+              </div>
+
+              <button
+                id="checkout-register-btn"
+                onClick={() => navigate("/register?redirect=/checkout")}
+                className="w-full bg-white border-2 border-[#1A1A1A] text-[#1A1A1A] text-sm font-bold py-3.5 rounded-lg hover:bg-[#F5F5F5] transition-all flex items-center justify-center gap-2"
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>{t("Create New Account", "নতুন অ্যাকাউন্ট তৈরি করুন")}</span>
+              </button>
+
+              <p className="text-[11px] text-[#999999] text-center pt-1">
+                {t("Your cart items are saved. They'll be here when you return.", "আপনার কার্টের পণ্যগুলো সংরক্ষিত আছে।")}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
   
   // Localized BD Cascade Geography State
   const [selectedDivision, setSelectedDivision] = useState("Dhaka");

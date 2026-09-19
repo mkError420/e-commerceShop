@@ -17,6 +17,8 @@ export const CartDrawer: React.FC = () => {
     formatPrice,
     navigate,
     t,
+    showToast,
+    currentUser,
   } = useStore();
 
   const [couponInput, setCouponInput] = useState("");
@@ -213,7 +215,12 @@ export const CartDrawer: React.FC = () => {
               <button
                 onClick={() => {
                   setIsCartDrawerOpen(false);
-                  navigate("/checkout");
+                  if (!currentUser) {
+                    showToast(t("Please login to proceed to checkout", "চেকআউট করতে লগইন করুন"), "info");
+                    navigate("/login?redirect=/checkout");
+                  } else {
+                    navigate("/checkout");
+                  }
                 }}
                 className="w-full bg-[#1A1A1A] text-white text-xs font-bold py-3.5 px-4 rounded hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm"
               >

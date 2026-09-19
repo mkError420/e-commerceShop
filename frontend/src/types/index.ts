@@ -143,6 +143,10 @@ export interface Customer {
   totalSpentBDT: number;
   isBlocked: boolean;
   registeredDate: string;
+  role?: "ADMIN" | "MANAGER" | "CUSTOMER";
+  permissions?: AdminPermission[];
+  loyaltyTier?: LoyaltyTier;
+  loyaltyPoints?: number;
 }
 
 export type LoyaltyTier = 'Bronze' | 'Silver' | 'Gold' | 'Platinum';
