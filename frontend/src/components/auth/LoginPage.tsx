@@ -744,8 +744,6 @@ export const LoginPage: React.FC<Props> = ({ initialMode = "login" }) => {
                   </span>
                 </button>
 
-                {/* Container for Google GIS native button iframe if loaded */}
-                <div ref={googleBtnContainerRef} className="flex justify-center empty:hidden mt-2" />
               </div>
 
               {/* Switch to Registration */}
