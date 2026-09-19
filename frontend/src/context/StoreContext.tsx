@@ -1455,6 +1455,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (apiRes.user?.id) {
         createdId = apiRes.user.id;
       }
+      console.log("✅ [Auth] Customer registered successfully in backend database:", cleanPhone);
     } catch (apiErr: any) {
       if (apiErr?.message && apiErr.message.includes("already exists")) {
         return {
@@ -1507,6 +1508,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCustomers((prev) => {
       const updated = [newAdminCustomer, ...prev.filter((c) => c.phoneNumber !== newAdminCustomer.phoneNumber)];
       try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
+      console.log("✅ [Customers] New customer saved to admin dashboard:", newAdminCustomer.phoneNumber);
       return updated;
     });
 
@@ -1543,21 +1545,33 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       );
       setNavigation({ path: "/admin" });
     } else {
-      setIsAdminAuthenticated(false);
-      try { localStorage.removeItem("be_admin_authenticated"); } catch { /* ignore */ }
+      // For regular customers, ensure they're logged in
       setCurrentUser(newUser);
-      try { localStorage.setItem("be_current_user", JSON.stringify(newUser)); } catch { /* ignore */ }
+      try {
+        localStorage.setItem("be_current_user", JSON.stringify(newUser));
+      } catch { }
+      
       showToast(
         language === 'bn'
-          ? `অভিনন্দন ${newUser.name}! অ্যাকাউন্ট ডেটাবেজে সংরক্ষিত হয়েছে এবং ১০০ বোনাস পয়েন্ট পেয়েছেন!`
-          : `Welcome to Bengal Edition, ${newUser.name}! Profile saved to database with +100 bonus loyalty points!`
+          ? `স্বাগতম ${newUser.name}! আপনার অ্যাকাউন্ট সফলভাবে তৈরি করা হয়েছে।`
+          : `Welcome ${newUser.name}! Your account has been created successfully.`
       );
       setNavigation({ path: "/customer" });
     }
 
     // Sync new customer to admin Customers panel from database
-    try { await refreshCustomers(); } catch { /* ignore */ }
-    try { await refreshShopAdmins(); } catch { /* ignore */ }
+    try {
+      await refreshCustomers();
+      console.log("✅ [Customers] Admin customers refreshed after registration");
+    } catch (err) {
+      console.warn("[Customers] Failed to refresh admin customers after registration:", err);
+    }
+    try {
+      await refreshShopAdmins();
+    } catch (err) {
+      console.warn("[Shop Admins] Failed to refresh shop admins after registration:", err);
+    }
+    
     return { success: true, message: "Registered" };
   };
 
