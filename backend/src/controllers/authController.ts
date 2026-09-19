@@ -504,11 +504,13 @@ export const authController = {
       let dbCustomers: any[] = [];
       try {
         dbCustomers = await CustomerModel.find({}).sort({ createdAt: -1 }).lean();
+        console.log("🔍 [MongoDB] getAllCustomers: Found", dbCustomers.length, "customers in CustomerModel");
       } catch (custErr) {
         console.warn("[MongoDB] getAllCustomers CustomerModel fetch error:", custErr);
       }
       try {
         dbUsers = await UserModel.find({}).sort({ createdAt: -1 }).lean();
+        console.log("🔍 [MongoDB] getAllCustomers: Found", dbUsers.length, "users in UserModel");
       } catch (dbErr) {
         console.warn("[MongoDB] getAllCustomers UserModel fetch error:", dbErr);
       }
@@ -590,6 +592,7 @@ export const authController = {
       });
 
       const combinedCustomers = Array.from(customerMap.values());
+      console.log("📊 [MongoDB] getAllCustomers: Returning", combinedCustomers.length, "combined customers to frontend");
 
       res.json({
         success: true,

@@ -349,8 +349,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [customers, setCustomers] = useState<Customer[]>(() => {
     try {
       const stored = localStorage.getItem("be_admin_customers");
-      if (stored) return JSON.parse(stored) as Customer[];
+      if (stored) {
+        const parsed = JSON.parse(stored) as Customer[];
+        console.log("📦 [Customers] Loaded", parsed.length, "customers from localStorage");
+        return parsed;
+      }
     } catch { /* ignore */ }
+    console.log("📦 [Customers] No localStorage data, using empty array");
     return INITIAL_CUSTOMERS;
   });
   const [shopAdmins, setShopAdmins] = useState<ShopAdminUser[]>(() => {
@@ -1455,7 +1460,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       if (apiRes.user?.id) {
         createdId = apiRes.user.id;
       }
-      console.log("✅ [Auth] Customer registered successfully in backend database:", cleanPhone);
+      console.log("✅ [Auth] Customer registered successfully in backend database:", cleanPhone, "ID:", createdId);
     } catch (apiErr: any) {
       if (apiErr?.message && apiErr.message.includes("already exists")) {
         return {
@@ -1508,7 +1513,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     setCustomers((prev) => {
       const updated = [newAdminCustomer, ...prev.filter((c) => c.phoneNumber !== newAdminCustomer.phoneNumber)];
       try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
-      console.log("✅ [Customers] New customer saved to admin dashboard:", newAdminCustomer.phoneNumber);
+      console.log("✅ [Customers] New customer saved to admin dashboard:", newAdminCustomer.phoneNumber, "Total customers:", updated.length);
       return updated;
     });
 
@@ -1559,18 +1564,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setNavigation({ path: "/customer" });
     }
 
-    // Sync new customer to admin Customers panel from database
-    try {
-      await refreshCustomers();
-      console.log("✅ [Customers] Admin customers refreshed after registration");
-    } catch (err) {
-      console.warn("[Customers] Failed to refresh admin customers after registration:", err);
-    }
-    try {
-      await refreshShopAdmins();
-    } catch (err) {
-      console.warn("[Shop Admins] Failed to refresh shop admins after registration:", err);
-    }
+    // Sync new customer to admin Customers panel from database (fire-and-forget)
+    setTimeout(async () => {
+      try {
+        await refreshCustomers();
+        console.log("✅ [Customers] Admin customers refreshed after registration");
+      } catch (err) {
+        console.warn("[Customers] Failed to refresh admin customers after registration:", err);
+      }
+      try {
+        await refreshShopAdmins();
+      } catch (err) {
+        console.warn("[Shop Admins] Failed to refresh shop admins after registration:", err);
+      }
+    }, 1000); // 1 second delay to ensure database sync
     
     return { success: true, message: "Registered" };
   };
@@ -1579,6 +1586,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       const res = await authService.getCustomers();
       if (res.success && Array.isArray(res.customers)) {
+        console.log("🔄 [Customers] Refreshing from backend, received", res.customers.length, "customers");
         setCustomers((prev) => {
           const map = new Map<string, Customer>();
           prev.forEach((c) => map.set(c.phoneNumber || c.id, c));
@@ -1602,6 +1610,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           });
           const merged = Array.from(map.values());
           try { localStorage.setItem("be_admin_customers", JSON.stringify(merged)); } catch { /* ignore */ }
+          console.log("✅ [Customers] After refresh, total customers:", merged.length);
           return merged;
         });
       }
