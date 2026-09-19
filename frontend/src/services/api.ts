@@ -6,7 +6,7 @@ const API_BASE_URL =
   (typeof window !== "undefined" &&
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
-    ? "/api/v1"
+    ? "/api/v1" // Production - should be configured with rewrites
     : "http://localhost:5000/api/v1");
 
 interface RequestOptions extends RequestInit {
@@ -88,9 +88,10 @@ export async function apiClient<T>(endpoint: string, options: RequestOptions = {
     if (err instanceof ApiError) {
       throw err;
     }
-    // Network offline fallback
+    // Network offline fallback - return success but with empty data to allow local state to work
+    console.warn("[API] Backend unreachable, using local storage fallback:", err?.message);
     return {
-      success: false,
+      success: true,
       data: [],
       customers: [],
       admins: [],

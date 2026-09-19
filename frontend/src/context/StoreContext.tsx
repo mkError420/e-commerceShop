@@ -354,7 +354,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         console.log("📦 [Customers] Loaded", parsed.length, "customers from localStorage");
         return parsed;
       }
-    } catch { /* ignore */ }
+    } catch (err) { 
+      console.error("📦 [Customers] Failed to load from localStorage:", err);
+    }
     console.log("📦 [Customers] No localStorage data, using empty array");
     return INITIAL_CUSTOMERS;
   });
@@ -627,7 +629,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         } catch { /* ignore */ }
       }
     } catch (err: any) {
-      console.warn("[Orders] Backend database sync warning:", err?.message);
+      console.warn("[Orders] Backend database sync warning:", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -696,7 +698,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         }
       })
       .catch((err) => {
-        console.warn("[Orders] Backend database save notice:", err?.message);
+        console.warn("[Orders] Backend database save notice:", err instanceof Error ? err.message : String(err));
       });
 
     // 4. Update customer spend & order count in Admin Customers dashboard
@@ -742,7 +744,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         if (registerCustomer) {
           registerCustomer(newOrder.customerName, newOrder.customerPhone, newOrder.customerEmail, "order_generated")
             .then(() => console.log("✅ [Customers] New customer synced to backend database"))
-            .catch((err) => console.warn("[Customers] Backend sync warning:", err?.message));
+            .catch((err) => console.warn("[Customers] Backend sync warning:", err instanceof Error ? err.message : String(err)));
         }
       }
 
@@ -758,7 +760,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       prev.map((ord) => ord.id === orderId ? { ...ord, status } : ord)
     );
     orderService.updateOrderStatus(orderId, status).catch((err) => {
-      console.warn("[Orders] Backend update status notice:", err?.message);
+      console.warn("[Orders] Backend update status notice:", err instanceof Error ? err.message : String(err));
     });
     showToast(`Order status updated to ${status}`);
   };
@@ -768,7 +770,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       prev.map((ord) => ord.id === orderId ? { ...ord, paymentStatus } : ord)
     );
     orderService.updateOrderStatus(orderId, undefined, undefined, paymentStatus).catch((err) => {
-      console.warn("[Orders] Backend payment status update notice:", err?.message);
+      console.warn("[Orders] Backend payment status update notice:", err instanceof Error ? err.message : String(err));
     });
     showToast(`Payment status updated to ${paymentStatus}`);
   };
@@ -787,8 +789,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       showToast("Order details updated successfully!");
       return true;
     } catch (err: any) {
-      console.warn("[Orders] Update error:", err?.message);
-      showToast(err?.message || "Failed to update order", "error");
+      console.warn("[Orders] Update error:", err instanceof Error ? err.message : String(err));
+      showToast(err instanceof Error ? err.message : String(err), "error");
       return false;
     }
   };
@@ -809,7 +811,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await orderService.deleteOrder(orderId);
     } catch (err: any) {
-      console.warn("[Orders] Backend database delete notice:", err?.message);
+      console.warn("[Orders] Backend database delete notice:", err instanceof Error ? err.message : String(err));
     }
 
     showToast("Order removed successfully!");
@@ -826,7 +828,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return null;
     } catch (err: any) {
-      console.warn("[Orders] Create manual order notice:", err?.message);
+      console.warn("[Orders] Create manual order notice:", err instanceof Error ? err.message : String(err));
       const fallbackOrder: Order = {
         id: `ord-${Date.now()}`,
         orderNumber: `BD-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
@@ -1470,7 +1472,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             : "An account with this phone or email already exists in the database. Please Sign In."
         };
       }
-      console.warn("[MongoDB Auth] Register fallback to local store:", apiErr?.message);
+      console.warn("[MongoDB Auth] Backend registration failed, using local storage fallback:", apiErr?.message);
+      // Continue with local storage registration even if backend fails
     }
 
     const newUser: CustomerUser = {
@@ -1512,8 +1515,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     setCustomers((prev) => {
       const updated = [newAdminCustomer, ...prev.filter((c) => c.phoneNumber !== newAdminCustomer.phoneNumber)];
-      try { localStorage.setItem("be_admin_customers", JSON.stringify(updated)); } catch { /* ignore */ }
-      console.log("✅ [Customers] New customer saved to admin dashboard:", newAdminCustomer.phoneNumber, "Total customers:", updated.length);
+      try { 
+        localStorage.setItem("be_admin_customers", JSON.stringify(updated)); 
+        console.log("✅ [Customers] New customer saved to admin dashboard:", newAdminCustomer.phoneNumber, "Total customers:", updated.length);
+      } catch (err) { 
+        console.error("[Customers] Failed to save to localStorage:", err);
+      }
       return updated;
     });
 
@@ -1577,7 +1584,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       } catch (err) {
         console.warn("[Shop Admins] Failed to refresh shop admins after registration:", err);
       }
-    }, 1000); // 1 second delay to ensure database sync
+    }, 500); // 500ms delay to ensure database sync
     
     return { success: true, message: "Registered" };
   };
@@ -1613,9 +1620,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           console.log("✅ [Customers] After refresh, total customers:", merged.length);
           return merged;
         });
+      } else {
+        console.log("⚠️ [Customers] Backend returned no customers, keeping local state");
       }
     } catch (err: any) {
-      console.warn("[CRM] Customer database sync error:", err?.message);
+      console.warn("[CRM] Customer database sync error, using local storage:", err instanceof Error ? err.message : String(err));
+      // On error, reload from localStorage to ensure local state is preserved
+      try {
+        const stored = localStorage.getItem("be_admin_customers");
+        if (stored) {
+          const localCustomers = JSON.parse(stored) as Customer[];
+          console.log("📦 [Customers] Loaded", localCustomers.length, "customers from localStorage fallback");
+          setCustomers(localCustomers);
+        }
+      } catch (localErr) {
+        console.warn("[CRM] LocalStorage fallback failed:", localErr instanceof Error ? localErr.message : String(localErr));
+      }
     }
   };
 
@@ -1635,7 +1655,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       return { success: false, message: res.message || "Failed to create admin" };
     } catch (err: any) {
-      return { success: false, message: err?.message || "Error creating admin account" };
+      return { success: false, message: err instanceof Error ? err.message : String(err) || "Error creating admin account" };
     }
   };
 
@@ -1647,7 +1667,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try { localStorage.setItem("be_shop_admins", JSON.stringify(res.admins)); } catch { }
       }
     } catch (err: any) {
-      console.warn("[Admin] Shop Admin database sync error:", err?.message);
+      console.warn("[Admin] Shop Admin database sync error:", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -1761,7 +1781,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try { localStorage.setItem("be_hero_banners", JSON.stringify(res.data)); } catch { }
       }
     } catch (err: any) {
-      console.warn("[Banners] Backend database sync notice:", err?.message);
+      console.warn("[Banners] Backend database sync notice:", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -1867,7 +1887,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try { localStorage.setItem("be_products", JSON.stringify(res.data)); } catch { /* ignore */ }
       }
     } catch (err: any) {
-      console.warn("[Products] Backend database sync warning:", err?.message);
+      console.warn("[Products] Backend database sync warning:", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -1996,7 +2016,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isFlashDeal: product.isFlashDeal,
       })
       .catch((err) => {
-        console.warn("[Products] Backend database sync notice (saved in local store):", err?.message);
+        console.warn("[Products] Backend database sync notice (saved in local store):", err instanceof Error ? err.message : String(err));
       });
 
     showToast("New product created successfully");
@@ -2028,7 +2048,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         isFlashDeal: updated.isFlashDeal,
       })
       .catch((err) => {
-        console.warn("[Products] Backend database update notice (updated in local store):", err?.message);
+        console.warn("[Products] Backend database update notice (updated in local store):", err instanceof Error ? err.message : String(err));
       });
 
     showToast("Product updated");
@@ -2046,7 +2066,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
 
     productService.deleteProduct(id).catch((err) => {
-      console.warn("[Products] Backend database delete notice:", err?.message);
+      console.warn("[Products] Backend database delete notice:", err instanceof Error ? err.message : String(err));
     });
 
     showToast("Product removed", "info");
@@ -2061,7 +2081,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try { localStorage.setItem("be_categories", JSON.stringify(res.data)); } catch { /* ignore */ }
       }
     } catch (err: any) {
-      console.warn("[Categories] Database sync error, using cached categories:", err?.message);
+      console.warn("[Categories] Database sync error, using cached categories:", err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -2084,7 +2104,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       showToast(language === 'bn' ? "নতুন ক্যাটাগরি ডেটাবেজে সংরক্ষিত হয়েছে" : "New category saved to database!");
     } catch (err: any) {
-      console.warn("[Categories] Failed to sync new category to backend API:", err?.message);
+      console.warn("[Categories] Failed to sync new category to backend API:", err instanceof Error ? err.message : String(err));
       showToast(language === 'bn' ? "ক্যাটাগরি লোকাল স্টোরেজে যুক্ত হয়েছে" : "Category added locally");
     }
   };
@@ -2108,7 +2128,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       showToast(language === 'bn' ? "ক্যাটাগরি ডেটাবেজে আপডেট হয়েছে" : "Category updated in database!");
     } catch (err: any) {
-      console.warn("[Categories] Failed to update category on backend:", err?.message);
+      console.warn("[Categories] Failed to update category on backend:", err instanceof Error ? err.message : String(err));
       showToast(language === 'bn' ? "ক্যাটাগরি আপডেট হয়েছে" : "Category updated");
     }
   };
@@ -2124,7 +2144,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       await categoryService.deleteCategory(id);
       showToast(language === 'bn' ? "ক্যাটাগরি ডেটাবেজ থেকে মুছে ফেলা হয়েছে" : "Category removed from database", "info");
     } catch (err: any) {
-      console.warn("[Categories] Failed to delete category on backend:", err?.message);
+      console.warn("[Categories] Failed to delete category on backend:", err instanceof Error ? err.message : String(err));
       showToast(language === 'bn' ? "ক্যাটাগরি মুছে ফেলা হয়েছে" : "Category deleted", "info");
     }
   };
@@ -2158,7 +2178,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
       showToast(language === 'bn' ? "সাব-ক্যাটাগরি ডেটাবেজে যুক্ত হয়েছে" : "Sub-category created in database!");
     } catch (err: any) {
-      console.warn("[Categories] Failed to save subcategory to backend:", err?.message);
+      console.warn("[Categories] Failed to save subcategory to backend:", err instanceof Error ? err.message : String(err));
       showToast(language === 'bn' ? "সাব-ক্যাটাগরি যুক্ত হয়েছে" : "Sub-category added locally");
     }
   };
