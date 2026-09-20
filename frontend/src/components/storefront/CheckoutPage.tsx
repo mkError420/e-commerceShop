@@ -211,7 +211,13 @@ export const CheckoutPage: React.FC = () => {
         };
       });
 
+      // Generate consistent ID and order number before creating order
+      const orderId = `ord-${Date.now()}`;
+      const orderNumber = `BD-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+
       const newOrder = createOrder({
+        id: orderId,
+        orderNumber: orderNumber,
         customerName: customerName.trim(),
         customerPhone: customerPhone.trim(),
         customerEmail: customerEmail.trim() || currentUser?.email || undefined,

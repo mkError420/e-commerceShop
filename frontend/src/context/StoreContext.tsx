@@ -688,7 +688,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       .then((res) => {
         if (res.success && res.data) {
           setOrders((prev) => {
-            const synced = prev.map((o) => (o.id === newOrder.id ? res.data : o));
+            // Replace the local order with the backend response, matching by order number
+            const synced = prev.map((o) => 
+              (o.orderNumber === newOrder.orderNumber || o.id === newOrder.id) ? res.data : o
+            );
             try {
               localStorage.setItem("be_orders", JSON.stringify(synced));
             } catch { /* ignore */ }
@@ -820,10 +823,20 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const createAdminOrder = async (orderData: Partial<Order>): Promise<Order | null> => {
     try {
-      const res = await orderService.createOrder(orderData);
+      // Generate consistent ID and order number before sending to backend
+      const orderId = orderData.id || `ord-${Date.now()}`;
+      const orderNumber = orderData.orderNumber || `BD-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+      
+      const orderPayload = {
+        ...orderData,
+        id: orderId,
+        orderNumber,
+      };
+      
+      const res = await orderService.createOrder(orderPayload);
       if (res.success && res.data) {
         setOrders((prev) => [res.data, ...prev]);
-        showToast(`Manual Order #${res.data.id} created!`);
+        showToast(`Manual Order #${res.data.orderNumber} created!`);
         return res.data;
       }
       return null;
@@ -855,7 +868,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         createdAt: new Date().toISOString(),
       };
       setOrders((prev) => [fallbackOrder, ...prev]);
-      showToast(`Order #${fallbackOrder.id} created!`);
+      showToast(`Order #${fallbackOrder.orderNumber} created!`);
       return fallbackOrder;
     }
   };

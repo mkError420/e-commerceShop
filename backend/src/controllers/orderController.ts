@@ -236,9 +236,10 @@ export const orderController = {
     }
 
     const totalAmount = Math.max(0, subtotal + shippingFee - discountAmount);
+    // Use the ID and order number from frontend if provided to maintain consistency
+    // Generate new ones only if not provided
     const orderId = body.id || `ord-${Date.now()}`;
-    const orderNumber =
-      body.orderNumber || `BD-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    const orderNumber = body.orderNumber || `BD-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
     const trackingId =
       body.trackingId || courierService.generateTrackingNumber(shipping.courierName);
     const courierName = body.courierName || shipping.courierName;
