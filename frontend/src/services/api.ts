@@ -6,7 +6,7 @@ const API_BASE_URL =
   (typeof window !== "undefined" &&
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
-    ? "/api/v1" // Production - should be configured with rewrites
+    ? null // Production - no backend deployed, use localStorage only
     : "http://localhost:5000/api/v1");
 
 interface RequestOptions extends RequestInit {
@@ -22,6 +22,21 @@ export class ApiError extends Error {
 
 export async function apiClient<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
   const { params, headers, ...restOptions } = options;
+
+  // If no backend URL available (production without backend), return fallback immediately
+  if (!API_BASE_URL) {
+    console.warn("[API] No backend URL configured, using local storage fallback");
+    return {
+      success: true,
+      data: [],
+      customers: [],
+      admins: [],
+      products: [],
+      categories: [],
+      orders: [],
+      message: "Backend not deployed, using local storage",
+    } as unknown as T;
+  }
 
   let url = `${API_BASE_URL}${endpoint.startsWith("/") ? endpoint : `/${endpoint}`}`;
 

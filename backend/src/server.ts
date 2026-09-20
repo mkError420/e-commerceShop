@@ -127,4 +127,5 @@ if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
   });
 }
 
+// Vercel serverless handler
 export default app;
