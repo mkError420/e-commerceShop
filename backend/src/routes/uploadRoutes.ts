@@ -14,10 +14,10 @@ if (!fs.existsSync(uploadDir)) {
 
 // Configure Multer storage
 const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
+  destination: (_req: any, _file: any, cb: any) => {
     cb(null, uploadDir);
   },
-  filename: (_req, file, cb) => {
+  filename: (_req: any, file: any, cb: any) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const cleanName = path
       .basename(file.originalname, ext)
@@ -43,7 +43,7 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10 MB maximum
   },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: any, file: any, cb: any) => {
     if (ALLOWED_MIME_TYPES.includes(file.mimetype)) {
       cb(null, true);
     } else {
@@ -77,7 +77,7 @@ router.post(
     if (contentType.includes("application/json")) {
       return next();
     }
-    upload.single("image")(req, res, (err) => {
+    upload.single("image")(req, res, (err: any) => {
       if (err) return handleMulterError(err, req, res, next);
       next();
     });

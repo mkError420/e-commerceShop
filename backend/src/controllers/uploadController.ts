@@ -151,19 +151,20 @@ export const uploadController = {
       }
 
       // ─── 3. Local Free Storage (Zero config, served from Express static) ───
-      if (req.file) {
+      if ((req as any).file) {
+        const file = (req as any).file;
         const host = req.get("host") || `localhost:${ENV.PORT}`;
         const protocol = req.protocol === "https" || req.headers["x-forwarded-proto"] === "https" ? "https" : "http";
-        const localUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+        const localUrl = `${protocol}://${host}/uploads/${file.filename}`;
 
         res.json({
           success: true,
           url: localUrl,
           storage: "LOCAL_SERVER_STORAGE",
-          filename: req.file.filename,
-          originalName: req.file.originalname,
-          size: req.file.size,
-          mimetype: req.file.mimetype,
+          filename: file.filename,
+          originalName: file.originalname,
+          size: file.size,
+          mimetype: file.mimetype,
         });
         return;
       }

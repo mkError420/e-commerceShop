@@ -194,7 +194,7 @@ CustomerSchema.index({ createdAt: -1 });
 CustomerSchema.index({ referralCode: 1 }, { sparse: true });
 
 // ─── Middleware: Auto-update Loyalty Tier based on total spend ────────────────
-CustomerSchema.pre("save", function (next) {
+CustomerSchema.pre("save", function (next: any) {
   const spent = this.totalSpentBDT;
   if (spent >= 50000) {
     this.loyaltyTier = "Platinum";
@@ -209,7 +209,7 @@ CustomerSchema.pre("save", function (next) {
 });
 
 // ─── Middleware: Auto-generate referral code on first save ────────────────────
-CustomerSchema.pre("save", function (next) {
+CustomerSchema.pre("save", function (next: any) {
   if (this.isNew && !this.referralCode) {
     const suffix = Math.random().toString(36).substring(2, 7).toUpperCase();
     const phoneSnippet = this.phone.slice(-4);
