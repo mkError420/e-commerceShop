@@ -619,26 +619,55 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             o &&
             !o.id?.startsWith("ord-100") &&
             !o.orderNumber?.startsWith("BD-2026-894") &&
-            !o.orderNumber?.startsWith("BD-2026-948") &&
-            o.customerName !== "Md. Tanvir Hossain" &&
-            o.customerName !== "Tanvir Rahman"
+            !o.orderNumber?.startsWith("BD-2026-948")
         );
         setOrders(cleanOrders);
         try {
           localStorage.setItem("be_orders", JSON.stringify(cleanOrders));
         } catch { /* ignore */ }
+        
+        // Sync local orders that aren't in backend yet
+        syncLocalOrdersToBackend(cleanOrders);
       }
     } catch (err: any) {
       console.warn("[Orders] Backend database sync warning:", err instanceof Error ? err.message : String(err));
     }
   };
 
+  // Sync local orders to backend if they don't exist there
+  const syncLocalOrdersToBackend = async (backendOrders: Order[]): Promise<void> => {
+    try {
+      const localOrdersStr = localStorage.getItem("be_orders");
+      if (!localOrdersStr) return;
+      
+      const localOrders = JSON.parse(localOrdersStr) as Order[];
+      if (!Array.isArray(localOrders)) return;
+
+      const backendOrderNumbers = new Set(backendOrders.map(o => o.orderNumber));
+      
+      for (const localOrder of localOrders) {
+        if (!backendOrderNumbers.has(localOrder.orderNumber)) {
+          console.log("🔄 [Orders] Syncing local order to backend:", localOrder.orderNumber);
+          try {
+            await orderService.createOrder(localOrder);
+            console.log("✅ [Orders] Local order synced:", localOrder.orderNumber);
+          } catch (err) {
+            console.warn("⚠️ [Orders] Failed to sync local order:", localOrder.orderNumber, err);
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[Orders] Local sync error:", err);
+    }
+  };
+
   const createOrder = (orderData: Omit<Order, "id" | "orderNumber" | "createdAt">): Order => {
     const randomNum = Math.floor(1000 + Math.random() * 9000);
+    // Use provided id and orderNumber if available, otherwise generate new ones
     const newOrder: Order = {
       ...orderData,
-      id: `ord-${Date.now()}`,
-      orderNumber: `BD-2026-${randomNum}`,
+      id: (orderData as any).id || `ord-${Date.now()}`,
+      orderNumber: (orderData as any).orderNumber || `BD-2026-${randomNum}`,
       createdAt: new Date().toISOString(),
     };
 
@@ -686,10 +715,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     orderService
       .createOrder(newOrder)
       .then((res) => {
+        console.log("📥 [Orders] Backend response:", res);
         if (res.success && res.data) {
           setOrders((prev) => {
             // Replace the local order with the backend response, matching by order number
-            const synced = prev.map((o) => 
+            const synced = prev.map((o) =>
               (o.orderNumber === newOrder.orderNumber || o.id === newOrder.id) ? res.data : o
             );
             try {
@@ -698,6 +728,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             return synced;
           });
           console.log("✅ [Orders] Order successfully synced to backend database");
+        } else {
+          console.warn("⚠️ [Orders] Backend returned success but no data:", res);
         }
       })
       .catch((err) => {
