@@ -2,9 +2,13 @@
   command = "cd frontend && npm install --legacy-peer-deps && npm run build"
   publish = "frontend/dist"
 
+# Set VITE_API_BASE_URL in Netlify dashboard: Site settings → Environment variables
+# Example: VITE_API_BASE_URL=https://your-backend-url.vercel.app/api/v1
+
 [[redirects]]
+  # Update this redirect after deploying your backend
   from = "/api/*"
-  to = "https://your-backend-url.com/api/:splat"
+  to = "https://your-backend-url.vercel.app/api/:splat"
   status = 200
   force = true
 
