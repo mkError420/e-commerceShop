@@ -65,7 +65,7 @@ export const AdminDashboard: React.FC = () => {
       refreshOrders().catch(() => console.log("Orders refresh failed"));
       refreshCustomers().catch(() => console.log("Customers refresh failed"));
     }
-  }, [isAdminAuthenticated, refreshOrders, refreshCustomers]);
+  }, [isAdminAuthenticated]); // Removed function dependencies to prevent infinite loops
 
   // Auto-refresh data when switching tabs
   useEffect(() => {
@@ -76,7 +76,7 @@ export const AdminDashboard: React.FC = () => {
         refreshCustomers().catch(() => console.log("Customers refresh failed"));
       }
     }
-  }, [activeTab, isAdminAuthenticated, refreshOrders, refreshCustomers]);
+  }, [activeTab, isAdminAuthenticated]); // Removed function dependencies to prevent infinite loops
 
   // If not authenticated as Admin, prompt to login or redirect customer
   if (!isAdminAuthenticated) {

@@ -70,7 +70,7 @@ export const AdminOrders: React.FC = () => {
   // Auto-refresh orders when component mounts
   useEffect(() => {
     refreshOrders().catch(() => console.log("Initial orders refresh failed"));
-  }, [refreshOrders]);
+  }, []); // Removed refreshOrders dependency to prevent infinite loops
 
   /* ── Modals State ── */
   const [isCreateOpen, setIsCreateOpen] = useState<boolean>(false);

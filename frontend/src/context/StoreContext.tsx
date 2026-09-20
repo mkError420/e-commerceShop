@@ -625,39 +625,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         try {
           localStorage.setItem("be_orders", JSON.stringify(cleanOrders));
         } catch { /* ignore */ }
-        
-        // Sync local orders that aren't in backend yet
-        syncLocalOrdersToBackend(cleanOrders);
       }
     } catch (err: any) {
       console.warn("[Orders] Backend database sync warning:", err instanceof Error ? err.message : String(err));
-    }
-  };
-
-  // Sync local orders to backend if they don't exist there
-  const syncLocalOrdersToBackend = async (backendOrders: Order[]): Promise<void> => {
-    try {
-      const localOrdersStr = localStorage.getItem("be_orders");
-      if (!localOrdersStr) return;
-      
-      const localOrders = JSON.parse(localOrdersStr) as Order[];
-      if (!Array.isArray(localOrders)) return;
-
-      const backendOrderNumbers = new Set(backendOrders.map(o => o.orderNumber));
-      
-      for (const localOrder of localOrders) {
-        if (!backendOrderNumbers.has(localOrder.orderNumber)) {
-          console.log("🔄 [Orders] Syncing local order to backend:", localOrder.orderNumber);
-          try {
-            await orderService.createOrder(localOrder);
-            console.log("✅ [Orders] Local order synced:", localOrder.orderNumber);
-          } catch (err) {
-            console.warn("⚠️ [Orders] Failed to sync local order:", localOrder.orderNumber, err);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("[Orders] Local sync error:", err);
     }
   };
 

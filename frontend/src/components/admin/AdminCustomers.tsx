@@ -53,7 +53,7 @@ export const AdminCustomers: React.FC = () => {
   // Auto-refresh customers when component mounts
   useEffect(() => {
     refreshCustomers().catch(() => console.log("Initial customers refresh failed"));
-  }, [refreshCustomers]);
+  }, []); // Removed refreshCustomers dependency to prevent infinite loops
 
   // Delete Customer state
   const [customerToDelete, setCustomerToDelete] = useState<Customer | null>(null);
