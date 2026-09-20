@@ -9,7 +9,7 @@ export const ENV = {
   PORT: process.env.PORT ? parseInt(process.env.PORT, 10) : 5000,
   SERVER_URL: process.env.SERVER_URL || `http://localhost:${process.env.PORT || 5000}`,
   NODE_ENV: process.env.NODE_ENV || "development",
-  CLIENT_URL: process.env.CLIENT_URL || "http://localhost:3000",
+  CLIENT_URL: process.env.CLIENT_URL || "https://ffashion.netlify.app",
   JWT_SECRET: process.env.JWT_SECRET || "default_jwt_secret_shorobor_bd_2026",
   JWT_EXPIRES_IN: process.env.JWT_EXPIRES_IN || "7d",
 

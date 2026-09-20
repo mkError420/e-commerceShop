@@ -6,7 +6,7 @@ const API_BASE_URL =
   (typeof window !== "undefined" &&
   window.location.hostname !== "localhost" &&
   window.location.hostname !== "127.0.0.1"
-    ? import.meta?.env?.VITE_API_BASE_URL || "https://your-backend-url.vercel.app/api/v1" // Production - use env var or fallback
+    ? import.meta?.env?.VITE_API_BASE_URL || "https://backend.netlify.app/api/v1" // Production - use env var or fallback to Netlify backend
     : "http://localhost:5000/api/v1");
 
 interface RequestOptions extends RequestInit {

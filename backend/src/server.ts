@@ -43,7 +43,7 @@ app.use(
         "http://127.0.0.1:5173",
       ];
 
-      if (isLocal || allowed.includes(origin) || origin.endsWith(".vercel.app")) {
+      if (isLocal || allowed.includes(origin) || origin.endsWith(".vercel.app") || origin.endsWith(".netlify.app")) {
         callback(null, true);
       } else {
         console.warn(`[CORS] Allowing origin: ${origin}`);
@@ -120,7 +120,7 @@ async function startServer() {
   process.on("SIGINT", () => handleShutdown("SIGINT"));
 }
 
-if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+if (!process.env.VERCEL && !process.env.AWS_LAMBDA_FUNCTION_NAME && !process.env.NETLIFY) {
   startServer().catch((err) => {
     console.error("Failed to start backend server:", err);
     process.exit(1);
